@@ -270,16 +270,148 @@ Object.keys(MOVES).forEach((id) => {
   MOVES[id].run = makeRun(aux.run);
 });
 
+// ---------------------------------------------------------------------------
+// Per-champion reactions. Every fighter now braces the power struggle, takes a
+// hit and hits the floor in its own way, instead of sharing one generic recoil
+// shape with different amplitude.
+// ---------------------------------------------------------------------------
+const CLASH = {
+  giant: { dur: 6, keys: [
+    { t: 0, p: { armL: [-1.35, 0, -.42], armR: [-1.35, 0, .42], foreL: [-.55, 0, 0], foreR: [-.55, 0, 0], spineB: [-.30, 0, 0], spineC: [-.20, 0, 0], head: [-.26, 0, 0], legL: [-.30, 0, 0], legR: [.24, 0, 0], shinL: [.42, 0, 0] } },
+    { t: .5, p: { armL: [-1.52, 0, -.30], armR: [-1.52, 0, .30], foreL: [-.38, 0, 0], foreR: [-.38, 0, 0], spineB: [-.38, 0, 0], spineC: [-.26, 0, 0], head: [-.34, 0, 0], legL: [-.36, 0, 0], legR: [.28, 0, 0], shinL: [.50, 0, 0] } },
+    { t: 1, p: { armL: [-1.35, 0, -.42], armR: [-1.35, 0, .42], foreL: [-.55, 0, 0], foreR: [-.55, 0, 0], spineB: [-.30, 0, 0], spineC: [-.20, 0, 0], head: [-.26, 0, 0], legL: [-.30, 0, 0], legR: [.24, 0, 0], shinL: [.42, 0, 0] } }
+  ] },
+  warrior: { dur: 6, keys: [
+    { t: 0, p: { armR: [-1.90, .25, .55], foreR: [-.75, 0, 0], armL: [-.70, 0, -.55], spineC: [.08, .42, 0], spineB: [.06, .20, 0], head: [.06, .20, 0], legR: [.22, 0, 0], legL: [-.22, 0, 0], shinL: [.30, 0, 0] } },
+    { t: .5, p: { armR: [-2.10, .30, .60], foreR: [-.55, 0, 0], armL: [-.85, 0, -.70], spineC: [.14, .50, 0], spineB: [.10, .24, 0], head: [.10, .26, 0], legR: [.30, 0, 0], legL: [-.30, 0, 0], shinL: [.40, 0, 0] } },
+    { t: 1, p: { armR: [-1.90, .25, .55], foreR: [-.75, 0, 0], armL: [-.70, 0, -.55], spineC: [.08, .42, 0], spineB: [.06, .20, 0], head: [.06, .20, 0], legR: [.22, 0, 0], legL: [-.22, 0, 0], shinL: [.30, 0, 0] } }
+  ] },
+  zombie: { dur: 6, keys: [
+    { t: 0, p: { armL: [-1.60, 0, -.18], armR: [-1.50, 0, .16], foreL: [-.20, 0, 0], foreR: [-.18, 0, 0], spineB: [.42, 0, 0], spineC: [.30, .12, 0], head: [.30, 0, 0], legL: [-.24, 0, 0], shinL: [.42, 0, 0] } },
+    { t: .5, p: { armL: [-1.75, 0, -.10], armR: [-1.62, 0, .08], foreL: [-.10, 0, 0], foreR: [-.10, 0, 0], spineB: [.50, 0, 0], spineC: [.36, .16, 0], head: [.36, .04, 0], legL: [-.30, 0, 0], shinL: [.50, 0, 0] } },
+    { t: 1, p: { armL: [-1.60, 0, -.18], armR: [-1.50, 0, .16], foreL: [-.20, 0, 0], foreR: [-.18, 0, 0], spineB: [.42, 0, 0], spineC: [.30, .12, 0], head: [.30, 0, 0], legL: [-.24, 0, 0], shinL: [.42, 0, 0] } }
+  ] },
+  wizard: { dur: 6, keys: [
+    { t: 0, p: { armL: [-2.50, 0, -.50], foreL: [-.30, 0, 0], armR: [-.60, .25, .75], foreR: [-1.50, 0, 0], spineB: [-.12, 0, 0], spineC: [-.08, -.30, 0], head: [-.20, -.24, 0], legR: [.18, 0, 0] } },
+    { t: .5, p: { armL: [-2.75, 0, -.35], foreL: [-.18, 0, 0], armR: [-.45, .30, .90], foreR: [-1.62, 0, 0], spineB: [-.20, 0, 0], spineC: [-.14, -.38, 0], head: [-.30, -.30, 0], legR: [.26, 0, 0] } },
+    { t: 1, p: { armL: [-2.50, 0, -.50], foreL: [-.30, 0, 0], armR: [-.60, .25, .75], foreR: [-1.50, 0, 0], spineB: [-.12, 0, 0], spineC: [-.08, -.30, 0], head: [-.20, -.24, 0], legR: [.18, 0, 0] } }
+  ] },
+  soldier: { dur: 6, keys: [
+    { t: 0, p: { armR: [-1.15, .08, .12], foreR: [-.70, 0, 0], armL: [-1.20, 0, .20], foreL: [-.60, 0, 0], spineC: [-.08, -.20, 0], spineB: [-.10, 0, 0], head: [.04, -.06, 0], legL: [-.30, 0, 0], shinL: [.40, 0, 0], legR: [.20, 0, 0] } },
+    { t: .5, p: { armR: [-1.30, .06, .10], foreR: [-.55, 0, 0], armL: [-1.35, 0, .16], foreL: [-.45, 0, 0], spineC: [-.14, -.24, 0], spineB: [-.16, 0, 0], head: [.10, -.04, 0], legL: [-.40, 0, 0], shinL: [.52, 0, 0], legR: [.26, 0, 0] } },
+    { t: 1, p: { armR: [-1.15, .08, .12], foreR: [-.70, 0, 0], armL: [-1.20, 0, .20], foreL: [-.60, 0, 0], spineC: [-.08, -.20, 0], spineB: [-.10, 0, 0], head: [.04, -.06, 0], legL: [-.30, 0, 0], shinL: [.40, 0, 0], legR: [.20, 0, 0] } }
+  ] },
+  superhero: { dur: 6, keys: [
+    { t: 0, p: { armR: [-1.95, 0, .05], foreR: [-.15, 0, 0], armL: [.50, 0, -.70], foreL: [-.40, 0, 0], spineC: [.05, .35, 0], spineB: [-.16, .18, 0], head: [-.16, .20, 0], legL: [-.60, 0, 0], shinL: [.70, 0, 0], legR: [.30, 0, 0] } },
+    { t: .5, p: { armR: [-2.10, 0, .02], foreR: [-.05, 0, 0], armL: [.62, 0, -.82], foreL: [-.30, 0, 0], spineC: [.10, .42, 0], spineB: [-.24, .22, 0], head: [-.24, .26, 0], legL: [-.75, 0, 0], shinL: [.85, 0, 0], legR: [.38, 0, 0] } },
+    { t: 1, p: { armR: [-1.95, 0, .05], foreR: [-.15, 0, 0], armL: [.50, 0, -.70], foreL: [-.40, 0, 0], spineC: [.05, .35, 0], spineB: [-.16, .18, 0], head: [-.16, .20, 0], legL: [-.60, 0, 0], shinL: [.70, 0, 0], legR: [.30, 0, 0] } }
+  ] }
+};
+
+const REACTIONS = {
+  giant: {
+    hurt: { dur: 1.0, keys: [
+      { t: 0, p: { armL: [-1.20, 0, -1.30], armR: [-1.20, 0, 1.30], foreL: [-.50, 0, 0], foreR: [-.50, 0, 0], spineB: [-.34, 0, .10], spineC: [-.20, 0, .06], head: [-.40, 0, .06], legL: [-.20, 0, 0], legR: [.14, 0, 0], shinL: [.34, 0, 0] } },
+      { t: .30, p: { armL: [-.90, 0, -1.50], armR: [-.90, 0, 1.50], foreL: [-.60, 0, 0], foreR: [-.60, 0, 0], spineB: [-.10, 0, -.06], spineC: [.04, 0, 0], head: [-.10, 0, -.08], legL: [-.34, 0, 0], shinL: [.55, 0, 0] } },
+      { t: .62, p: { armL: [-.50, 0, -.55], armR: [-.50, 0, .55], foreL: [-.45, 0, 0], foreR: [-.45, 0, 0], spineB: [.30, 0, 0], spineC: [.18, 0, 0], head: [.28, 0, 0], legL: [-.40, 0, 0], legR: [.20, 0, 0], shinL: [.60, 0, 0] } },
+      { t: 1, p: { spineB: [.06, 0, 0], head: [.05, 0, 0] } }
+    ] },
+    fall: { dur: 1.5, keys: [
+      { t: 0, p: { spineB: [-.30, 0, 0], head: [-.40, 0, 0], armL: [-1.40, 0, -1.00], armR: [-1.40, 0, 1.00], legL: [-.20, 0, 0], shinL: [.40, 0, 0] } },
+      { t: .35, p: { spineB: [-.50, 0, 0], head: [-.50, 0, 0], armL: [-2.20, 0, -1.30], armR: [-2.20, 0, 1.30], foreL: [-.30, 0, 0], foreR: [-.30, 0, 0], legL: [-.10, 0, 0], legR: [.30, 0, 0], shinL: [.90, 0, 0], shinR: [.50, 0, 0] } },
+      { t: .70, p: { spineB: [.20, 0, 0], head: [.35, 0, 0], armL: [-2.40, 0, -1.10], armR: [-2.00, 0, 1.20], legL: [-.50, 0, 0], shinL: [1.00, 0, 0], legR: [-.10, 0, 0] } },
+      { t: 1, p: { spineB: [.10, 0, 0], head: [.40, 0, 0], armL: [-2.50, 0, -1.00], armR: [-1.90, 0, 1.10], foreL: [-.30, 0, 0], foreR: [-.40, 0, 0], legL: [-.45, 0, 0], shinL: [.95, 0, 0], legR: [-.05, 0, 0] } }
+    ] }
+  },
+  warrior: {
+    hurt: { dur: .95, keys: [
+      { t: 0, p: { armR: [-1.60, .30, .90], foreR: [-1.40, 0, 0], armL: [-.90, 0, -.70], spineC: [.10, .50, 0], head: [.05, .30, 0], legR: [.30, 0, 0], legL: [-.20, 0, 0] } },
+      { t: .32, p: { armR: [-1.20, .20, .60], foreR: [-1.60, 0, 0], armL: [-.70, 0, -.55], spineC: [.22, .30, 0], spineB: [.24, -.10, 0], head: [.20, .10, 0], legR: [.10, 0, 0], legL: [-.35, 0, 0], shinL: [.40, 0, 0] } },
+      { t: .68, p: { armR: [-.60, 0, .30], foreR: [-.90, 0, 0], armL: [-.50, 0, -.40], spineB: [-.06, .04, 0], head: [-.04, .04, 0] } },
+      { t: 1, p: { spineB: [0, 0, 0], head: [0, 0, 0] } }
+    ] },
+    fall: { dur: 1.5, keys: [
+      { t: 0, p: { spineB: [-.20, .10, 0], armR: [-1.80, .30, .80], armL: [-.90, 0, -.60], legR: [.30, 0, 0], shinR: [.40, 0, 0] } },
+      { t: .40, p: { spineB: [.30, .20, 0], spineC: [.20, .30, 0], head: [.30, .20, 0], legL: [-.90, 0, 0], shinL: [1.50, 0, 0], legR: [.40, 0, 0], shinR: [1.10, 0, 0], armR: [-1.20, .20, 1.20], armL: [-.60, 0, -.90] } },
+      { t: .75, p: { spineB: [.20, .30, .40], head: [.20, .30, .30], legL: [-1.10, 0, 0], shinL: [1.60, 0, 0], legR: [.30, 0, 0], shinR: [.90, 0, 0], armR: [-.80, 0, 1.40] } },
+      { t: 1, p: { spineB: [.15, .40, .50], head: [.15, .30, .35], legL: [-1.15, 0, 0], shinL: [1.55, 0, 0], legR: [.25, 0, 0], shinR: [.85, 0, 0], armR: [-.60, 0, 1.50], armL: [-.40, 0, -.90] } }
+    ] }
+  },
+  zombie: {
+    hurt: { dur: .95, keys: [
+      { t: 0, p: { armL: [-2.20, 0, -.60], armR: [-2.00, 0, .55], foreL: [-.30, 0, 0], foreR: [-.30, 0, 0], spineB: [-.20, 0, .12], spineC: [-.16, 0, .10], head: [-.50, 0, .15], shinR: [.40, 0, 0] } },
+      { t: .35, p: { armL: [-1.00, 0, -.90], armR: [-.80, 0, .85], foreL: [-.50, 0, 0], foreR: [-.45, 0, 0], spineB: [.32, 0, -.10], spineC: [.30, 0, -.12], head: [.45, 0, -.10] } },
+      { t: .70, p: { armL: [-1.40, 0, -.40], armR: [-1.30, 0, .30], spineB: [.10, 0, .05], head: [.20, 0, .05] } },
+      { t: 1, p: { spineB: [.06, 0, 0], head: [.10, 0, 0] } }
+    ] },
+    fall: { dur: 1.6, keys: [
+      { t: 0, p: { spineB: [.50, 0, 0], head: [.50, 0, 0], armL: [-.60, 0, -.50], armR: [-.50, 0, .50], legL: [-.30, 0, 0], shinL: [.50, 0, 0] } },
+      { t: .40, p: { spineB: [.90, .10, 0], spineC: [.60, 0, 0], head: [.70, 0, 0], armL: [-1.00, 0, -1.20], armR: [-.90, 0, 1.10], legL: [-.70, 0, 0], shinL: [1.20, 0, 0], legR: [-.20, 0, 0], shinR: [.60, 0, 0] } },
+      { t: .75, p: { spineB: [1.10, .10, 0], spineC: [.65, 0, 0], head: [.80, 0, 0], armL: [-.40, 0, -1.50], armR: [-.30, 0, 1.50], legL: [-.90, 0, 0], shinL: [1.30, 0, 0], legR: [-.40, 0, 0], shinR: [.70, 0, 0] } },
+      { t: 1, p: { spineB: [1.15, .10, 0], spineC: [.65, 0, 0], head: [.85, 0, 0], armL: [-.20, 0, -1.60], armR: [-.20, 0, 1.55], legL: [-.95, 0, 0], shinL: [1.35, 0, 0], legR: [-.45, 0, 0], shinR: [.75, 0, 0] } }
+    ] }
+  },
+  wizard: {
+    hurt: { dur: 1.0, keys: [
+      { t: 0, p: { armL: [-1.90, 0, .50], armR: [-1.70, 0, -.40], foreL: [-1.20, 0, 0], foreR: [-1.00, 0, 0], spineC: [0, -.55, 0], spineB: [-.10, -.30, 0], head: [-.20, -.40, 0] } },
+      { t: .35, p: { armL: [-1.40, 0, .90], armR: [-1.20, 0, -.80], foreL: [-.90, 0, 0], foreR: [-.70, 0, 0], spineC: [.10, -.30, 0], spineB: [.10, -.16, 0], head: [.10, -.20, 0], legR: [-.20, 0, 0], shinR: [.30, 0, 0] } },
+      { t: .70, p: { armL: [-.70, 0, .30], armR: [-.60, 0, -.30], spineC: [0, -.08, 0], head: [0, -.06, 0] } },
+      { t: 1, p: { spineC: [0, 0, 0], head: [0, 0, 0] } }
+    ] },
+    fall: { dur: 1.7, keys: [
+      { t: 0, p: { armL: [-1.20, 0, -.70], armR: [-1.00, 0, .60], spineC: [0, -.40, 0], head: [0, -.30, 0] } },
+      { t: .38, p: { spineC: [.10, -.90, 0], spineB: [.30, -.30, 0], head: [.20, -.60, 0], armL: [-1.60, 0, -1.00], armR: [-1.40, 0, .90], legL: [-1.00, 0, 0], shinL: [1.50, 0, 0], legR: [-.80, 0, 0], shinR: [1.30, 0, 0] } },
+      { t: .72, p: { spineC: [0, -1.30, 0], spineB: [.40, -.20, 0], head: [.10, -.80, 0], legL: [-1.20, 0, 0], shinL: [1.60, 0, 0], legR: [-1.00, 0, 0], shinR: [1.40, 0, 0] } },
+      { t: 1, p: { spineC: [0, -1.50, 0], spineB: [.35, -.10, 0], head: [0, -.85, 0], armL: [-.50, 0, -1.10], armR: [-.40, 0, 1.00], legL: [-1.25, 0, 0], shinL: [1.60, 0, 0], legR: [-1.05, 0, 0], shinR: [1.40, 0, 0] } }
+    ] }
+  },
+  soldier: {
+    hurt: { dur: .9, keys: [
+      { t: 0, p: { armR: [-1.50, 0, .50], foreR: [-1.50, 0, 0], armL: [-1.20, 0, .35], foreL: [-1.10, 0, 0], spineC: [.12, .35, 0], spineB: [.14, 0, 0], head: [.12, .20, 0], legL: [-.10, 0, 0], legR: [.30, 0, 0], shinR: [.45, 0, 0] } },
+      { t: .32, p: { armR: [-1.10, 0, .35], foreR: [-1.70, 0, 0], armL: [-.90, 0, .25], foreL: [-1.30, 0, 0], spineC: [.20, .20, 0], spineB: [.30, 0, 0], head: [.26, .10, 0], legR: [.40, 0, 0], shinR: [.70, 0, 0], legL: [-.20, 0, 0] } },
+      { t: .68, p: { armR: [-.80, 0, .20], foreR: [-1.10, 0, 0], spineB: [.12, 0, 0], head: [.10, .04, 0] } },
+      { t: 1, p: { spineB: [0, 0, 0], head: [0, 0, 0] } }
+    ] },
+    fall: { dur: 1.5, keys: [
+      { t: 0, p: { spineC: [-.20, .30, 0], armR: [-1.60, .10, .60], foreR: [-1.40, 0, 0], armL: [-1.20, 0, .40], legR: [.30, 0, 0], shinR: [.50, 0, 0] } },
+      { t: .35, p: { spineB: [-.30, .20, .30], head: [-.30, .20, .20], legL: [-.40, 0, 0], shinL: [.70, 0, 0], legR: [.50, 0, 0], shinR: [.90, 0, 0], armR: [-1.10, 0, 1.20] } },
+      { t: .70, p: { spineB: [.10, .30, .70], head: [.10, .30, .50], legL: [-.60, 0, 0], shinL: [.90, 0, 0], legR: [.20, 0, 0], shinR: [.60, 0, 0], armR: [-.70, 0, 1.40], armL: [-.30, 0, .60] } },
+      { t: 1, p: { spineB: [.05, .35, .80], head: [.05, .30, .60], legL: [-.65, 0, 0], shinL: [.95, 0, 0], legR: [.15, 0, 0], shinR: [.55, 0, 0], armR: [-.50, 0, 1.45], armL: [-.20, 0, .70] } }
+    ] }
+  },
+  superhero: {
+    hurt: { dur: 1.05, keys: [
+      { t: 0, p: { armL: [-2.40, 0, -1.10], armR: [-2.40, 0, 1.10], foreL: [-.20, 0, 0], foreR: [-.20, 0, 0], spineB: [-.45, 0, 0], spineC: [-.30, 0, 0], head: [-.45, 0, 0], legL: [-.50, 0, 0], shinL: [.60, 0, 0], legR: [.20, 0, 0] } },
+      { t: .30, p: { armL: [-2.20, 0, -.80], armR: [-2.20, 0, .80], spineB: [-.20, 0, .08], head: [-.20, 0, .10], legL: [-.90, 0, 0], shinL: [1.00, 0, 0], legR: [.30, 0, 0] } },
+      { t: .65, p: { armL: [-1.20, 0, -.50], armR: [-1.20, 0, .50], foreL: [-.40, 0, 0], foreR: [-.40, 0, 0], spineB: [.20, 0, 0], head: [.25, 0, 0], legL: [-.30, 0, 0], shinL: [.35, 0, 0] } },
+      { t: 1, p: { spineB: [.05, 0, 0], head: [.06, 0, 0] } }
+    ] },
+    fall: { dur: 1.6, keys: [
+      { t: 0, p: { spineB: [-.50, 0, 0], head: [-.50, 0, 0], armL: [-2.60, 0, -1.30], armR: [-2.60, 0, 1.30], legL: [-.60, 0, 0], shinL: [.70, 0, 0] } },
+      { t: .32, p: { spineB: [-.45, 0, 0], head: [-.30, 0, 0], armL: [-2.80, 0, -1.10], armR: [-2.80, 0, 1.10], legL: [-1.00, 0, 0], shinL: [.90, 0, 0], legR: [-.20, 0, 0], shinR: [.40, 0, 0] } },
+      { t: .68, p: { spineB: [.10, 0, 0], head: [.20, 0, 0], armL: [-2.20, 0, -1.40], armR: [-1.80, 0, 1.20], legL: [-1.10, 0, 0], shinL: [1.40, 0, 0], legR: [-.30, 0, 0], shinR: [.60, 0, 0] } },
+      { t: 1, p: { spineB: [.05, 0, 0], head: [.25, 0, 0], armL: [-2.00, 0, -1.45], armR: [-1.60, 0, 1.25], legL: [-1.05, 0, 0], shinL: [1.35, 0, 0], legR: [-.25, 0, 0], shinR: [.55, 0, 0] } }
+    ] }
+  }
+};
+
+Object.keys(CLASH).forEach((id) => { if (MOVES[id]) MOVES[id].clash = CLASH[id]; });
+Object.keys(REACTIONS).forEach((id) => {
+  if (!MOVES[id]) return;
+  MOVES[id].hurt = REACTIONS[id].hurt;
+  MOVES[id].fall = REACTIONS[id].fall;
+});
+
 // Which bone choreography an animation pose maps to.
 const POSE_MOVE = {
-  charge: 'charge', thrust: 'attack', strike: 'attack',
+  charge: 'charge', thrust: 'attack', strike: 'attack', clash: 'clash',
   hurt: 'hurt', recoil: 'hurt', fall: 'fall', down: 'fall',
   getup: 'getup', jump: 'jump', run: 'run', celebrate: 'win'
 };
 
 // Poses where a real baked clip is already working the torso and legs: the rig
 // only adds flavour there, otherwise the two combine into a folded-over crouch.
-const CLIP_BLEND_POSES = new Set(['thrust', 'strike', 'hurt', 'recoil', 'fall', 'jump', 'down']);
+const CLIP_BLEND_POSES = new Set(['thrust', 'strike', 'clash', 'hurt', 'recoil', 'fall', 'jump', 'down']);
 
 const AXIS_VECTORS = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
 const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, foreR: .6, neck: .6, pelvis: .35 };
@@ -876,6 +1008,11 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
 
     if (state && fighters[0] && fighters[1]) {
       const phase = state.phase || 'PICKING', timer = state.timer || 0, victory = phase === 'VICTORY';
+      // Hit-stop: the page freezes its own clocks at the moment of impact and asks
+      // the rig to do the same, so the champions hang dead still for a beat while
+      // the screen shakes. A tiny tremble keeps it from looking like a dropped frame.
+      const freeze = Math.max(0, Math.min(.4, state.hitStop || 0));
+      const adt = freeze > 0 ? dt * .045 : dt;
       // The page owns the cinematic tempo; read it here so both stay in sync.
       const DURS = state.durs || { charge: 1.85, travel: 1.28, draw: 1.15 };
       const FT = state.fallTimings || { stagger: .30, riseStart: 1.86, riseEnd: 2.55 };
@@ -998,7 +1135,9 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
           x += toward * (.3 + .3 * ss); y = Math.max(0, Math.sin(elapsed * 2.6)) * .012;
         } else if (phase === 'TRAVEL_TO_CENTER' || phase === 'CENTER_CLASH' || phase === 'SURGE_HIT') {
           // Release: both fighters thrust forward and stay locked in the clash.
-          pose = 'thrust';
+          // At the centre each champion braces in its own posture instead of
+          // replaying its attack swing.
+          pose = phase === 'CENTER_CLASH' ? 'clash' : 'thrust';
           const push = ease(phase === 'TRAVEL_TO_CENTER' ? clamp(timer / DURS.travel, 0, 1) : 1);
           x += toward * .58 * push * sig.lunge; y = Math.max(0, Math.sin(push * Math.PI)) * .05;
           rz = -toward * .11 * push; ry = f.baseRot + toward * .06 * push;
@@ -1026,6 +1165,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
           // GroundSlam made the giant and knight fold to half height mid-attack.
           if (pose === 'charge') setPose(f, f.idle || f.walk, f.idle ? null : .18);
           else if (pose === 'thrust') setActionLoop(f, f.attack || f.special, .45);
+          else if (pose === 'clash') setActionLoop(f, f.special || f.attack, .28);
           else if (pose === 'hurt') setAction(f, f.hit, .55);
           else if (pose === 'fall') setAction(f, f.death || f.hit, .70);
           else if (pose === 'down') setPose(f, f.death || f.hit || f.walk, .85);
@@ -1041,16 +1181,20 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
 
         x = clamp(x, -8, 8);
         // Ease the placed root so phase changes never snap the whole fighter.
-        const kRoot = 1 - Math.exp(-dt * 17);
+        const kRoot = 1 - Math.exp(-adt * 17);
         f.sX += (x - f.sX) * kRoot;
         f.sY += (y - f.sY) * kRoot;
         f.sRz += (rz - f.sRz) * kRoot;
         f.sRy += (ry - f.sRy) * Math.min(1, kRoot * .85);
         f.root.position.set(f.sX, f.sY, FIGHTER_Z);
         f.root.rotation.set(0, f.sRy, f.sRz);
-        f.mixer.update(dt);
-        f.moveT = pose === f.pose ? f.moveT + dt : 0;
-        applyRig(f, pose, elapsed, dt);
+        if (freeze > 0) {
+          f.root.position.x += Math.sin(elapsed * 130 + f.seed) * .022;
+          f.root.position.y += Math.cos(elapsed * 105 + f.seed) * .012;
+        }
+        f.mixer.update(adt);
+        f.moveT = pose === f.pose ? f.moveT + adt : 0;
+        applyRig(f, pose, elapsed, adt);
         // Only the fighter carrying a prop needs its children's world matrices
         // before the render. Every other champion was walked twice per frame (once
         // here, once by the renderer) for nothing; the root matrix alone is enough

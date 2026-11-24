@@ -894,10 +894,14 @@ const p1NameInput = document.getElementById('p1NameInput');
     // collide fast and the loser is on the floor well inside two seconds.
     // Cinematic clash timings: a long, tense gather, a short flight, a real
     // struggle at the centre, then the breakthrough lands almost instantly.
-    const CHARGE_TIME = 1.7;
+    const CHARGE_TIME = 1.85;
     const TRAVEL_TIME = 0.85;
-    const IMPACT_HOLD = 0.55;   // the moment the two forces slam together
-    const CLASH_TIME = 2.2;     // hold + power struggle at the centre
+    const IMPACT_HOLD = 0.82;   // the moment the two forces slam together
+    const CLASH_TIME = 2.65;    // hold + power struggle at the centre
+    // Hit-stop: every clock stops for this long when the powers meet and again
+    // when one breaks through. It is the beat that gives the clash its weight.
+    const HITSTOP_CLASH = 0.30;
+    const HITSTOP_BLOW = 0.22;
     const SURGE_TIME = 0.34;
     const DRAW_TIME = 0.95;
     const AFTERMATH_TIME = 3.25;
@@ -1920,11 +1924,12 @@ const p1NameInput = document.getElementById('p1NameInput');
       shockRings.push({x,y,radius:3,maxRadius:82,color:'#ffffff',alpha:1});
     }
 
-    function updateAndDrawVFX(ctx) {
+    function updateAndDrawVFX(ctx, timeScale) {
+      const ts = timeScale == null ? 1 : timeScale;
       for (let i = shockRings.length - 1; i >= 0; i--) {
         const r = shockRings[i];
-        r.radius += (r.maxRadius - r.radius) * 0.14;
-        r.alpha -= 0.03;
+        r.radius += (r.maxRadius - r.radius) * 0.14 * ts;
+        r.alpha -= 0.03 * ts;
         if (r.alpha <= 0) {
           shockRings.splice(i, 1);
           continue;
@@ -1941,10 +1946,10 @@ const p1NameInput = document.getElementById('p1NameInput');
 
       for (let i = vfxParticles.length - 1; i >= 0; i--) {
         const pt = vfxParticles[i];
-        pt.x += pt.vx;
-        pt.y += pt.vy;
-        pt.vy += pt.gravity;
-        pt.life -= pt.decay;
+        pt.x += pt.vx * ts;
+        pt.y += pt.vy * ts;
+        pt.vy += pt.gravity * ts;
+        pt.life -= pt.decay * ts;
         if (pt.life <= 0) {
           vfxParticles.splice(i, 1);
           continue;
@@ -2038,6 +2043,18 @@ const p1NameInput = document.getElementById('p1NameInput');
     // 9. COMBAT PHASE SIMULATION & VICTORY CELEBRATION
     // =========================================================================
     function updateCombat(dt, w, h) {
+      // Hit-stop first: while it lasts every phase clock is pushed forward by the
+      // frozen time, so the sequence stands still and then resumes without a jump.
+      if (game.hitStop > 0) {
+        const frozen = Math.min(game.hitStop, dt);
+        game.hitStop = Math.max(0, game.hitStop - frozen);
+        if (game.clash.phaseAt != null) game.clash.phaseAt += frozen * 1000;
+        game.shake = Math.max(game.shake, 9);
+        game.p1.recoilX *= 0.92;
+        game.p2.recoilX *= 0.92;
+        return;
+      }
+
       if (game.phase === 'VICTORY') {
         // The result card waits for the champion's lap to finish. This countdown
         // runs on game time, so it stays in sync with the animation on any frame rate.
@@ -2102,7 +2119,9 @@ const p1NameInput = document.getElementById('p1NameInput');
           enterPhase('CENTER_CLASH');
           game.clash.p1Reach = 1;
           game.clash.p2Reach = 1;
-          game.shake = 16;
+          game.shake = 26;
+          game.hitStop = HITSTOP_CLASH;
+          flashScreen(.6);
           sfx.playClash();
           // The powers hit first. Only now does each top box reveal which power it
           // was, and a beat later the whole box floods with that power's colour.
@@ -2160,8 +2179,11 @@ const p1NameInput = document.getElementById('p1NameInput');
 
         if (s >= 1 && !game.clash.appliedDamage) {
           game.clash.appliedDamage = true;
-          game.shake = 28;
+          game.shake = 30;
+          game.hitStop = HITSTOP_BLOW;
           flashScreen(1);
+          shockRings.push({ x: w * .5, y: h * .48, radius: 12, maxRadius: Math.max(w, h) * .5, color: '#e2f3ff', alpha: 1 });
+          shockRings.push({ x: w * .5, y: h * .48, radius: 4, maxRadius: Math.max(w, h) * .34, color: game.p1.pickedPower ? game.p1.pickedPower.core : '#ffffff', alpha: .9 });
           const a=game.p1.pickedPower, b=game.p2.pickedPower;
           // The impact lands on the fighter who actually lost the clash.
           const rows=getFighterScreenAnchors(w,h);
@@ -2312,7 +2334,7 @@ const p1NameInput = document.getElementById('p1NameInput');
 
       drawRealisticHero(ctx, w * 0.28, groundY, scale, 1, HERO_SUITS[0], 'idle', game.time, 0, 0);
       drawRealisticHero(ctx, w * 0.72, groundY, scale, -1, HERO_SUITS[3], 'idle', game.time, 0, 0);
-      updateAndDrawVFX(ctx);
+      updateAndDrawVFX(ctx, game.hitStop > 0 ? 0.1 : 1);
     }
 
     function renderChampionPreviews() {
@@ -2542,7 +2564,7 @@ const p1NameInput = document.getElementById('p1NameInput');
     // layer keeps driving the champions even while the backdrop is skipped.
     // One persistent object: the hot path allocates nothing per frame.
     const frame3D = {
-      phase: 'PICKING', timer: 0, winnerSide: 0, applied: false, fallMax: 0, surge: 0,
+      phase: 'PICKING', timer: 0, winnerSide: 0, applied: false, fallMax: 0, surge: 0, hitStop: 0,
       durs: { charge: CHARGE_TIME, travel: TRAVEL_TIME, draw: DRAW_TIME },
       fallTimings: FALL_TIMINGS,
       p1: { anim: 'idle', hurt: 0, fall: 0, recoil: 0 },
@@ -2555,6 +2577,7 @@ const p1NameInput = document.getElementById('p1NameInput');
       frame3D.applied = game.clash.appliedDamage;
       frame3D.fallMax = FALL_DURATION;
       frame3D.surge = game.clash.surgeProgress;
+      frame3D.hitStop = game.hitStop;
       const a = frame3D.p1, b = frame3D.p2;
       a.anim = game.p1.anim; a.hurt = game.p1.hurtTimer; a.fall = game.p1.fallTimer; a.recoil = game.p1.recoilX;
       b.anim = game.p2.anim; b.hurt = game.p2.hurtTimer; b.fall = game.p2.fallTimer; b.recoil = game.p2.recoilX;

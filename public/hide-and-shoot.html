@@ -157,6 +157,38 @@
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
 
+    /* ---- Full screen: the stage owns the whole panel, HUD becomes a slim bar ---- */
+    :fullscreen body, body:fullscreen {
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+    :fullscreen header > div { max-width: none; padding-top: .3rem; padding-bottom: .3rem; }
+    :fullscreen main { max-width: none; padding: 6px 10px 10px; gap: 6px; }
+    :fullscreen main > section { max-width: none; }
+    :fullscreen #arena-stage {
+      max-width: none;
+      border-radius: 10px;
+      border-width: 1px;
+    }
+    #arena-stage { touch-action: manipulation; }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, .86);
+      border: 1px solid rgba(120, 53, 15, .28);
+      color: #78350f;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .10);
+      transition: background 140ms ease, transform 120ms ease, box-shadow 140ms ease;
+    }
+    .icon-btn:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(15, 23, 42, .14); }
+    .icon-btn:active { transform: translateY(1px); }
+    .icon-btn svg { width: 16px; height: 16px; }
   </style>
 </head>
 <body class="h-dvh max-h-dvh flex flex-col justify-between overflow-hidden">
@@ -178,7 +210,7 @@
             </svg>
           </div>
           <h1 class="font-display text-sm sm:text-lg font-bold tracking-wide text-slate-900 truncate">
-            STONE COVER &amp; SHOT
+            HIDE &amp; SHOOT
           </h1>
           <span id="round-badge" class="px-2 py-0.5 rounded-full text-[10px] font-display font-bold bg-amber-200/80 text-amber-950 border border-amber-800/20">
             R1
@@ -193,6 +225,14 @@
           >
             Reset
           </button>
+          <button id="btn-fullscreen" type="button" class="icon-btn" title="Full screen (F)" aria-label="Toggle full screen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M16 3h3a2 2 0 0 1 2 2v3"></path><path d="M8 21H5a2 2 0 0 1-2-2v-3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+          </button>
+          <button id="btn-sound" type="button" class="icon-btn" title="Sound on / off" aria-label="Toggle sound" aria-pressed="true">
+            <svg id="icon-sound-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M19 6a8 8 0 0 1 0 12"></path></svg>
+            <svg id="icon-sound-off" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"></path><path d="m17 9 4 6"></path><path d="m21 9-4 6"></path></svg>
+          </button>
+
         </div>
       </div>
 
@@ -378,8 +418,241 @@
       // =========================================================================
       // 1. AUDIO IS OFF (every cue is a silent no-op)
       // =========================================================================
-      const NO_OP = () => {};
-      const audio = new Proxy({ muted: true }, { get: () => NO_OP, set: () => true });
+      // A tiny synth: every sound is generated into a Web Audio buffer the first
+      // time it is used, so the game ships no audio files yet still blasts,
+      // whooshes and crackles. Nothing is created until the first user gesture.
+      const SoundKit = (() => {
+        let ac = null, master = null, muted = false;
+        const cache = new Map();
+        const RATE = 44100;
+        let seed = 24601;
+        const noise = () => {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          return seed / 2147483648 - 1;
+        };
+        function audio() {
+          if (ac) {
+            if (ac.state === 'suspended') ac.resume().catch(() => {});
+            return ac;
+          }
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          try { ac = new AC(); } catch (e) { return null; }
+          master = ac.createGain();
+          master.gain.value = muted ? 0 : .8;
+          master.connect(ac.destination);
+          return ac;
+        }
+        function bake(name, dur, fill) {
+          if (cache.has(name)) return cache.get(name);
+          const a = audio();
+          if (!a) return null;
+          const n = Math.max(1, Math.floor(RATE * dur));
+          const buf = a.createBuffer(1, n, RATE);
+          const d = buf.getChannelData(0);
+          fill(d, n, dur);
+          for (let i = 0; i < n; i++) {
+            const v = d[i];
+            d[i] = v < -1 ? -1 : v > 1 ? 1 : v;
+          }
+          cache.set(name, buf);
+          return buf;
+        }
+        function fire(name, gain, rate) {
+          const a = audio();
+          if (!a || muted) return null;
+          const buf = cache.get(name);
+          if (!buf) return null;
+          const src = a.createBufferSource();
+          src.buffer = buf;
+          if (rate && rate !== 1) src.playbackRate.value = rate;
+          const g = a.createGain();
+          g.gain.value = gain == null ? 1 : gain;
+          src.connect(g);
+          g.connect(master);
+          src.start();
+          return { src, g };
+        }
+        function play(name, dur, fill, gain, rate) {
+          if (muted) { audio(); return null; }
+          if (!audio()) return null;
+          if (!cache.has(name)) bake(name, dur, fill);
+          return fire(name, gain, rate);
+        }
+
+        // ---- Sound recipes -------------------------------------------------
+        function boomShape(heavy) {
+          return (d, n) => {
+            let lp1 = 0, lp2 = 0;
+            const depth = heavy ? 1.35 : 1;
+            for (let i = 0; i < n; i++) {
+              const t = i / RATE;
+              const white = noise();
+              lp1 += (white - lp1) * (.05 + .55 * Math.exp(-t * 6.5));
+              lp2 += (lp1 - lp2) * (.018 + .2 * Math.exp(-t * 2.2));
+              const crackle = noise() * Math.exp(-t * 17) * .55;
+              const sub = Math.sin(2 * Math.PI * (28 + 46 * Math.exp(-t * 3)) * t) * Math.exp(-t * 2.2) * .95 * depth;
+              const body = lp1 * Math.exp(-t * 2.0) * 1.15;
+              const rumble = lp2 * Math.exp(-t * 1.2) * 2.6 * depth;
+              const fade = t > 1.45 ? Math.max(0, (1.6 - t) / .15) : 1;
+              d[i] = (body + sub + crackle + rumble) * fade;
+            }
+          };
+        }
+        const shapeThrow = (d, n, dur) => {
+          let lp = 0, hp = 0, prev = 0;
+          for (let i = 0; i < n; i++) {
+            const t = i / RATE, u = t / dur;
+            const white = noise();
+            lp += (white - lp) * (.04 + .45 * Math.sin(Math.PI * u) ** 2);
+            hp = white - prev + .9 * hp; prev = white;
+            const env = Math.sin(Math.PI * Math.min(1, u * 1.02)) ** 1.7;
+            d[i] = (lp * .8 + hp * .18) * env * 1.5;
+          }
+        };
+        const shapeFuse = (d, n) => {
+          let hp = 0, prev = 0;
+          for (let i = 0; i < n; i++) {
+            const white = noise();
+            hp = white - prev + .93 * hp; prev = white;
+            const spark = Math.random() < .004 ? noise() * 1.4 : 0;
+            d[i] = hp * .16 + spark;
+          }
+        };
+        const shapeCrack = (d, n) => {
+          let lp = 0;
+          for (let i = 0; i < n; i++) {
+            const t = i / RATE;
+            const white = noise();
+            lp += (white - lp) * (.22 + .5 * Math.exp(-t * 22));
+            const thump = Math.sin(2 * Math.PI * (140 + 90 * Math.exp(-t * 9)) * t) * Math.exp(-t * 20);
+            d[i] = lp * Math.exp(-t * 12) * 1.15 + thump * .45;
+          }
+        };
+        const shapeCollapse = (d, n, dur) => {
+          let lp = 0;
+          for (let i = 0; i < n; i++) {
+            const t = i / RATE;
+            const white = noise();
+            lp += (white - lp) * (.045 + .1 * Math.exp(-t * 3));
+            const debris = Math.random() < .0028 ? noise() * (1 - t / dur) : 0;
+            const wood = Math.sin(2 * Math.PI * (170 + 70 * Math.sin(t * 26)) * t) * Math.exp(-t * 8) * .16;
+            d[i] = lp * Math.exp(-t * 2.4) * 2.4 + debris * .55 + wood;
+          }
+        };
+        const shapeCover = (d, n, dur) => {
+          let lp = 0;
+          for (let i = 0; i < n; i++) {
+            const t = i / RATE, u = t / dur;
+            const white = noise();
+            lp += (white - lp) * .11;
+            d[i] = lp * Math.sin(Math.PI * u) ** 2 * .85;
+          }
+        };
+        const shapeCry = (d, n, dur) => {
+          let phase = 0;
+          for (let i = 0; i < n; i++) {
+            const t = i / RATE, u = t / dur;
+            const f = 640 - 330 * u + 38 * Math.sin(t * 23);
+            phase += 2 * Math.PI * f / RATE;
+            const env = Math.min(1, t / .05) * Math.max(0, 1 - u * .8);
+            d[i] = (Math.sin(phase) * .5 + Math.sin(phase * 2) * .16) * env * .55;
+          }
+        };
+        const shapeCheer = (d, n, dur) => {
+          let lp = 0;
+          for (let i = 0; i < n; i++) {
+            const t = i / RATE, u = t / dur;
+            const white = noise();
+            lp += (white - lp) * .085;
+            const env = Math.min(1, t / .16) * (1 - Math.max(0, (u - .68) / .32));
+            const tone = Math.sin(2 * Math.PI * 523 * t) * .1 + Math.sin(2 * Math.PI * 784 * t) * .06;
+            d[i] = lp * env * 1.6 + tone * env;
+          }
+        };
+        const shapeFanfare = (d, n) => {
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          for (let i = 0; i < n; i++) {
+            const t = i / RATE;
+            let v = 0;
+            for (let k = 0; k < notes.length; k++) {
+              const lt = t - k * .13;
+              if (lt < 0) continue;
+              const env = Math.min(1, lt / .015) * Math.exp(-lt * 3.1);
+              v += (Math.sin(2 * Math.PI * notes[k] * lt) * .28 + Math.sin(4 * Math.PI * notes[k] * lt) * .09) * env;
+            }
+            d[i] = v * .6;
+          }
+        };
+        const shapeClick = (d, n) => {
+          for (let i = 0; i < n; i++) {
+            const t = i / RATE;
+            d[i] = Math.sin(2 * Math.PI * 880 * t) * Math.exp(-t * 95) * .55;
+          }
+        };
+
+        const api = {
+          get muted() { return muted; },
+          set muted(v) {
+            muted = !!v;
+            if (master) master.gain.value = muted ? 0 : .8;
+          },
+          unlock() { audio(); },
+          toggleMute() {
+            api.muted = !muted;
+            if (!muted) audio();
+            return muted;
+          }
+        };
+
+        let fuseLoop = null;
+        api.startFuse = () => {
+          if (muted || fuseLoop) return;
+          const a = audio();
+          if (!a) return;
+          if (!cache.has('fuse')) bake('fuse', .7, shapeFuse);
+          const src = a.createBufferSource();
+          src.buffer = cache.get('fuse');
+          src.loop = true;
+          const g = a.createGain();
+          g.gain.value = .16;
+          src.connect(g); g.connect(master);
+          src.start();
+          fuseLoop = { src, g };
+        };
+        api.stopFuse = () => {
+          if (!fuseLoop) return;
+          const { src, g } = fuseLoop;
+          fuseLoop = null;
+          try {
+            if (ac) {
+              g.gain.setTargetAtTime(0, ac.currentTime, .04);
+              src.stop((ac.currentTime || 0) + .18);
+            } else src.stop();
+          } catch (e) { /* already stopped */ }
+        };
+
+        api.playClick = () => play('click', .1, shapeClick, .45);
+        api.playCoverShift = () => play('cover', .55, shapeCover, .4);
+        api.playGunCock = () => play('click', .1, shapeClick, .3, .72);
+        api.playGunCycle = () => play('click', .1, shapeClick, .18, 1.3);
+        api.playShellDrop = () => play('click', .1, shapeClick, .1, 1.7);
+        api.playThrow = () => play('throw', .5, shapeThrow, .5);
+        api.playGunshot = () => api.playThrow();
+        api.playBoom = (heavy) => play(heavy ? 'boomHeavy' : 'boom', 1.6, boomShape(!!heavy), .85);
+        api.playCollapse = () => play('collapse', 1.4, shapeCollapse, .5);
+        api.playStoneCrack = () => play('crack', .45, shapeCrack, .6);
+        api.playStoneShatter = () => {
+          play('boom', 1.6, boomShape(false), .55);
+          play('collapse', 1.4, shapeCollapse, .55);
+        };
+        api.playRicochet = () => play('click', .1, shapeClick, .2, 2.1);
+        api.playCry = () => play('cry', 1.1, shapeCry, .4);
+        api.playCheer = () => play('cheer', 1.3, shapeCheer, .5);
+        api.playWinFanfare = () => play('fanfare', 1.7, shapeFanfare, .5);
+        return api;
+      })();
+      const audio = SoundKit;
 
       // =========================================================================
       // 2. GAME STATE
@@ -409,7 +682,7 @@
         foundCharacter: false, // True when shooter's bullet finds & reveals the hiding character
         hiderMood: 'hide',     // 'hide' | 'shock' | 'cry' | 'peek' | 'dance'
         moodT: 0,              // seconds inside the current hider reaction
-        aimBlock: null         // block the gunman's rifle is trained on right now
+        aimBlock: null         // house the bomber is currently aiming at
       };
 
       // =========================================================================
@@ -460,11 +733,15 @@
       // =========================================================================
       // 4. GOLDEN-HOUR LIMESTONE TERRACE, TALL BLOCKS & BREAKAGE FX ENGINE
       // =========================================================================
-      const ctx = els.arenaCanvas.getContext('2d');
+      let ctx = els.arenaCanvas.getContext('2d');
       let stageW = 800;
       let stageH = 420;
       let blockHitboxes = [];
-      let bullets = [];
+      let bombs = [];
+      let blasts = [];
+      let blastRings = [];
+      let debris = [];
+      let blastFlash = 0;
       let slabs = [];
       let dustPuffs = [];
       let sparks = [];
@@ -499,6 +776,7 @@
         els.arenaCanvas.width = Math.floor(stageW * dpr);
         els.arenaCanvas.height = Math.floor(stageH * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        backdropKey = '';
         computeBlockHitboxes();
         ensureRenderLoop();
       }
@@ -556,7 +834,7 @@
         const blockH = baseBlockH * scale;
         const depth3D = Math.min(38, Math.max(20, baseBlockW * 0.21)) * scale;
 
-        blockHitboxes = [];
+        if (blockHitboxes.length !== 4) blockHitboxes = [];
         for (let i = 0; i < 4; i++) {
           const num = i + 1;
           const hoverLift = (state.phase === 'HIDE' && state.hoveredBlock === num && !state.shatteredBlocks.has(num)) ? 10 : 0;
@@ -565,61 +843,300 @@
           const x = centerX - scaledW / 2;
           const y = groundY - blockH - hoverLift;
 
-          blockHitboxes.push({
-            num,
-            x,
-            y,
-            w: scaledW,
-            h: blockH,
-            depth: depth3D,
-            groundY,
-            scale
-          });
+          let box = blockHitboxes[i];
+          if (!box) { box = {}; blockHitboxes[i] = box; }
+          box.num = num;
+          box.x = x;
+          box.y = y;
+          box.w = scaledW;
+          box.h = blockH;
+          box.depth = depth3D;
+          box.groundY = groundY;
+          box.scale = scale;
         }
       }
 
-      // A real round leaves the rifle muzzle and reaches the block in a flash of
-      // tracer, kicking sparks, dust and stone out of the impact point.
-      function fireTracerToBlock(blockNum, onImpact) {
+      // -----------------------------------------------------------------------
+      // BOMBS & BLASTS
+      // -----------------------------------------------------------------------
+      function bomberHand() {
+        return { x: BOMBER.handX || stageW * .2, y: BOMBER.handY || stageH * .5 };
+      }
+
+      function throwBombToBlock(blockNum, onImpact) {
         computeBlockHitboxes();
         const box = blockHitboxes[blockNum - 1];
+        const hand = bomberHand();
+        const startX = hand.x, startY = hand.y;
+        const targetX = box ? box.x + box.w * .5 + (Math.random() - .5) * box.w * .12 : stageW * .5;
+        const targetY = box ? box.y + box.h * .34 : stageH * .5;
+        const dist = Math.hypot(targetX - startX, targetY - startY);
 
-        const startX = GUNMAN.muzzleX;
-        const startY = GUNMAN.muzzleY;
-        const targetX = box ? box.x + box.w / 2 + (Math.random() - .5) * box.w * .16 : stageW * .5;
-        const targetY = box ? box.y + box.h * .5 : stageH * .55;
-
-        for (let i = 0; i < 14; i++) {
-          const ang = GUNMAN.angle + (Math.random() - 0.5) * .9;
-          const spd = 120 + Math.random() * 260;
-          sparks.push({
-            x: startX,
-            y: startY,
-            vx: Math.cos(ang) * spd,
-            vy: Math.sin(ang) * spd,
-            size: 2 + Math.random() * 3.4,
-            color: Math.random() > 0.32 ? '#ffe9a8' : '#f97316',
-            life: 1,
-            decay: 3.4 + Math.random() * 2
-          });
-        }
-
-        bullets.push({
-          x: startX,
-          y: startY,
-          startX,
-          startY,
-          targetX,
-          targetY,
-          progress: 0,
-          speed: 7.4, // a touch quicker than before: ~0.13s across the courtyard
-          trail: [{ x: startX, y: startY }],
-          done: false,
-          onImpact
+        bombs.push({
+          startX, startY, targetX, targetY,
+          ctrlX: (startX + targetX) * .5 - dist * .12,
+          ctrlY: Math.min(startY, targetY) - Math.max(80, dist * .52),
+          x: startX, y: startY, rot: 0,
+          spin: 6.5 + Math.random() * 3,
+          t: 0, delay: .24,
+          dur: Math.max(.5, Math.min(.92, dist / 1150)),
+          trailX: [], trailY: [],
+          done: false, onImpact
         });
         ensureRenderLoop();
       }
 
+      function drawBombShell(cx, cy, r, rot, fuseAge) {
+        // Fuse cord + sparking tip.
+        const flicker = .6 + Math.random() * .4;
+        const fx = cx + Math.cos(rot - 1.1) * r * 1.15;
+        const fy = cy + Math.sin(rot - 1.1) * r * 1.15;
+        ctx.strokeStyle = '#4a3524';
+        ctx.lineWidth = Math.max(1.4, r * .22);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * .6);
+        ctx.quadraticCurveTo(cx + r * .5, cy - r * 1.5, fx, fy - r * .5);
+        ctx.stroke();
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createRadialGradient(fx, fy - r * .5, 0, fx, fy - r * .5, r * 1.5);
+        g.addColorStop(0, `rgba(255, 255, 220, ${flicker})`);
+        g.addColorStop(.4, `rgba(255, 196, 72, ${flicker * .8})`);
+        g.addColorStop(1, 'rgba(255, 120, 20, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(fx, fy - r * .5, r * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Iron sphere.
+        const body = ctx.createRadialGradient(cx - r * .38, cy - r * .45, r * .12, cx, cy, r * 1.15);
+        body.addColorStop(0, '#5c6570');
+        body.addColorStop(.45, '#2b333c');
+        body.addColorStop(1, '#12171c');
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        // Brass collar and a specular glint.
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rot);
+        ctx.fillStyle = '#b98b3c';
+        ctx.fillRect(-r * 1.02, -r * .22, r * 2.04, r * .3);
+        ctx.fillStyle = 'rgba(255, 246, 210, .55)';
+        ctx.beginPath();
+        ctx.ellipse(-r * .32, -r * .42, r * .3, r * .18, -.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function spawnExplosion(x, y, power) {
+        power = power || 1;
+        blasts.push({ x, y, t: 0, dur: .78 * power, power, seed: Math.random() * 100 });
+        blastRings.push({ x, y, r: 6, maxR: (90 + 60 * power), life: 1, speed: 2.4 });
+
+        const sparkCount = Math.round(26 * power);
+        for (let i = 0; i < sparkCount; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const spd = 120 + Math.random() * 420;
+          sparks.push({
+            x, y,
+            vx: Math.cos(a) * spd,
+            vy: Math.sin(a) * spd - 90,
+            size: 2 + Math.random() * 3.4,
+            color: Math.random() > .45 ? '#ffe9a8' : (Math.random() > .5 ? '#ff8c2a' : '#fffdf2'),
+            life: 1,
+            decay: 1.6 + Math.random() * 1.6
+          });
+        }
+        // Roof tiles and splintered timber thrown clear of the blast.
+        for (let i = 0; i < Math.round(12 * power); i++) {
+          const dir = Math.random() < .5 ? -1 : 1;
+          debris.push({
+            x: x + (Math.random() - .5) * 40,
+            y: y + (Math.random() - .5) * 28,
+            vx: dir * (70 + Math.random() * 210),
+            vy: -(140 + Math.random() * 230),
+            w: 8 + Math.random() * 16, h: 6 + Math.random() * 10,
+            rot: Math.random() * 6.28, vRot: (Math.random() - .5) * 12,
+            color: Math.random() > .4 ? '#8f3f2f' : '#6b4a2b',
+            floorY: groundYFor(x) || stageH * .9,
+            life: 1, bounced: false
+          });
+        }
+        for (let i = 0; i < Math.round(9 * power); i++) {
+          smokePuffs.push({
+            x: x + (Math.random() - .5) * 40,
+            y: y + (Math.random() - .5) * 30,
+            vx: (Math.random() - .5) * 42,
+            vy: -22 - Math.random() * 48,
+            r: 9 + Math.random() * 14,
+            grow: 26 + Math.random() * 34,
+            life: 1,
+            tint: Math.random() > .5 ? '#4a4540' : '#8d8378'
+          });
+        }
+        dustPuffs.push({
+          x, y: groundYFor(x) || y,
+          vx: 0, vy: -18,
+          radius: 16, growth: 90, alpha: .8, decay: .7
+        });
+
+        blastFlash = Math.min(1.2, blastFlash + .85 * power);
+        triggerScreenQuake();
+        audio.playBoom(power > 1.05);
+        setTimeout(() => audio.playCollapse(), 90);
+      }
+
+      function groundYFor(x) {
+        let best = null;
+        for (let i = 0; i < blockHitboxes.length; i++) {
+          const b = blockHitboxes[i];
+          if (x >= b.x - b.w * .2 && x <= b.x + b.w * 1.2) best = b.groundY;
+        }
+        return best || stageH * .86;
+      }
+
+      function updateBombs(dt) {
+        for (let i = bombs.length - 1; i >= 0; i--) {
+          const b = bombs[i];
+          if (b.delay > 0) {
+            b.delay -= dt;
+            // The bomb rides the throwing hand through the wind-up.
+            const hand = bomberHand();
+            b.startX = hand.x; b.startY = hand.y;
+            b.x = hand.x; b.y = hand.y;
+            if (b.delay > 0) continue;
+            audio.playThrow();
+          }
+          b.t = Math.min(1, b.t + dt / b.dur);
+          const u = b.t, iu = 1 - u;
+          b.x = iu * iu * b.startX + 2 * iu * u * b.ctrlX + u * u * b.targetX;
+          b.y = iu * iu * b.startY + 2 * iu * u * b.ctrlY + u * u * b.targetY;
+          b.rot += b.spin * dt;
+          b.trailX.push(b.x); b.trailY.push(b.y);
+          if (b.trailX.length > 9) { b.trailX.shift(); b.trailY.shift(); }
+
+          if (b.t >= 1 && !b.done) {
+            b.done = true;
+            const cb = b.onImpact;
+            bombs.splice(i, 1);
+            cinematicUntil = performance.now() + 120;
+            spawnExplosion(b.targetX, b.targetY, 1);
+            if (typeof cb === 'function') cb(b.targetX, b.targetY);
+          }
+        }
+      }
+
+      function drawBombs(dt) {
+        for (let i = 0; i < bombs.length; i++) {
+          const b = bombs[i];
+          // Smoke ribbon behind the spinning bomb.
+          for (let k = 0; k < b.trailX.length; k++) {
+            const a = (k / b.trailX.length) * .28;
+            ctx.fillStyle = `rgba(226, 224, 218, ${a})`;
+            ctx.beginPath();
+            ctx.arc(b.trailX[k], b.trailY[k], 2 + k * .55, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          drawBombShell(b.x, b.y, Math.max(6, Math.min(11, stageH * .018)), b.rot, 0);
+          if (Math.random() < .35) {
+            sparks.push({
+              x: b.x, y: b.y - 8,
+              vx: (Math.random() - .5) * 60,
+              vy: -20 - Math.random() * 50,
+              size: 1.4 + Math.random() * 1.8,
+              color: '#ffd88a', life: 1, decay: 3.4
+            });
+          }
+        }
+      }
+
+      function drawBlasts() {
+        for (let i = blasts.length - 1; i >= 0; i--) {
+          const e = blasts[i];
+          const p = Math.min(1, e.t / e.dur);
+          const grow = 1 - Math.pow(1 - p, 2.4);
+          const unit = Math.min(stageW, stageH) / 420;
+          const R = (26 + 74 * grow) * e.power * Math.max(.7, unit);
+          const fade = Math.pow(1 - p, 1.5);
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          const core = ctx.createRadialGradient(e.x, e.y, 1, e.x, e.y, R);
+          core.addColorStop(0, `rgba(255, 255, 240, ${fade * .95})`);
+          core.addColorStop(.22, `rgba(255, 232, 160, ${fade * .9})`);
+          core.addColorStop(.48, `rgba(255, 150, 48, ${fade * .6})`);
+          core.addColorStop(.75, `rgba(214, 64, 16, ${fade * .3})`);
+          core.addColorStop(1, 'rgba(120, 20, 0, 0)');
+          ctx.fillStyle = core;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, R, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Rolling fire lobes.
+          for (let k = 0; k < 4; k++) {
+            const a = e.seed + k * 1.7 + p * .6;
+            const lr = R * (.34 + .18 * Math.sin(e.seed + k));
+            ctx.fillStyle = `rgba(255, 184, 84, ${fade * .22})`;
+            ctx.beginPath();
+            ctx.arc(e.x + Math.cos(a) * R * .45, e.y + Math.sin(a) * R * .38, lr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawBlastRings(dt) {
+        for (let i = blastRings.length - 1; i >= 0; i--) {
+          const r = blastRings[i];
+          r.r += r.speed * 90 * dt * (2.4 - r.life * 1.2);
+          r.life -= dt * 1.7;
+          if (r.life <= 0) { blastRings.splice(i, 1); continue; }
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.strokeStyle = `rgba(255, 236, 196, ${Math.max(0, r.life) * .55})`;
+          ctx.lineWidth = Math.max(1.5, 5 * r.life);
+          ctx.beginPath();
+          ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function drawDebris(dt) {
+        for (let i = debris.length - 1; i >= 0; i--) {
+          const d = debris[i];
+          d.x += d.vx * dt;
+          d.y += d.vy * dt;
+          d.vy += 520 * dt;
+          d.rot += d.vRot * dt;
+          if (d.y >= d.floorY) {
+            d.y = d.floorY;
+            if (!d.bounced) {
+              d.bounced = true;
+              d.vy = -Math.abs(d.vy) * .3;
+              d.vx *= .6;
+              d.vRot *= .5;
+            } else { d.vy = 0; d.vx *= .82; d.vRot = 0; }
+          }
+          d.life -= dt * .34;
+          if (d.life <= 0) { debris.splice(i, 1); continue; }
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, d.life * 1.4));
+          ctx.translate(d.x, d.y);
+          ctx.rotate(d.rot);
+          ctx.fillStyle = d.color;
+          ctx.beginPath();
+          ctx.roundRect(-d.w / 2, -d.h / 2, d.w, d.h, 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(20, 12, 6, .45)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
       function spawnStoneBreakage(box, fullShatter) {
         triggerScreenQuake();
         const cx = box.x + box.w / 2;
@@ -643,7 +1160,7 @@
         }
 
         const slabCount = fullShatter ? 16 : 6;
-        const palette = ['#e6dcc6', '#c9bca2', '#a89e8a', '#9e9076', '#f1eadc'];
+        const palette = ['#a44a36', '#8f3f2f', '#e6d7bd', '#6b4a2b', '#d3c1a2'];
         for (let i = 0; i < slabCount; i++) {
           const dir = Math.random() < 0.5 ? -1 : 1;
           const vx = dir * ((fullShatter ? 52 : 30) + Math.random() * (fullShatter ? 145 : 75));
@@ -847,6 +1364,47 @@
           if (m.y < 10) m.y = stageH - 10;
           if (m.y > stageH - 10) m.y = 10;
 
+          ctx.globalAlpha = m.alpha;
+          ctx.fillStyle = '#eff6ff';
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // The sky, peaks, balustrade and flagstones never change between frames, so
+      // they are baked once per size into an offscreen canvas and blitted. Only the
+      // dust motes stay live. This is the single biggest frame-time win here.
+      let backdropCache = null, backdropKey = '';
+      function drawBackdrop(dt) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const key = Math.round(stageW) + 'x' + Math.round(stageH) + '@' + dpr;
+        if (!backdropCache || backdropKey !== key) {
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.floor(stageW * dpr));
+          c.height = Math.max(1, Math.floor(stageH * dpr));
+          const bctx = c.getContext('2d');
+          const liveCtx = ctx, liveMotes = dustMotes;
+          ctx = bctx;
+          dustMotes = [];
+          bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          drawTerraceBackground(0);
+          ctx = liveCtx;
+          dustMotes = liveMotes;
+          backdropCache = c;
+          backdropKey = key;
+        }
+        ctx.drawImage(backdropCache, 0, 0, stageW, stageH);
+
+        ctx.save();
+        for (let i = 0; i < dustMotes.length; i++) {
+          const m = dustMotes[i];
+          m.x += m.vx * dt;
+          m.y += m.vy * dt;
+          if (m.x > stageW + 10) m.x = -10;
+          if (m.y < 10) m.y = stageH - 10;
+          if (m.y > stageH - 10) m.y = 10;
           ctx.globalAlpha = m.alpha;
           ctx.fillStyle = '#eff6ff';
           ctx.beginPath();
@@ -1107,18 +1665,17 @@
       }
 
       // -----------------------------------------------------------------------
-      // THE SHOOTER: a man on the terrace with a rifle that really tracks the
-      // block his bullet is about to hit.
+      // THE BOMBER: a man on the terrace who winds up a lit bomb and lobs it at
+      // the house the player called.
       // -----------------------------------------------------------------------
-      const GUNMAN = {
-        alpha: 0, aimX: 0, aimY: 0, angle: -.3, recoil: 0, muzzle: 0,
-        muzzleX: 0, muzzleY: 0, pivotX: 0, pivotY: 0, t: 0, ready: false, flashSeed: 0
+      const BOMBER = {
+        alpha: 0, aimX: 0, aimY: 0, angle: -.3, t: 0, ready: false,
+        handX: 0, handY: 0, pivotX: 0, pivotY: 0,
+        wind: 0, throwing: false, throwT: 0, hasBomb: true, hipX: 0
       };
-      const GUN_LOCAL = { pivotX: 8, pivotY: -74, muzzleX: 62 };
+      const GUN_LOCAL = { pivotX: 8, pivotY: -74, reach: 44 };
 
-      // Foreground framing: a man cropped by the bottom-left corner, scaled to
-      // the same world as the stone blocks so the scene keeps one perspective.
-      function gunmanLayout() {
+      function bomberLayout() {
         const blockH = Math.min(220, Math.max(135, stageH * .44));
         const bodyH = Math.min(blockH * .95, stageH * .5);
         const k = Math.max(.6, bodyH / 100);
@@ -1129,14 +1686,14 @@
         };
       }
 
-      function updateGunman(dt) {
+      function updateBomber(dt) {
         const visible = state.phase === 'HANDOFF' || state.phase === 'SHOOT' ||
           state.phase === 'ANIMATING';
         const targetAlpha = visible ? 1 : 0;
-        GUNMAN.alpha += (targetAlpha - GUNMAN.alpha) * Math.min(1, dt * 7);
-        if (GUNMAN.alpha < .004) GUNMAN.alpha = 0;
+        BOMBER.alpha += (targetAlpha - BOMBER.alpha) * Math.min(1, dt * 7);
+        if (BOMBER.alpha < .004) BOMBER.alpha = 0;
 
-        const lay = gunmanLayout();
+        const lay = bomberLayout();
         const px = lay.cx + GUN_LOCAL.pivotX * lay.k;
         const py = lay.feetY + GUN_LOCAL.pivotY * lay.k;
 
@@ -1144,197 +1701,150 @@
         let tx, ty;
         if (box) {
           tx = box.x + box.w * .5;
-          ty = box.y + box.h * .45;
+          ty = box.y + box.h * .34;
         } else {
           const mid = blockHitboxes[1];
           tx = mid ? mid.x + mid.w * .5 : stageW * .5;
-          ty = mid ? mid.y + mid.h * .45 : stageH * .5;
+          ty = mid ? mid.y + mid.h * .34 : stageH * .5;
         }
-        if (!GUNMAN.ready) { GUNMAN.aimX = tx; GUNMAN.aimY = ty; GUNMAN.ready = true; }
-        const ease = 1 - Math.exp(-dt * 11);
-        GUNMAN.aimX += (tx - GUNMAN.aimX) * ease;
-        GUNMAN.aimY += (ty - GUNMAN.aimY) * ease;
+        if (!BOMBER.ready) { BOMBER.aimX = tx; BOMBER.aimY = ty; BOMBER.ready = true; }
+        const ease = 1 - Math.exp(-dt * 10);
+        BOMBER.aimX += (tx - BOMBER.aimX) * ease;
+        BOMBER.aimY += (ty - BOMBER.aimY) * ease;
 
-        GUNMAN.t += dt;
-        const sway = Math.sin(GUNMAN.t * 1.7) * .009 + Math.sin(GUNMAN.t * 4.1) * .0035;
-        GUNMAN.recoil += (0 - GUNMAN.recoil) * Math.min(1, dt * 9);
-        if (GUNMAN.muzzle > 0) GUNMAN.muzzle = Math.max(0, GUNMAN.muzzle - dt);
+        BOMBER.t += dt;
+        BOMBER.angle = Math.atan2(BOMBER.aimY - py, BOMBER.aimX - px) +
+          Math.sin(BOMBER.t * 1.7) * .008 + Math.sin(BOMBER.t * 4.1) * .003;
 
-        GUNMAN.angle = Math.atan2(GUNMAN.aimY - py, GUNMAN.aimX - px) + sway;
-        const drawAngle = GUNMAN.angle + GUNMAN.recoil * .085;
-        const reach = (GUN_LOCAL.muzzleX - GUNMAN.recoil * 4) * lay.k;
-        GUNMAN.pivotX = px;
-        GUNMAN.pivotY = py;
-        GUNMAN.muzzleX = px + Math.cos(drawAngle) * reach;
-        GUNMAN.muzzleY = py + Math.sin(drawAngle) * reach;
+        // Wind-up → release → follow-through, all eased so the arm never snaps.
+        if (BOMBER.throwing) {
+          BOMBER.throwT += dt;
+          const T = BOMBER.throwT;
+          const WIND = .24;
+          if (T < WIND) {
+            const u = T / WIND;
+            BOMBER.wind = u * u * (3 - 2 * u);
+          } else {
+            const u = Math.min(1, (T - WIND) / .42);
+            BOMBER.wind = 1 - (u * u * (3 - 2 * u));
+            if (BOMBER.hasBomb) BOMBER.hasBomb = false;
+          }
+          if (T > .95) {
+            BOMBER.throwing = false;
+            BOMBER.wind = 0;
+          }
+        } else if (BOMBER.wind !== 0) {
+          BOMBER.wind += (0 - BOMBER.wind) * Math.min(1, dt * 8);
+          if (Math.abs(BOMBER.wind) < .002) BOMBER.wind = 0;
+        }
+
+        const wind = BOMBER.wind;
+        // Arm hangs relaxed when idle, pulls up and back on the wind-up, whips
+        // forward along the aim line through release.
+        const armAngle = BOMBER.angle - .35 - 1.85 * wind + .15 * (1 - wind) * (BOMBER.throwT > 0 ? 1 : 0);
+        const reach = GUN_LOCAL.reach * lay.k * (1 - .12 * wind);
+        BOMBER.pivotX = px;
+        BOMBER.pivotY = py;
+        BOMBER.handX = px + Math.cos(armAngle) * reach;
+        BOMBER.handY = py + Math.sin(armAngle) * reach;
+        BOMBER.armAngle = armAngle;
+        BOMBER.hipX = lay.cx - 12 * lay.k;
       }
 
-      function drawGunman() {
-        if (GUNMAN.alpha <= .015) return;
-        const lay = gunmanLayout();
+      function drawBomber() {
+        if (BOMBER.alpha <= .015) return;
+        const lay = bomberLayout();
         const k = lay.k;
-        const recoil = GUNMAN.recoil;
+        const wind = BOMBER.wind;
         const skin = '#c99368';
         const skinShade = '#a97850';
-        const shirt = state.shooterId === 1 ? '#26374b' : '#203a4c';
-        const shirtShade = '#16222f';
-        const pants = '#19232f';
+        const shirt = state.shooterId === 1 ? '#3a2a3f' : '#2a3a4a';
+        const shirtShade = '#1d2230';
+        const pants = '#1c2530';
+        const rot = BOMBER.armAngle || 0;
 
         ctx.save();
-        ctx.globalAlpha = GUNMAN.alpha;
+        ctx.globalAlpha = BOMBER.alpha;
 
-        // Grounded shadow under the whole stance.
+        // Grounded shadow under the stance.
         ctx.fillStyle = 'rgba(12, 18, 28, .3)';
         ctx.beginPath();
-        ctx.ellipse(lay.cx + 4 * k, lay.feetY - 4 * k, 38 * k, 7 * k, 0, 0, Math.PI * 2);
+        ctx.ellipse(lay.cx + 4 * k, lay.feetY - 4 * k, 40 * k, 7 * k, 0, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.translate(lay.cx, lay.feetY);
         ctx.scale(k, k);
         ctx.lineJoin = 'round';
 
-        // ---- Braced legs ----
-        paintLimb(-4, -46, -16, -24, 15, pants);
-        paintLimb(-16, -24, -18, -4, 13, pants);
-        paintLimb(5, -46, 13, -24, 15, pants);
-        paintLimb(13, -24, 17, -3, 13, pants);
+        // ---- Braced legs, weight shifting back on the wind-up ----
+        const lean = wind * 5;
+        paintLimb(-4 - lean, -46, -17 - lean, -24, 15, pants);
+        paintLimb(-17 - lean, -24, -19 - lean, -4, 13, pants);
+        paintLimb(5, -46, 14, -24, 15, pants);
+        paintLimb(14, -24, 18, -3, 13, pants);
         ctx.fillStyle = '#0f172a';
-        ctx.beginPath(); ctx.roundRect(-27, -7, 19, 8, 4); ctx.fill();
-        ctx.beginPath(); ctx.roundRect(9, -7, 19, 8, 4); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(-28 - lean, -7, 19, 8, 4); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(10, -7, 19, 8, 4); ctx.fill();
 
         // ---- Torso, harness, belt ----
         ctx.fillStyle = shirt;
         ctx.beginPath();
-        ctx.roundRect(-14, -78, 28, 36, 11);
+        ctx.roundRect(-14 - lean * .4, -78, 28, 36, 11);
         ctx.fill();
         ctx.fillStyle = shirtShade;
         ctx.beginPath();
-        ctx.roundRect(-14, -56, 28, 14, 6);
+        ctx.roundRect(-14 - lean * .4, -56, 28, 14, 6);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(10, 18, 28, .55)';
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(-9, -74); ctx.lineTo(6, -47); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(9, -74); ctx.lineTo(-2, -47); ctx.stroke();
+        // Bandolier of spare bombs.
+        ctx.strokeStyle = 'rgba(15, 20, 28, .7)';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(-9, -75); ctx.lineTo(7, -47); ctx.stroke();
+        for (let i = 0; i < 2; i++) {
+          ctx.fillStyle = '#2b333c';
+          ctx.beginPath();
+          ctx.arc(-5 + i * 7, -66 + i * 10, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.fillStyle = '#0d1520';
-        ctx.beginPath(); ctx.roundRect(-14, -46, 28, 7, 3); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(-14 - lean * .4, -46, 28, 7, 3); ctx.fill();
 
-        // ---- Neck, head and field cap ----
+        // ---- Neck, head, field cap ----
         ctx.fillStyle = skinShade;
-        ctx.fillRect(-5, -86, 10, 9);
+        ctx.fillRect(-5 - lean * .4, -86, 10, 9);
         ctx.fillStyle = skin;
-        ctx.beginPath(); ctx.ellipse(1, -93, 11, 12, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(1 - lean * .4, -93, 11, 12, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = skinShade;
-        ctx.beginPath(); ctx.ellipse(-8.4, -92, 2.4, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-8.4 - lean * .4, -92, 2.4, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+        // Eye squint toward the target.
         ctx.fillStyle = '#241811';
-        ctx.beginPath(); ctx.ellipse(1, -97, 10.8, 7, 0, Math.PI * .95, Math.PI * 2.05); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(5 - lean * .4, -95, 2.1, 1.5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#12212e';
-        ctx.beginPath(); ctx.ellipse(1, -99, 11.5, 7.5, 0, Math.PI, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(9.5, -99, 6.5, 2.6, -.18, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(1 - lean * .4, -99, 11.6, 7.6, 0, Math.PI, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(9.5 - lean * .4, -99, 6.6, 2.7, -.18, 0, Math.PI * 2); ctx.fill();
 
-        // ---- Arms + rifle: one group pivoting at the shoulder ----
-        ctx.save();
-        ctx.translate(GUN_LOCAL.pivotX, GUN_LOCAL.pivotY);
-        ctx.rotate(GUNMAN.angle + recoil * .085);
-        ctx.translate(-recoil * 4, 0);
+        // ---- Throwing arm ----
+        const ax = GUN_LOCAL.pivotX, ay = GUN_LOCAL.pivotY;
+        const hx = Math.cos(rot) * GUN_LOCAL.reach;
+        const hy = Math.sin(rot) * GUN_LOCAL.reach;
+        paintLimb(ax, ay, ax + hx * .55, ay + hy * .55, 10.5, shirt);
+        paintLimb(ax + hx * .55, ay + hy * .55, ax + hx, ay + hy, 8.6, skin);
 
-        // Support arm reaching down the foregrip.
-        paintLimb(0, -2, 24, 4, 9.5, shirt);
-        paintLimb(24, 4, 37, 2, 8.2, skin);
-        // Trigger arm tucked in close.
-        paintLimb(-1, 3, 6, 4, 9.5, shirtShade);
-
-        // Stock
-        ctx.fillStyle = '#5a3b23';
-        ctx.beginPath();
-        ctx.moveTo(-24, -2.5); ctx.lineTo(-4, -4); ctx.lineTo(-4, 4.5); ctx.lineTo(-22, 6.5);
-        ctx.closePath(); ctx.fill();
-        // Receiver
-        ctx.fillStyle = '#20262e';
-        ctx.beginPath(); ctx.roundRect(-4, -5, 30, 9, 2); ctx.fill();
-        ctx.fillStyle = '#39424d';
-        ctx.fillRect(-4, -5, 30, 1.8);
-        // Magazine
-        ctx.fillStyle = '#171d24';
-        ctx.beginPath(); ctx.roundRect(8, 3, 9, 12, 2); ctx.fill();
-        // Barrel + muzzle brake
-        ctx.fillStyle = '#20262e';
-        ctx.beginPath(); ctx.roundRect(25, -3.6, 30, 5, 2); ctx.fill();
-        ctx.fillStyle = '#2c343d';
-        ctx.beginPath(); ctx.roundRect(53, -4.6, 9, 7.4, 2); ctx.fill();
-        // Optic rail + front sight
-        ctx.fillStyle = '#0f1419';
-        ctx.fillRect(1, -7.4, 15, 2.6);
-        ctx.fillRect(28, -6.6, 4, 2.2);
-
-        // Hands over the furniture.
-        ctx.fillStyle = skin;
-        ctx.beginPath(); ctx.arc(7, 2, 4.7, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(37, 2, 4.4, 0, Math.PI * 2); ctx.fill();
-
-        // ---- Muzzle flash ----
-        if (GUNMAN.muzzle > 0) {
-          const f = Math.max(0, Math.min(1, GUNMAN.muzzle / .09));
-          const ang = GUNMAN.flashSeed;
-          ctx.save();
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.translate(62, -1);
-          ctx.rotate(ang);
-          const glow = ctx.createRadialGradient(0, 0, 1, 0, 0, 30 * f + 4);
-          glow.addColorStop(0, 'rgba(255, 255, 240, ' + (f).toFixed(2) + ')');
-          glow.addColorStop(.35, 'rgba(255, 210, 90, ' + (f * .8).toFixed(2) + ')');
-          glow.addColorStop(1, 'rgba(255, 140, 30, 0)');
-          ctx.fillStyle = glow;
-          ctx.beginPath(); ctx.arc(0, 0, 30 * f + 4, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(255, 246, 214, ' + (f * .95).toFixed(2) + ')';
-          for (let i = 0; i < 5; i++) {
-            const a = i * (Math.PI * 2 / 5) + ang;
-            const len = (16 + (i % 2) * 9) * f;
-            ctx.beginPath();
-            ctx.moveTo(Math.cos(a) * 3, Math.sin(a) * 3);
-            ctx.lineTo(Math.cos(a + .28) * len * .55, Math.sin(a + .28) * len * .55);
-            ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
-            ctx.closePath();
-            ctx.fill();
+        // ---- Bomb in hand ----
+        if (BOMBER.hasBomb) {
+          const bomX = ax + hx, bomY = ay + hy + 1;
+          const r = 7.4;
+          drawBombShell(bomX, bomY, r, rot + .4, 0);
+          if (Math.random() < .22) {
+            sparks.push({
+              x: BOMBER.pivotX + bomX * k, y: BOMBER.pivotY + bomY * k - 6 * k,
+              vx: (Math.random() - .5) * 50, vy: -25 - Math.random() * 45,
+              size: 1.4 + Math.random() * 1.6, color: '#ffd88a', life: 1, decay: 3.6
+            });
           }
-          ctx.restore();
         }
 
         ctx.restore();
-        ctx.restore();
       }
-
-      function spawnShell() {
-        const lay = gunmanLayout();
-        shells.push({
-          x: GUNMAN.pivotX + 4 * lay.k,
-          y: GUNMAN.pivotY - 2 * lay.k,
-          vx: 40 + Math.random() * 50,
-          vy: -(130 + Math.random() * 70),
-          rot: Math.random() * 6.28,
-          vRot: 9 + Math.random() * 9,
-          floorY: lay.feetY - 8 * lay.k,
-          life: 1,
-          bounced: false,
-          size: Math.max(2.2, 1.4 * lay.k)
-        });
-      }
-
-      function spawnMuzzleSmoke() {
-        for (let i = 0; i < 6; i++) {
-          const a = GUNMAN.angle + (Math.random() - .5) * .7;
-          const spd = 18 + Math.random() * 46;
-          smokePuffs.push({
-            x: GUNMAN.muzzleX,
-            y: GUNMAN.muzzleY,
-            vx: Math.cos(a) * spd,
-            vy: Math.sin(a) * spd - 10,
-            r: 3 + Math.random() * 4,
-            grow: 16 + Math.random() * 20,
-            life: 1
-          });
-        }
-      }
-
       // Deterministic pseudo-random helper for crisp granite/limestone mineral grain
       function seededNoise(seed) {
         const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
@@ -1342,213 +1852,400 @@
       }
 
       // -----------------------------------------------------------------------
-      // COVER: a bolted timber supply crate. Wood and iron read as a real object
-      // standing on the terrace, where a plain stone slab just read as a grey box.
+      // COVER: a stucco-and-timber cottage. The hider ducks in behind it, the
+      // bomber lobs a bomb onto the roof, and a wrecked house stays wrecked.
       // -----------------------------------------------------------------------
-      function drawCoverCrate(box) {
-        const { num, x, y, w, h, depth, groundY } = box;
+      function drawHouse(box) {
+        const num = box.num;
+        const x = box.x, w = box.w, h = box.h, dx = box.depth * .8, dy = box.depth * .62;
+        const y = box.y, groundY = box.groundY;
         const s = box.scale || 1;
         const isShattered = state.shatteredBlocks.has(num);
         const isCracked = state.crackedBlocks.has(num);
         const isHovered = state.phase === 'HIDE' && state.hoveredBlock === num && !isShattered;
-        const dx = depth * 0.72;
-        const dy = depth * 0.58;
-        const radius = Math.max(3, 5 * s);
+        const roofH = h * .37;
+        const wallTop = y + roofH;
+        const wallBot = groundY + h * .015;
+        const wallH = wallBot - wallTop;
+        const ov = Math.max(5, w * .055);
 
-        // Contact shadow on the flags.
-        ctx.fillStyle = isShattered ? 'rgba(46, 28, 10, .16)' : 'rgba(46, 28, 10, .34)';
+        // Contact shadow pooled on the flagstones.
+        ctx.fillStyle = isShattered ? 'rgba(24, 18, 10, .2)' : 'rgba(24, 18, 10, .36)';
         ctx.beginPath();
-        ctx.ellipse(x + w * 0.5 + dx * 0.35, groundY, w * 0.52, Math.max(4, h * 0.055), 0, 0, Math.PI * 2);
+        ctx.ellipse(x + w * .5 + dx * .45, groundY + 3 * s, w * .58, Math.max(5, h * .05), 0, 0, Math.PI * 2);
         ctx.fill();
 
         if (isShattered) {
-          // Splintered staves left behind after the cover is destroyed.
-          const stumpH = h * 0.16;
-          const stumpY = groundY - stumpH;
-          ctx.fillStyle = '#6b4a2a';
-          ctx.beginPath();
-          ctx.moveTo(x + w * 0.08, stumpY + stumpH);
-          ctx.lineTo(x + w * 0.22, stumpY + stumpH * 0.1);
-          ctx.lineTo(x + w * 0.42, stumpY + stumpH);
-          ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#7d5731';
-          ctx.beginPath();
-          ctx.moveTo(x + w * 0.46, stumpY + stumpH);
-          ctx.lineTo(x + w * 0.62, stumpY + stumpH * 0.42);
-          ctx.lineTo(x + w * 0.9, stumpY + stumpH);
-          ctx.closePath(); ctx.fill();
-          ctx.fillStyle = 'rgba(24, 16, 8, .35)';
-          ctx.fillRect(x + w * 0.08, groundY - 3 * s, w * 0.84, 3 * s);
+          drawHouseRubble(x, y, w, h, dx, dy, groundY, s, num);
           return;
         }
 
-        // ---- Lit top face (plank ends visible, iron strap across) ----
-        ctx.fillStyle = isHovered ? '#d9a268' : '#bd8148';
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + dx, y - dy);
-        ctx.lineTo(x + w + dx, y - dy);
-        ctx.lineTo(x + w, y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.save();
-        ctx.clip();
-        ctx.strokeStyle = 'rgba(74, 44, 18, .38)';
-        ctx.lineWidth = Math.max(1, 1.6 * s);
-        for (let i = 1; i < 4; i++) {
-          const f = i / 4;
-          ctx.beginPath();
-          ctx.moveTo(x + w * f, y);
-          ctx.lineTo(x + w * f + dx, y - dy);
-          ctx.stroke();
-        }
-        ctx.strokeStyle = 'rgba(255, 233, 194, .38)';
-        ctx.lineWidth = Math.max(1, 1.8 * s);
-        ctx.beginPath(); ctx.moveTo(x + 1.5, y - 1.5); ctx.lineTo(x + w + dx - 1.5, y - dy - 1.5); ctx.stroke();
-        ctx.restore();
-        ctx.strokeStyle = '#3d2a16';
-        ctx.lineWidth = Math.max(1.2, 1.7 * s);
-        ctx.beginPath();
-        ctx.moveTo(x, y); ctx.lineTo(x + dx, y - dy); ctx.lineTo(x + w + dx, y - dy);
-        ctx.lineTo(x + w, y); ctx.closePath();
-        ctx.stroke();
-
-        // ---- Shadowed right face ----
-        const sideGrad = ctx.createLinearGradient(x + w, y, x + w + dx, y + h);
-        sideGrad.addColorStop(0, '#8a5b2e');
-        sideGrad.addColorStop(1, '#63401f');
+        // ---- Right-hand wall, in perspective ----
+        const sideGrad = ctx.createLinearGradient(x + w, wallTop, x + w + dx, wallTop + wallH);
+        sideGrad.addColorStop(0, '#cbb99b');
+        sideGrad.addColorStop(1, '#9b896c');
         ctx.fillStyle = sideGrad;
         ctx.beginPath();
-        ctx.moveTo(x + w, y);
-        ctx.lineTo(x + w + dx, y - dy);
-        ctx.lineTo(x + w + dx, y + h - dy);
-        ctx.lineTo(x + w, y + h);
+        ctx.moveTo(x + w, wallTop);
+        ctx.lineTo(x + w + dx, wallTop - dy);
+        ctx.lineTo(x + w + dx, wallBot - dy);
+        ctx.lineTo(x + w, wallBot);
         ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = 'rgba(60, 44, 26, .3)';
+        ctx.lineWidth = Math.max(1, 1.2 * s);
         ctx.stroke();
-
-        // ---- Front face ----
-        const faceGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-        faceGrad.addColorStop(0, isHovered ? '#d08d4e' : '#b9793f');
-        faceGrad.addColorStop(0.55, '#a3682f');
-        faceGrad.addColorStop(1, '#7f4e22');
-        ctx.fillStyle = faceGrad;
+        // A shuttered window on that side wall keeps it from reading as a slab.
+        ctx.fillStyle = '#3f5d78';
         ctx.beginPath();
-        ctx.roundRect(x, y, w, h, radius);
+        ctx.roundRect(x + w + dx * .28, wallTop + wallH * .26 - dy * .3, w * .2, wallH * .2, 2 * s);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 226, 170, .5)';
+        ctx.fillRect(x + w + dx * .3, wallTop + wallH * .28 - dy * .3, w * .16, wallH * .16);
+
+        // ---- Front wall ----
+        const wallGrad = ctx.createLinearGradient(x, wallTop, x, wallBot);
+        wallGrad.addColorStop(0, isHovered ? '#fbf1dc' : '#f1e6d2');
+        wallGrad.addColorStop(.62, isHovered ? '#f3e3c7' : '#e6d7bd');
+        wallGrad.addColorStop(1, '#d3c1a2');
+        ctx.fillStyle = wallGrad;
+        ctx.beginPath();
+        ctx.roundRect(x, wallTop, w, wallH, Math.max(2, 4 * s));
         ctx.fill();
 
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(x, y, w, h, radius);
+        ctx.roundRect(x, wallTop, w, wallH, Math.max(2, 4 * s));
         ctx.clip();
 
-        // Horizontal plank seams plus the grain that says "timber".
-        const planks = 5;
-        for (let i = 1; i < planks; i++) {
-          const py = y + (h * i) / planks;
-          ctx.strokeStyle = 'rgba(48, 28, 10, .42)';
-          ctx.lineWidth = Math.max(1, 1.5 * s);
-          ctx.beginPath(); ctx.moveTo(x, py); ctx.lineTo(x + w, py); ctx.stroke();
-          ctx.strokeStyle = 'rgba(255, 214, 160, .16)';
-          ctx.lineWidth = Math.max(1, 1.2 * s);
-          ctx.beginPath(); ctx.moveTo(x, py + 1.4 * s); ctx.lineTo(x + w, py + 1.4 * s); ctx.stroke();
-        }
-        for (let i = 0; i < 18; i++) {
-          const n1 = seededNoise(num * 41 + i * 3 + 1);
-          const n2 = seededNoise(num * 41 + i * 3 + 2);
-          const gx = x + n1 * w;
-          const gy = y + n2 * h;
-          ctx.strokeStyle = n2 > 0.5 ? 'rgba(66, 38, 14, .16)' : 'rgba(255, 220, 170, .12)';
-          ctx.lineWidth = Math.max(0.8, 1.1 * s);
+        // Plaster grain.
+        for (let i = 0; i < 34; i++) {
+          const n1 = seededNoise(num * 13 + i * 1.7);
+          const n2 = seededNoise(num * 29 + i * 2.3);
+          ctx.fillStyle = n1 > .5 ? 'rgba(255, 250, 238, .45)' : 'rgba(146, 124, 92, .16)';
           ctx.beginPath();
-          ctx.moveTo(gx, gy);
-          ctx.quadraticCurveTo(gx + w * .1, gy + h * .03, gx + w * .2, gy - h * .01);
-          ctx.stroke();
+          ctx.arc(x + n1 * w, wallTop + n2 * wallH, .7 + n2 * 1.5 * s, 0, Math.PI * 2);
+          ctx.fill();
         }
 
-        // Iron straps top and bottom with bolt heads.
-        ;[0.13, 0.87].forEach((frac) => {
-          const by = y + h * frac;
-          const bh = Math.max(4, h * 0.075);
-          const strap = ctx.createLinearGradient(0, by - bh / 2, 0, by + bh / 2);
-          strap.addColorStop(0, '#6c7681');
-          strap.addColorStop(0.45, '#454e57');
-          strap.addColorStop(1, '#2b3138');
-          ctx.fillStyle = strap;
-          ctx.fillRect(x, by - bh / 2, w, bh);
-          ctx.strokeStyle = 'rgba(16, 20, 24, .55)';
+        // Stone plinth along the bottom.
+        const plinthH = Math.min(wallH * .17, h * .07);
+        ctx.fillStyle = '#9c9186';
+        ctx.fillRect(x, wallBot - plinthH, w, plinthH);
+        ctx.fillStyle = 'rgba(255, 255, 255, .22)';
+        for (let i = 0; i < 7; i++) {
+          const bx = x + (w / 7) * i + 2;
+          ctx.fillRect(bx, wallBot - plinthH + 1.5, w / 7 - 4, plinthH * .34);
+        }
+
+        // ---- Timber frame ----
+        const beam = Math.max(3, w * .035);
+        ctx.fillStyle = '#6b4a2b';
+        ctx.fillRect(x, wallTop, w, beam * .9);                       // eaves beam
+        ctx.fillRect(x, wallTop + wallH * .52, w, beam);              // mid rail
+        [.16, .5, .84].forEach((f) => ctx.fillRect(x + w * f - beam / 2, wallTop, beam, wallH - plinthH));
+        ctx.strokeStyle = '#6b4a2b';
+        ctx.lineWidth = beam * .8;
+        ctx.beginPath();
+        ctx.moveTo(x + w * .16, wallTop + wallH * .52);
+        ctx.lineTo(x + w * .5, wallTop + beam);
+        ctx.moveTo(x + w * .84, wallTop + wallH * .52);
+        ctx.lineTo(x + w * .5, wallTop + beam);
+        ctx.stroke();
+
+        // ---- Door ----
+        const doorW = Math.min(w * .3, 54 * s);
+        const doorH = Math.min(wallH * .56, 68 * s);
+        const doorX = x + w * .5 - doorW / 2;
+        const doorY = wallBot - plinthH - doorH;
+        ctx.fillStyle = '#5d3d24';
+        ctx.beginPath();
+        ctx.moveTo(doorX, doorY + doorH);
+        ctx.lineTo(doorX, doorY + doorW * .42);
+        ctx.quadraticCurveTo(doorX + doorW * .5, doorY - doorW * .16, doorX + doorW, doorY + doorW * .42);
+        ctx.lineTo(doorX + doorW, doorY + doorH);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 232, 198, .16)';
+        ctx.fillRect(doorX + doorW * .12, doorY + doorW * .5, doorW * .3, doorH - doorW * .5);
+        ctx.fillStyle = '#f0c85a';
+        ctx.beginPath();
+        ctx.arc(doorX + doorW * .78, doorY + doorH * .62, Math.max(1.4, 1.8 * s), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(40, 24, 10, .5)';
+        ctx.lineWidth = Math.max(1, 1.4 * s);
+        ctx.beginPath();
+        ctx.moveTo(doorX, doorY + doorH);
+        ctx.lineTo(doorX, doorY + doorW * .42);
+        ctx.quadraticCurveTo(doorX + doorW * .5, doorY - doorW * .16 + 1, doorX + doorW, doorY + doorW * .42);
+        ctx.lineTo(doorX + doorW, doorY + doorH);
+        ctx.stroke();
+
+        // ---- Windows ----
+        const winW = Math.min(w * .17, 32 * s);
+        const winH = Math.min(wallH * .3, 34 * s);
+        const winY = wallTop + wallH * .2;
+        [.26, .74].forEach((f, wi) => {
+          const wx = x + w * f - winW / 2;
+          // Shutters
+          ctx.fillStyle = wi === 0 ? '#3c6b5a' : '#3f5d78';
+          ctx.fillRect(wx - winW * .34, winY, winW * .3, winH);
+          ctx.fillRect(wx + winW + winW * .04, winY, winW * .3, winH);
+          ctx.strokeStyle = 'rgba(20, 32, 26, .35)';
           ctx.lineWidth = 1;
-          ctx.strokeRect(x, by - bh / 2, w, bh);
-          ctx.fillStyle = '#9aa6b2';
-          const bolts = Math.max(2, Math.round(w / (34 * s)));
-          for (let i = 0; i < bolts; i++) {
-            const bx = x + (w * (i + 0.5)) / bolts;
-            ctx.beginPath(); ctx.arc(bx, by, Math.max(1.4, 2.1 * s), 0, Math.PI * 2); ctx.fill();
+          for (let k = 1; k < 3; k++) {
+            ctx.beginPath();
+            ctx.moveTo(wx - winW * .34, winY + (winH / 3) * k);
+            ctx.lineTo(wx - winW * .04, winY + (winH / 3) * k);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(wx + winW * .04 + winW, winY + (winH / 3) * k);
+            ctx.lineTo(wx + winW * .04 + winW * 1.3, winY + (winH / 3) * k);
+            ctx.stroke();
+          }
+          // Frame + glass
+          ctx.fillStyle = '#f7efdd';
+          ctx.fillRect(wx - 2 * s, winY - 2 * s, winW + 4 * s, winH + 4 * s);
+          const glass = ctx.createLinearGradient(wx, winY, wx + winW, winY + winH);
+          if (isCracked && wi === 1) {
+            glass.addColorStop(0, '#243c4f');
+            glass.addColorStop(1, '#152632');
+          } else {
+            glass.addColorStop(0, 'rgba(255, 228, 160, .95)');
+            glass.addColorStop(1, 'rgba(224, 168, 88, .9)');
+          }
+          ctx.fillStyle = glass;
+          ctx.fillRect(wx, winY, winW, winH);
+          ctx.strokeStyle = '#6b4a2b';
+          ctx.lineWidth = Math.max(1.4, 2.2 * s);
+          ctx.beginPath();
+          ctx.moveTo(wx + winW / 2, winY);
+          ctx.lineTo(wx + winW / 2, winY + winH);
+          ctx.moveTo(wx, winY + winH / 2);
+          ctx.lineTo(wx + winW, winY + winH / 2);
+          ctx.stroke();
+          if (isCracked && wi === 1) {
+            // Blown-out pane.
+            ctx.fillStyle = '#1b2b36';
+            ctx.beginPath();
+            ctx.moveTo(wx + winW * .18, winY + winH * .12);
+            ctx.lineTo(wx + winW * .82, winY + winH * .38);
+            ctx.lineTo(wx + winW * .44, winY + winH * .92);
+            ctx.closePath();
+            ctx.fill();
           }
         });
 
-        // Corner brackets gripping the front face.
-        const bracket = Math.max(6, 13 * s);
-        ctx.strokeStyle = '#3a434c';
-        ctx.lineWidth = Math.max(2, 3 * s);
+        // ---- House number, stencilled by the door ----
+        const plateW = Math.min(w * .2, 30 * s);
+        const plateH = Math.min(wallH * .19, 22 * s);
+        ctx.fillStyle = 'rgba(247, 241, 227, .95)';
         ctx.beginPath();
-        ctx.moveTo(x + 1, y + bracket); ctx.lineTo(x + 1, y + 1); ctx.lineTo(x + bracket, y + 1);
-        ctx.moveTo(x + w - 1, y + h - bracket); ctx.lineTo(x + w - 1, y + h - 1); ctx.lineTo(x + w - bracket, y + h - 1);
+        ctx.roundRect(x + w * .5 - plateW / 2, wallTop + wallH * .58, plateW, plateH, 2 * s);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(70, 46, 22, .45)';
+        ctx.lineWidth = 1;
         ctx.stroke();
-
-        // Warm lamp light falling from the top-left.
-        const light = ctx.createLinearGradient(x, y, x + w * 0.8, y + h);
-        light.addColorStop(0, 'rgba(255, 226, 178, .22)');
-        light.addColorStop(0.6, 'rgba(255, 226, 178, 0)');
-        ctx.fillStyle = light;
-        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = '#2b1c0c';
+        ctx.font = '700 ' + Math.max(10, Math.min(22, Math.floor(plateH * .8))) + 'px "Chakra Petch", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(num), x + w * .5, wallTop + wallH * .58 + plateH * .54);
         ctx.restore();
 
-        // Outline: amber when aimable, red once cracked.
-        ctx.lineWidth = isHovered ? 3.2 : Math.max(1.4, 2.2 * s);
-        ctx.strokeStyle = isHovered ? '#f59e0b' : isCracked ? '#e11d48' : '#3f2a13';
+        // ---- Pitched roof ----
+        const ridgeY = y + h * .02;
+        const roofGrad = ctx.createLinearGradient(x, ridgeY, x + w, wallTop);
+        roofGrad.addColorStop(0, isHovered ? '#b8543f' : '#a44a36');
+        roofGrad.addColorStop(.55, '#8f3f2f');
+        roofGrad.addColorStop(1, '#733227');
+        // Side facet first, so the front gable overlaps it.
+        ctx.fillStyle = '#5c2a21';
         ctx.beginPath();
-        ctx.roundRect(x, y, w, h, radius);
+        ctx.moveTo(x + w + ov, wallTop - dy * .2);
+        ctx.lineTo(x + w * .5 + dx, ridgeY - dy);
+        ctx.lineTo(x + w * .5, ridgeY);
+        ctx.lineTo(x + w, wallTop);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = roofGrad;
+        ctx.beginPath();
+        ctx.moveTo(x - ov, wallTop);
+        ctx.lineTo(x + w * .5, ridgeY);
+        ctx.lineTo(x + w + ov, wallTop);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x - ov, wallTop);
+        ctx.lineTo(x + w * .5, ridgeY);
+        ctx.lineTo(x + w + ov, wallTop);
+        ctx.closePath();
+        ctx.clip();
+        // Shingle courses.
+        const courses = 4;
+        for (let r = 0; r < courses; r++) {
+          const t0 = r / courses, t1 = (r + 1) / courses;
+          const yA = ridgeY + (wallTop - ridgeY) * t0;
+          const yB = ridgeY + (wallTop - ridgeY) * t1;
+          if (isCracked && r === 1) {
+            ctx.fillStyle = 'rgba(38, 24, 16, .45)';
+            ctx.fillRect(x, yA, w + ov * 2, yB - yA);
+          }
+          const count = 7 + r;
+          for (let c = 0; c < count; c++) {
+            const fx = x - ov + ((w + ov * 2) * (c + .5)) / count;
+            const gap = (yB - yA) * .5;
+            ctx.fillStyle = (r + c) % 2 ? 'rgba(255, 206, 178, .10)' : 'rgba(38, 16, 10, .14)';
+            ctx.beginPath();
+            ctx.roundRect(fx - (w / count) * .5 + 1, yA + gap * .2, (w / count) - 2, (yB - yA) * .78, 2);
+            ctx.fill();
+          }
+          ctx.strokeStyle = 'rgba(40, 18, 10, .35)';
+          ctx.lineWidth = Math.max(1, 1.3 * s);
+          ctx.beginPath();
+          ctx.moveTo(x - ov, yB);
+          ctx.lineTo(x + w + ov, yB);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // Ridge capping + eave shadow.
+        ctx.strokeStyle = 'rgba(255, 214, 190, .45)';
+        ctx.lineWidth = Math.max(1.4, 2.2 * s);
+        ctx.beginPath();
+        ctx.moveTo(x - ov, wallTop - 1);
+        ctx.lineTo(x + w * .5, ridgeY + 1);
+        ctx.lineTo(x + w + ov, wallTop - 1);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(30, 14, 8, .55)';
+        ctx.lineWidth = Math.max(1.2, 2 * s);
+        ctx.beginPath();
+        ctx.moveTo(x - ov, wallTop);
+        ctx.lineTo(x + w + ov, wallTop);
         ctx.stroke();
 
-        // Split planks after the first hit.
+        // ---- Chimney with drifting smoke ----
+        const chimW = Math.max(9, w * .11);
+        const chimX = x + w * .74;
+        const chimTop = ridgeY - h * .09;
+        const chimBase = wallTop - roofH * .18;
+        ctx.fillStyle = '#8d8177';
+        ctx.fillRect(chimX, chimTop, chimW, chimBase - chimTop);
+        ctx.fillStyle = '#a89c90';
+        ctx.fillRect(chimX, chimTop, chimW, Math.max(3, 4 * s));
+        ctx.fillStyle = 'rgba(60, 44, 30, .25)';
+        for (let i = 0; i < 4; i++) {
+          ctx.fillRect(chimX + 1, chimTop + (chimBase - chimTop) * (i / 4) + 2, chimW - 2, 1.4 * s);
+        }
+        const tNow = performance.now() / 1000;
+        for (let i = 0; i < 3; i++) {
+          const u = ((tNow * .34 + i / 3) % 1);
+          const puffR = (2.6 + u * 9) * s;
+          ctx.fillStyle = `rgba(236, 233, 227, ${(1 - u) * .3})`;
+          ctx.beginPath();
+          ctx.arc(chimX + chimW * .5 + Math.sin((tNow + i) * 1.3) * 5 * s, chimTop - u * h * .32, puffR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // ---- Damage and highlight ----
         if (isCracked) {
           ctx.save();
-          ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.clip();
-          ctx.strokeStyle = 'rgba(28, 14, 4, .78)';
-          ctx.lineWidth = Math.max(1.6, 2.6 * s);
           ctx.beginPath();
-          ctx.moveTo(x + w * 0.24, y);
-          ctx.lineTo(x + w * 0.46, y + h * 0.34);
-          ctx.lineTo(x + w * 0.31, y + h * 0.66);
-          ctx.lineTo(x + w * 0.6, y + h);
-          ctx.stroke();
-          ctx.strokeStyle = 'rgba(255, 236, 200, .35)';
-          ctx.lineWidth = Math.max(1, 1.4 * s);
+          ctx.roundRect(x, wallTop, w, wallH, 4 * s);
+          ctx.clip();
+          ctx.fillStyle = 'rgba(28, 20, 14, .34)';
           ctx.beginPath();
-          ctx.moveTo(x + w * 0.26, y);
-          ctx.lineTo(x + w * 0.48, y + h * 0.34);
+          ctx.ellipse(x + w * .5, wallTop + wallH * .22, w * .3, wallH * .24, .2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(26, 16, 8, .7)';
+          ctx.lineWidth = Math.max(1.4, 2.4 * s);
+          ctx.beginPath();
+          ctx.moveTo(x + w * .38, wallTop);
+          ctx.lineTo(x + w * .5, wallTop + wallH * .3);
+          ctx.lineTo(x + w * .42, wallTop + wallH * .58);
+          ctx.lineTo(x + w * .6, wallBot);
           ctx.stroke();
           ctx.restore();
         }
 
-        // Stencilled crate number on a painted plate.
-        const plateW = Math.min(w * 0.42, 46 * s);
-        const plateH = Math.min(h * 0.3, 34 * s);
-        const plateX = x + w * 0.5 - plateW / 2;
-        const plateY = y + h * 0.42 - plateH / 2;
-        ctx.fillStyle = 'rgba(246, 240, 226, .9)';
-        ctx.beginPath(); ctx.roundRect(plateX, plateY, plateW, plateH, 3 * s); ctx.fill();
-        ctx.strokeStyle = 'rgba(58, 40, 18, .5)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = '#221709';
-        ctx.font = '700 ' + Math.max(13, Math.min(30, Math.floor(w * 0.24))) + 'px "Chakra Petch", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(num), x + w / 2, plateY + plateH * 0.54);
+        if (isHovered) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(250, 204, 21, .85)';
+          ctx.shadowBlur = 18 * s;
+          ctx.strokeStyle = 'rgba(245, 158, 11, .95)';
+          ctx.lineWidth = Math.max(2, 3 * s);
+          ctx.beginPath();
+          ctx.roundRect(x - 1, wallTop - 1, w + 2, wallH + 2, 4 * s);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x - ov, wallTop);
+          ctx.lineTo(x + w * .5, ridgeY);
+          ctx.lineTo(x + w + ov, wallTop);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
+      function drawHouseRubble(x, y, w, h, dx, dy, groundY, s, num) {
+        const baseY = groundY;
+        const stumpH = h * .2;
+        // Broken wall stumps.
+        ctx.fillStyle = '#b9a98d';
+        ctx.beginPath();
+        ctx.moveTo(x + w * .04, baseY);
+        ctx.lineTo(x + w * .04, baseY - stumpH * .9);
+        ctx.lineTo(x + w * .2, baseY - stumpH * 1.28);
+        ctx.lineTo(x + w * .34, baseY - stumpH * .7);
+        ctx.lineTo(x + w * .3, baseY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#a3927a';
+        ctx.beginPath();
+        ctx.moveTo(x + w * .62, baseY);
+        ctx.lineTo(x + w * .68, baseY - stumpH * .62);
+        ctx.lineTo(x + w * .94, baseY - stumpH * .98);
+        ctx.lineTo(x + w * .96, baseY);
+        ctx.closePath();
+        ctx.fill();
+        // Charred beams.
+        ctx.strokeStyle = '#3b2b1c';
+        ctx.lineWidth = Math.max(3, 5 * s);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x + w * .2, baseY - stumpH * .7);
+        ctx.lineTo(x + w * .58, baseY - stumpH * .2);
+        ctx.moveTo(x + w * .8, baseY - stumpH * .55);
+        ctx.lineTo(x + w * .46, baseY - stumpH * .1);
+        ctx.stroke();
+        // Rubble pile.
+        ctx.fillStyle = '#8f8069';
+        for (let i = 0; i < 9; i++) {
+          const n1 = seededNoise(num * 7 + i);
+          const n2 = seededNoise(num * 17 + i * 3);
+          const rx = x + w * (.12 + n1 * .76);
+          const ry = baseY - n2 * stumpH * .32;
+          ctx.beginPath();
+          ctx.roundRect(rx, ry, (4 + n1 * 7) * s, (3 + n2 * 5) * s, 1.5);
+
+          ctx.fill();
+        }
+        // Smoke still curling off the wreck.
+        const tNow = performance.now() / 1000;
+        for (let i = 0; i < 4; i++) {
+          const u = ((tNow * .22 + i / 4) % 1);
+          ctx.fillStyle = `rgba(92, 86, 80, ${(1 - u) * .22})`;
+          ctx.beginPath();
+          ctx.arc(x + w * (.3 + .4 * ((i * 37 % 10) / 10)) + Math.sin(tNow + i) * 6, baseY - stumpH - u * h * .5, (3 + u * 12) * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(20, 14, 8, .3)';
+        ctx.beginPath();
+        ctx.ellipse(x + w * .5, baseY + 2, w * .5, Math.max(4, h * .045), 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       function renderFrame(now) {
         const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
         lastTime = now;
@@ -1562,13 +2259,13 @@
           state.coverShiftProgress = state.targetCoverShift;
         }
 
-        // Reaction clock for the hider, plus the gunman's aim/recoil/breathing.
+        // Reaction clock for the hider, plus the bomber's aim and wind-up.
         state.moodT += dt;
         computeBlockHitboxes();
-        updateGunman(dt);
+        updateBomber(dt);
         ctx.clearRect(0, 0, stageW, stageH);
 
-        drawTerraceBackground(dt);
+        drawBackdrop(dt);
 
         // The hider drops behind his crate and is then genuinely gone: he is only
         // painted during the tuck-in, shrinking and fading as he sinks out of
@@ -1591,12 +2288,17 @@
             );
             ctx.restore();
           }
-          drawCoverCrate(box);
+          drawHouse(box);
         });
 
         // Exposed hider (caught, survived, dancing) then the shooter in front.
         drawHiderForeground();
-        drawGunman();
+        updateBombs(dt);
+        drawBombs(dt);
+        drawBlasts();
+        drawBlastRings(dt);
+        drawDebris(dt);
+        drawBomber();
 
         // Flying stone slabs
         for (let i = slabs.length - 1; i >= 0; i--) {
@@ -1709,57 +2411,14 @@
           if (p.life <= 0) { smokePuffs.splice(i, 1); continue; }
           ctx.save();
           ctx.globalAlpha = Math.max(0, p.life) * .24;
-          ctx.fillStyle = '#e9eef5';
+          ctx.fillStyle = p.tint || '#e9eef5';
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
 
-        // Bullet in flight: hot white core with a burning tracer streak.
-        for (let i = bullets.length - 1; i >= 0; i--) {
-          const b = bullets[i];
-          b.progress = Math.min(1, b.progress + b.speed * fxDt);
-          b.x = b.startX + (b.targetX - b.startX) * b.progress;
-          b.y = b.startY + (b.targetY - b.startY) * b.progress;
-          b.trail.push({ x: b.x, y: b.y });
-          if (b.trail.length > 14) b.trail.shift();
-
-          const tail = b.trail[0];
-          ctx.save();
-          ctx.lineCap = 'round';
-          // Heat haze the round drags through the air behind it.
-          const haze = ctx.createRadialGradient(b.x, b.y, 1, b.x, b.y, 28);
-          haze.addColorStop(0, 'rgba(255, 236, 186, .5)');
-          haze.addColorStop(.42, 'rgba(255, 176, 72, .16)');
-          haze.addColorStop(1, 'rgba(255, 148, 38, 0)');
-          ctx.fillStyle = haze;
-          ctx.beginPath(); ctx.arc(b.x, b.y, 28, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 214, 120, .16)';
-          ctx.lineWidth = 10;
-          ctx.beginPath(); ctx.moveTo(tail.x, tail.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-          ctx.strokeStyle = 'rgba(255, 232, 170, .62)';
-          ctx.lineWidth = 3.6;
-          ctx.beginPath(); ctx.moveTo(tail.x, tail.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-          ctx.strokeStyle = 'rgba(255, 252, 235, .95)';
-          ctx.lineWidth = 1.3;
-          ctx.beginPath(); ctx.moveTo(tail.x, tail.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-          ctx.fillStyle = 'rgba(255, 196, 92, .5)';
-          ctx.beginPath(); ctx.arc(b.x, b.y, 5.6, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#fffdf4';
-          ctx.beginPath(); ctx.arc(b.x, b.y, 2.7, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-
-          if (b.progress >= 1 && !b.done) {
-            b.done = true;
-            const cb = b.onImpact;
-            bullets.splice(i, 1);
-            cinematicUntil = performance.now() + 240;
-            if (typeof cb === 'function') cb(b.targetX, b.targetY);
-          }
-        }
-
-        // Sparks
+        // Sparks        // Sparks
         for (let i = sparks.length - 1; i >= 0; i--) {
           const sp = sparks[i];
           sp.x += sp.vx * fxDt;
@@ -1803,16 +2462,29 @@
           ctx.restore();
         }
 
+        // Blast light washing over the whole courtyard.
+        if (blastFlash > 0.001) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = `rgba(255, 226, 176, ${Math.min(.5, blastFlash * .42)})`;
+          ctx.fillRect(0, 0, stageW, stageH);
+          ctx.restore();
+          blastFlash = Math.max(0, blastFlash - dt * 2.6);
+        }
+
         const stillAnimating =
           state.phase === 'TUCKING' ||
           state.phase === 'SHOOT' ||
           state.phase === 'ANIMATING' ||
           state.hiderMood !== 'hide' ||
-          GUNMAN.alpha > 0.01 ||
-          GUNMAN.recoil > 0.01 ||
-          GUNMAN.muzzle > 0 ||
+          BOMBER.alpha > 0.01 ||
+          BOMBER.wind > 0.001 ||
           Math.abs(state.targetCoverShift - state.coverShiftProgress) > 0.001 ||
-          bullets.length > 0 ||
+          bombs.length > 0 ||
+          blasts.length > 0 ||
+          blastRings.length > 0 ||
+          debris.length > 0 ||
+          blastFlash > 0.001 ||
           shells.length > 0 ||
           smokePuffs.length > 0 ||
           slabs.length > 0 ||
@@ -1913,8 +2585,9 @@
         audio.playGunCock();
         state.phase = 'SHOOT';
         state.aimBlock = 2;
-        GUNMAN.ready = false;
-        GUNMAN.alpha = Math.max(GUNMAN.alpha, .35);
+        BOMBER.ready = false;
+        BOMBER.alpha = Math.max(BOMBER.alpha, .35);
+        BOMBER.hasBomb = true;
         ensureRenderLoop();
         renderAll();
       }
@@ -1923,7 +2596,11 @@
         if (state.phase !== 'SHOOT' || state.chancesLeft <= 0) return;
 
         if (state.shatteredBlocks.has(blockNum)) {
-          showToast(`Block ${blockNum} broken`, 'miss');
+          showToast(`House ${blockNum} is already rubble`, 'miss');
+          return;
+        }
+        if (state.crackedBlocks.has(blockNum)) {
+          showToast(`House ${blockNum} is already hit`, 'miss');
           return;
         }
 
@@ -1932,36 +2609,33 @@
         state.aimBlock = blockNum;
         computeBlockHitboxes();
 
-        // Snap the rifle onto the chosen block so the round leaves the real muzzle.
+        // Snap the throwing arm onto the chosen house and start the wind-up.
         const aimBox = blockHitboxes[blockNum - 1];
         if (aimBox) {
-          GUNMAN.aimX = aimBox.x + aimBox.w * .5;
-          GUNMAN.aimY = aimBox.y + aimBox.h * .45;
+          BOMBER.aimX = aimBox.x + aimBox.w * .5;
+          BOMBER.aimY = aimBox.y + aimBox.h * .34;
         }
-        updateGunman(1);
-        GUNMAN.recoil = 1;
-        GUNMAN.muzzle = .09;
-        GUNMAN.flashSeed = Math.random() * Math.PI * 2;
-        spawnShell();
-        spawnMuzzleSmoke();
+        BOMBER.ready = true;
+        BOMBER.throwing = true;
+        BOMBER.throwT = 0;
+        BOMBER.hasBomb = true;
+        audio.playGunCock();
+        updateBomber(.016);
+        ensureRenderLoop();
         renderAll();
-
-        audio.playGunshot();
-        setTimeout(() => audio.playGunCycle(), 150);
-        setTimeout(() => audio.playShellDrop(), 330);
 
         const isHit = blockNum === state.hiddenBlock;
 
-        fireTracerToBlock(blockNum, (ix, iy) => {
+        throwBombToBlock(blockNum, (ix, iy) => {
           const box = blockHitboxes[blockNum - 1];
 
           if (isHit) {
-            audio.playStoneShatter();
             state.shatteredBlocks.add(blockNum);
-            state.foundCharacter = true; // Character is found and shown!
+            state.foundCharacter = true; // he is blasted out of cover
             state.hiderMood = 'shock';
             state.moodT = 0;
             if (box) spawnStoneBreakage(box, true);
+            BOMBER.hasBomb = false;
             const willWinMatch = state.players[state.shooterId].score + 1 >= TARGET_WINS;
             triggerWinCelebration(ix, iy, willWinMatch);
             ensureRenderLoop();
@@ -1972,15 +2646,13 @@
                 state.hiderMood = 'cry';
                 state.moodT = 0;
                 audio.playCry();
-                showToast(`CAUGHT! He was behind block ${blockNum}`, 'miss');
+                showToast(`CAUGHT! He was hiding behind house ${blockNum}`, 'miss');
               }
             }, 520);
             setTimeout(() => {
               concludeRound({ winnerId: state.shooterId });
             }, 2750);
           } else {
-            audio.playStoneCrack();
-            setTimeout(() => audio.playRicochet(), 110);
             state.crackedBlocks.add(blockNum);
             if (box) spawnStoneBreakage(box, false);
             ensureRenderLoop();
@@ -1988,13 +2660,17 @@
             if (state.chancesLeft > 0) {
               setTimeout(() => {
                 if (state.phase === 'ANIMATING') {
-                  showToast(`Miss — block ${blockNum} is empty`, 'miss');
+                  showToast(`Miss — house ${blockNum} is empty`, 'miss');
                   state.phase = 'SHOOT';
+                  BOMBER.hasBomb = true;
+                  BOMBER.throwing = false;
+                  BOMBER.wind = 0;
+                  ensureRenderLoop();
                   renderAll();
                 }
               }, 900);
             } else {
-              // Out of shots: he survived the turn. He steps out, then dances.
+              // Out of bombs: he survived the turn. He steps out, then dances.
               state.hiderMood = 'peek';
               state.moodT = 0;
               ensureRenderLoop();
@@ -2015,7 +2691,6 @@
           }
         });
       }
-
       function concludeRound(outcome) {
         state.lastRoundOutcome = outcome;
         state.players[outcome.winnerId].score += 1;
@@ -2050,9 +2725,11 @@
         state.hiderMood = 'hide';
         state.moodT = 0;
         state.aimBlock = null;
-        GUNMAN.ready = false;
-        GUNMAN.recoil = 0;
-        GUNMAN.muzzle = 0;
+        BOMBER.ready = false;
+        BOMBER.throwing = false;
+        BOMBER.wind = 0;
+        BOMBER.throwT = 0;
+        BOMBER.hasBomb = true;
         shells = [];
         smokePuffs = [];
         state.targetCoverShift = 0;
@@ -2116,7 +2793,7 @@
         if (state.phase === 'HIDE' || state.phase === 'TUCKING') {
           els.phasePill.textContent = 'HIDE';
           els.phasePill.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold tracking-wider uppercase bg-sky-600 text-white shrink-0';
-          els.statusPrompt.textContent = `${hiderName}: Pick Block 1–4`;
+          els.statusPrompt.textContent = `${hiderName}: Pick a House 1–4`;
         } else if (state.phase === 'HANDOFF') {
           els.phasePill.textContent = 'COVER';
           els.phasePill.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold tracking-wider uppercase bg-amber-600 text-white shrink-0';
@@ -2124,7 +2801,7 @@
         } else if (state.phase === 'SHOOT') {
           els.phasePill.textContent = 'SHOOT';
           els.phasePill.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold tracking-wider uppercase bg-orange-600 text-white shrink-0';
-          els.statusPrompt.textContent = `${shooterName}: Fire 1–4`;
+          els.statusPrompt.textContent = `${shooterName}: Throw at 1–4`;
         } else if (state.phase === 'ANIMATING') {
           els.phasePill.textContent = 'FIRE';
           els.phasePill.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold tracking-wider uppercase bg-rose-600 text-white shrink-0';
@@ -2175,6 +2852,32 @@
       // =========================================================================
       // 8. EVENTS
       // =========================================================================
+      function toggleFullscreen() {
+        const el = document.documentElement;
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        try {
+          if (!isFs) {
+            const req = el.requestFullscreen || el.webkitRequestFullscreen;
+            if (!req) return;
+            const p = req.call(el, { navigationUI: 'hide' });
+            if (p && p.catch) p.catch(() => {});
+          } else {
+            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+            if (exit) exit.call(document);
+          }
+        } catch (e) { /* full screen unavailable */ }
+      }
+
+      function syncSoundButton() {
+        const on = !audio.muted;
+        const iOn = document.getElementById('icon-sound-on');
+        const iOff = document.getElementById('icon-sound-off');
+        if (iOn) iOn.classList.toggle('hidden', !on);
+        if (iOff) iOff.classList.toggle('hidden', on);
+        const btn = document.getElementById('btn-sound');
+        if (btn) btn.setAttribute('aria-pressed', String(on));
+      }
+
       function bindEvents() {
         els.p1NameInput.addEventListener('input', (e) => {
           state.players[1].name = e.target.value;
@@ -2247,6 +2950,15 @@
         els.btnRematch.addEventListener('click', resetMatch);
         els.btnResetMatch.addEventListener('click', resetMatch);
 
+        const fsBtn = document.getElementById('btn-fullscreen');
+        if (fsBtn) fsBtn.addEventListener('click', () => { audio.unlock(); toggleFullscreen(); });
+        const sndBtn = document.getElementById('btn-sound');
+        if (sndBtn) sndBtn.addEventListener('click', () => { audio.unlock(); audio.toggleMute(); syncSoundButton(); });
+        syncSoundButton();
+        ['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
+          window.addEventListener(evt, () => audio.unlock(), { once: true, passive: true });
+        });
+
 
         window.addEventListener('keydown', (e) => {
           const tag = document.activeElement?.tagName;
@@ -2255,9 +2967,12 @@
           if (state.phase === 'SHOOT' && ['1', '2', '3', '4'].includes(e.key)) {
             onFireBlock(Number(e.key));
           }
+          if (e.key === 'f' || e.key === 'F') toggleFullscreen();
         });
 
         window.addEventListener('resize', resizeCanvas);
+        document.addEventListener('fullscreenchange', () => setTimeout(resizeCanvas, 60));
+        document.addEventListener('webkitfullscreenchange', () => setTimeout(resizeCanvas, 60));
       }
 
       window.addEventListener('DOMContentLoaded', () => {
