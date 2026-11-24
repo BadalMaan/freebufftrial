@@ -612,7 +612,7 @@
           targetX,
           targetY,
           progress: 0,
-          speed: 6.4, // fast, supersonic travel (~0.16s across the courtyard)
+          speed: 7.4, // a touch quicker than before: ~0.13s across the courtyard
           trail: [{ x: startX, y: startY }],
           done: false,
           onImpact
@@ -1341,36 +1341,49 @@
         return x - Math.floor(x);
       }
 
-      function drawTallStoneBlock(box) {
+      // -----------------------------------------------------------------------
+      // COVER: a bolted timber supply crate. Wood and iron read as a real object
+      // standing on the terrace, where a plain stone slab just read as a grey box.
+      // -----------------------------------------------------------------------
+      function drawCoverCrate(box) {
         const { num, x, y, w, h, depth, groundY } = box;
         const s = box.scale || 1;
         const isShattered = state.shatteredBlocks.has(num);
         const isCracked = state.crackedBlocks.has(num);
         const isHovered = state.phase === 'HIDE' && state.hoveredBlock === num && !isShattered;
+        const dx = depth * 0.72;
+        const dy = depth * 0.58;
+        const radius = Math.max(3, 5 * s);
 
-        // Ambient occlusion & ground contact shadow
-        ctx.fillStyle = isShattered ? 'rgba(78, 54, 20, 0.14)' : 'rgba(78, 54, 20, 0.36)';
+        // Contact shadow on the flags.
+        ctx.fillStyle = isShattered ? 'rgba(46, 28, 10, .16)' : 'rgba(46, 28, 10, .34)';
+        ctx.beginPath();
+        ctx.ellipse(x + w * 0.5 + dx * 0.35, groundY, w * 0.52, Math.max(4, h * 0.055), 0, 0, Math.PI * 2);
+        ctx.fill();
 
         if (isShattered) {
-          // Low shattered base rubble
-          const stumpH = h * 0.18;
+          // Splintered staves left behind after the cover is destroyed.
+          const stumpH = h * 0.16;
           const stumpY = groundY - stumpH;
-          ctx.fillStyle = '#a89f8d';
+          ctx.fillStyle = '#6b4a2a';
           ctx.beginPath();
-          ctx.roundRect(x + w * 0.12, stumpY, w * 0.76, stumpH, 4 * s);
-          ctx.fill();
-          ctx.lineWidth = Math.max(1.2, 2 * s);
-          ctx.strokeStyle = '#57534e';
-          ctx.stroke();
-
+          ctx.moveTo(x + w * 0.08, stumpY + stumpH);
+          ctx.lineTo(x + w * 0.22, stumpY + stumpH * 0.1);
+          ctx.lineTo(x + w * 0.42, stumpY + stumpH);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#7d5731';
+          ctx.beginPath();
+          ctx.moveTo(x + w * 0.46, stumpY + stumpH);
+          ctx.lineTo(x + w * 0.62, stumpY + stumpH * 0.42);
+          ctx.lineTo(x + w * 0.9, stumpY + stumpH);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(24, 16, 8, .35)';
+          ctx.fillRect(x + w * 0.08, groundY - 3 * s, w * 0.84, 3 * s);
           return;
         }
 
-        const dx = depth * 0.72;
-        const dy = depth * 0.58;
-
-        // 2.5D Top Bevel Face (sun-lit limestone/granite)
-        ctx.fillStyle = isHovered ? '#fcfaf5' : '#f1eadc';
+        // ---- Lit top face (plank ends visible, iron strap across) ----
+        ctx.fillStyle = isHovered ? '#d9a268' : '#bd8148';
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.lineTo(x + dx, y - dy);
@@ -1378,14 +1391,32 @@
         ctx.lineTo(x + w, y);
         ctx.closePath();
         ctx.fill();
-        ctx.lineWidth = Math.max(1.2, 1.8 * s);
-        ctx.strokeStyle = '#57534e';
+        ctx.save();
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(74, 44, 18, .38)';
+        ctx.lineWidth = Math.max(1, 1.6 * s);
+        for (let i = 1; i < 4; i++) {
+          const f = i / 4;
+          ctx.beginPath();
+          ctx.moveTo(x + w * f, y);
+          ctx.lineTo(x + w * f + dx, y - dy);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(255, 233, 194, .38)';
+        ctx.lineWidth = Math.max(1, 1.8 * s);
+        ctx.beginPath(); ctx.moveTo(x + 1.5, y - 1.5); ctx.lineTo(x + w + dx - 1.5, y - dy - 1.5); ctx.stroke();
+        ctx.restore();
+        ctx.strokeStyle = '#3d2a16';
+        ctx.lineWidth = Math.max(1.2, 1.7 * s);
+        ctx.beginPath();
+        ctx.moveTo(x, y); ctx.lineTo(x + dx, y - dy); ctx.lineTo(x + w + dx, y - dy);
+        ctx.lineTo(x + w, y); ctx.closePath();
         ctx.stroke();
 
-        // 2.5D Right Side Face (shaded architectural granite/limestone)
+        // ---- Shadowed right face ----
         const sideGrad = ctx.createLinearGradient(x + w, y, x + w + dx, y + h);
-        sideGrad.addColorStop(0, '#a89e8a');
-        sideGrad.addColorStop(1, '#857b68');
+        sideGrad.addColorStop(0, '#8a5b2e');
+        sideGrad.addColorStop(1, '#63401f');
         ctx.fillStyle = sideGrad;
         ctx.beginPath();
         ctx.moveTo(x + w, y);
@@ -1396,93 +1427,126 @@
         ctx.fill();
         ctx.stroke();
 
-        // Front Tall Heavy Stone Face
-        const radius = Math.max(4, 8 * s);
+        // ---- Front face ----
         const faceGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-        faceGrad.addColorStop(0, isHovered ? '#f7f1e5' : '#e6dcc6');
-        faceGrad.addColorStop(0.55, '#c9bca2');
-        faceGrad.addColorStop(1, '#9e9076');
+        faceGrad.addColorStop(0, isHovered ? '#d08d4e' : '#b9793f');
+        faceGrad.addColorStop(0.55, '#a3682f');
+        faceGrad.addColorStop(1, '#7f4e22');
         ctx.fillStyle = faceGrad;
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, radius);
         ctx.fill();
 
-        // Clip inside front face for granite/limestone mineral grain & mortar seams
         ctx.save();
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, radius);
         ctx.clip();
 
-        // Subtle top-left bevel highlight & bottom-right ambient occlusion
-        ctx.strokeStyle = 'rgba(255, 253, 247, 0.55)';
-        ctx.lineWidth = Math.max(1.5, 2.5 * s);
-        ctx.beginPath();
-        ctx.moveTo(x + 2, y + h - 2);
-        ctx.lineTo(x + 2, y + 2);
-        ctx.lineTo(x + w - 2, y + 2);
-        ctx.stroke();
-
-        // Granite speckles & mineral grain
-        const speckCount = 26;
-        for (let i = 0; i < speckCount; i++) {
-          const n1 = seededNoise(num * 100 + i * 3 + 1);
-          const n2 = seededNoise(num * 100 + i * 3 + 2);
-          const n3 = seededNoise(num * 100 + i * 3 + 3);
-          const sx = x + n1 * w;
-          const sy = y + n2 * h;
-          const sr = Math.max(1, (1.2 + n3 * 2.2) * s);
-          ctx.fillStyle = n3 > 0.5 ? 'rgba(68, 64, 60, 0.22)' : 'rgba(255, 252, 245, 0.24)';
+        // Horizontal plank seams plus the grain that says "timber".
+        const planks = 5;
+        for (let i = 1; i < planks; i++) {
+          const py = y + (h * i) / planks;
+          ctx.strokeStyle = 'rgba(48, 28, 10, .42)';
+          ctx.lineWidth = Math.max(1, 1.5 * s);
+          ctx.beginPath(); ctx.moveTo(x, py); ctx.lineTo(x + w, py); ctx.stroke();
+          ctx.strokeStyle = 'rgba(255, 214, 160, .16)';
+          ctx.lineWidth = Math.max(1, 1.2 * s);
+          ctx.beginPath(); ctx.moveTo(x, py + 1.4 * s); ctx.lineTo(x + w, py + 1.4 * s); ctx.stroke();
+        }
+        for (let i = 0; i < 18; i++) {
+          const n1 = seededNoise(num * 41 + i * 3 + 1);
+          const n2 = seededNoise(num * 41 + i * 3 + 2);
+          const gx = x + n1 * w;
+          const gy = y + n2 * h;
+          ctx.strokeStyle = n2 > 0.5 ? 'rgba(66, 38, 14, .16)' : 'rgba(255, 220, 170, .12)';
+          ctx.lineWidth = Math.max(0.8, 1.1 * s);
           ctx.beginPath();
-          ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(gx, gy);
+          ctx.quadraticCurveTo(gx + w * .1, gy + h * .03, gx + w * .2, gy - h * .01);
+          ctx.stroke();
         }
 
-        // Architectural stone courses / mortar joints
-        ctx.strokeStyle = 'rgba(56, 51, 46, 0.34)';
-        ctx.lineWidth = Math.max(1, 1.5 * s);
-        [0.25, 0.5, 0.75].forEach((frac, idx) => {
-          const lineY = y + h * frac;
-          ctx.beginPath();
-          ctx.moveTo(x, lineY);
-          ctx.lineTo(x + w, lineY);
-          ctx.stroke();
-
-          // Staggered vertical block joint
-          const jointX = x + w * (idx % 2 === 0 ? 0.34 : 0.66);
-          const prevY = y + h * (frac - 0.25);
-          ctx.beginPath();
-          ctx.moveTo(jointX, prevY);
-          ctx.lineTo(jointX, lineY);
-          ctx.stroke();
+        // Iron straps top and bottom with bolt heads.
+        ;[0.13, 0.87].forEach((frac) => {
+          const by = y + h * frac;
+          const bh = Math.max(4, h * 0.075);
+          const strap = ctx.createLinearGradient(0, by - bh / 2, 0, by + bh / 2);
+          strap.addColorStop(0, '#6c7681');
+          strap.addColorStop(0.45, '#454e57');
+          strap.addColorStop(1, '#2b3138');
+          ctx.fillStyle = strap;
+          ctx.fillRect(x, by - bh / 2, w, bh);
+          ctx.strokeStyle = 'rgba(16, 20, 24, .55)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, by - bh / 2, w, bh);
+          ctx.fillStyle = '#9aa6b2';
+          const bolts = Math.max(2, Math.round(w / (34 * s)));
+          for (let i = 0; i < bolts; i++) {
+            const bx = x + (w * (i + 0.5)) / bolts;
+            ctx.beginPath(); ctx.arc(bx, by, Math.max(1.4, 2.1 * s), 0, Math.PI * 2); ctx.fill();
+          }
         });
 
+        // Corner brackets gripping the front face.
+        const bracket = Math.max(6, 13 * s);
+        ctx.strokeStyle = '#3a434c';
+        ctx.lineWidth = Math.max(2, 3 * s);
+        ctx.beginPath();
+        ctx.moveTo(x + 1, y + bracket); ctx.lineTo(x + 1, y + 1); ctx.lineTo(x + bracket, y + 1);
+        ctx.moveTo(x + w - 1, y + h - bracket); ctx.lineTo(x + w - 1, y + h - 1); ctx.lineTo(x + w - bracket, y + h - 1);
+        ctx.stroke();
+
+        // Warm lamp light falling from the top-left.
+        const light = ctx.createLinearGradient(x, y, x + w * 0.8, y + h);
+        light.addColorStop(0, 'rgba(255, 226, 178, .22)');
+        light.addColorStop(0.6, 'rgba(255, 226, 178, 0)');
+        ctx.fillStyle = light;
+        ctx.fillRect(x, y, w, h);
         ctx.restore();
 
-        // Outer border stroke
-        ctx.lineWidth = isHovered ? 3 : Math.max(1.4, 2.2 * s);
-        ctx.strokeStyle = isHovered ? '#d97706' : isCracked ? '#e11d48' : '#44403c';
+        // Outline: amber when aimable, red once cracked.
+        ctx.lineWidth = isHovered ? 3.2 : Math.max(1.4, 2.2 * s);
+        ctx.strokeStyle = isHovered ? '#f59e0b' : isCracked ? '#e11d48' : '#3f2a13';
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, radius);
         ctx.stroke();
 
-        // Fracture cracks if hit once
+        // Split planks after the first hit.
         if (isCracked) {
-          ctx.strokeStyle = '#292524';
-          ctx.lineWidth = Math.max(1.5, 2.5 * s);
+          ctx.save();
+          ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.clip();
+          ctx.strokeStyle = 'rgba(28, 14, 4, .78)';
+          ctx.lineWidth = Math.max(1.6, 2.6 * s);
           ctx.beginPath();
-          ctx.moveTo(x + w * 0.25, y + 8 * s);
-          ctx.lineTo(x + w * 0.45, y + h * 0.32);
-          ctx.lineTo(x + w * 0.3, y + h * 0.62);
-          ctx.lineTo(x + w * 0.58, y + h - 8 * s);
+          ctx.moveTo(x + w * 0.24, y);
+          ctx.lineTo(x + w * 0.46, y + h * 0.34);
+          ctx.lineTo(x + w * 0.31, y + h * 0.66);
+          ctx.lineTo(x + w * 0.6, y + h);
           ctx.stroke();
+          ctx.strokeStyle = 'rgba(255, 236, 200, .35)';
+          ctx.lineWidth = Math.max(1, 1.4 * s);
+          ctx.beginPath();
+          ctx.moveTo(x + w * 0.26, y);
+          ctx.lineTo(x + w * 0.48, y + h * 0.34);
+          ctx.stroke();
+          ctx.restore();
         }
 
-        // Clean Block Number
-        ctx.fillStyle = '#1c1917';
-        ctx.font = `700 ${Math.max(13, Math.min(36, Math.floor(w * 0.26)))}px "Chakra Petch", sans-serif`;
+        // Stencilled crate number on a painted plate.
+        const plateW = Math.min(w * 0.42, 46 * s);
+        const plateH = Math.min(h * 0.3, 34 * s);
+        const plateX = x + w * 0.5 - plateW / 2;
+        const plateY = y + h * 0.42 - plateH / 2;
+        ctx.fillStyle = 'rgba(246, 240, 226, .9)';
+        ctx.beginPath(); ctx.roundRect(plateX, plateY, plateW, plateH, 3 * s); ctx.fill();
+        ctx.strokeStyle = 'rgba(58, 40, 18, .5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = '#221709';
+        ctx.font = '700 ' + Math.max(13, Math.min(30, Math.floor(w * 0.24))) + 'px "Chakra Petch", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(String(num), x + w / 2, y + h * 0.52);
+        ctx.fillText(String(num), x + w / 2, plateY + plateH * 0.54);
       }
 
       function renderFrame(now) {
@@ -1522,7 +1586,7 @@
               state.phase === 'TUCKING'
             );
           }
-          drawTallStoneBlock(box);
+          drawCoverCrate(box);
         });
 
         // Exposed hider (caught, survived, dancing) then the shooter in front.
@@ -1654,11 +1718,18 @@
           b.x = b.startX + (b.targetX - b.startX) * b.progress;
           b.y = b.startY + (b.targetY - b.startY) * b.progress;
           b.trail.push({ x: b.x, y: b.y });
-          if (b.trail.length > 8) b.trail.shift();
+          if (b.trail.length > 14) b.trail.shift();
 
           const tail = b.trail[0];
           ctx.save();
           ctx.lineCap = 'round';
+          // Heat haze the round drags through the air behind it.
+          const haze = ctx.createRadialGradient(b.x, b.y, 1, b.x, b.y, 28);
+          haze.addColorStop(0, 'rgba(255, 236, 186, .5)');
+          haze.addColorStop(.42, 'rgba(255, 176, 72, .16)');
+          haze.addColorStop(1, 'rgba(255, 148, 38, 0)');
+          ctx.fillStyle = haze;
+          ctx.beginPath(); ctx.arc(b.x, b.y, 28, 0, Math.PI * 2); ctx.fill();
           ctx.strokeStyle = 'rgba(255, 214, 120, .16)';
           ctx.lineWidth = 10;
           ctx.beginPath(); ctx.moveTo(tail.x, tail.y); ctx.lineTo(b.x, b.y); ctx.stroke();

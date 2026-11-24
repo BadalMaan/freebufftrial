@@ -3,8 +3,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 
-const root = path.resolve('public');
-// Render (and most PaaS hosts) inject PORT and require binding to 0.0.0.0.
+// The Vite build (dist/) is the full platform: dashboard plus both canvas games,
+// because everything in public/ is copied into it. Fall back to public/ when no
+// build exists so `npm run serve:public` still works on a bare checkout.
+const distRoot = path.resolve('dist');
+const publicRoot = path.resolve('public');
+const root = fs.existsSync(path.join(distRoot, 'index.html')) ? distRoot : publicRoot;
+const home = fs.existsSync(path.join(root, 'index.html')) ? 'index.html' : 'arena.html';
+
 const port = Number(process.env.PORT) || 8126;
 const host = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 
@@ -16,20 +22,19 @@ const types = {
   '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.woff2': 'font/woff2'
 };
 
-// Text must revalidate so new builds are picked up; heavy media can be cached.
+// Hashed build assets are immutable; pages must revalidate.
+const assetsDir = path.sep + 'assets' + path.sep;
 const revalidate = new Set(['.html', '.js', '.css', '.json']);
 const compressible = new Set(['.html', '.js', '.css', '.json', '.svg']);
 
-http.createServer((req, res) => {
-  const url = decodeURIComponent((req.url || '/').split('?')[0]);
-  let file = path.join(root, url === '/' ? 'arena.html' : url);
-  if (!file.startsWith(root)) { res.writeHead(403).end(); return; }
+function send(req, res, file) {
   fs.stat(file, (err, st) => {
-    if (err || st.isDirectory()) { res.writeHead(404).end('not found'); return; }
+    if (err || st.isDirectory()) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('not found'); return; }
     const ext = path.extname(file).toLowerCase();
     const headers = {
       'Content-Type': types[ext] || 'application/octet-stream',
-      'Cache-Control': revalidate.has(ext) ? 'no-cache' : 'public, max-age=86400',
+      'Cache-Control': file.includes(assetsDir) ? 'public, max-age=31536000, immutable'
+        : revalidate.has(ext) ? 'no-cache' : 'public, max-age=86400',
       'X-Content-Type-Options': 'nosniff'
     };
     const wantsGzip = compressible.has(ext) && st.size > 1024 &&
@@ -45,4 +50,17 @@ http.createServer((req, res) => {
     else stream.pipe(res);
     stream.on('error', () => res.destroy());
   });
-}).listen(port, host, () => console.log(`serving public/ on http://${host}:${port}`));
+}
+
+http.createServer((req, res) => {
+  const url = decodeURIComponent((req.url || '/').split('?')[0]);
+  const file = path.join(root, url === '/' ? home : url);
+  if (!file.startsWith(root)) { res.writeHead(403).end(); return; }
+  fs.stat(file, (err, st) => {
+    if (!err && st.isFile()) { send(req, res, file); return; }
+    if (!err && st.isDirectory()) { send(req, res, path.join(file, 'index.html')); return; }
+    // Single-page app: routes without an extension fall back to the shell.
+    if (path.extname(url) === '' && root === distRoot) { send(req, res, path.join(root, 'index.html')); return; }
+    res.writeHead(404, { 'Content-Type': 'text/plain' }).end('not found');
+  });
+}).listen(port, host, () => console.log(`serving ${path.basename(root)}/ on http://${host}:${port}`));

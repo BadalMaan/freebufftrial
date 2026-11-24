@@ -707,10 +707,10 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       const holder = canvas.parentElement;
       if (!holder) return;
       let pr;
-      // Two extra WebGL contexts on the select screen: no MSAA and a small buffer,
-      // they are portraits, not gameplay.
-      try { pr = new THREE.WebGLRenderer({ alpha: true, antialias: false, stencil: false }); } catch (e) { return; }
-      pr.setPixelRatio(Math.min(window.devicePixelRatio || 1, 0.7));
+      // Portrait canvases: native resolution with MSAA so the champion cards are
+      // as crisp as the arena layer.
+      try { pr = new THREE.WebGLRenderer({ alpha: true, antialias: true, stencil: false }); } catch (e) { return; }
+      pr.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       pr.outputColorSpace = THREE.SRGBColorSpace;
       pr.toneMapping = THREE.ACESFilmicToneMapping;
       pr.toneMappingExposure = 1.08;
@@ -801,11 +801,13 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   // fill rate is the whole frame budget. One pixel-ratio step changes the number of
   // shaded pixels quadratically. The scaler steps down at once on a slow window and
   // creeps back up only after several fast ones, so it can never flap.
-  const SCALE_STEPS = [0.5, 0.6, 0.7, 0.85, 1.0];
+  // Native panel sharpness upward: the champions are the whole point of the
+  // screen, so tier 0 renders at the full device pixel ratio.
+  const SCALE_STEPS = [0.75, 1.0, 1.25, 1.5, 2.0];
   const DPR_BASE = window.devicePixelRatio || 1;
   let qualityTier = 0;
   let pageCap = 1.0;      // set by the page's own 2D quality tier
-  let scaleStep = 2;
+  let scaleStep = SCALE_STEPS.length - 1;
   const currentCap = () => Math.min(pageCap, SCALE_STEPS[scaleStep]);
   function applyRenderScale() {
     renderer.setPixelRatio(Math.min(DPR_BASE, currentCap()));
@@ -813,7 +815,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   }
   window.gshSetQuality = (tier) => {
     qualityTier = Math.max(0, Math.min(2, Number(tier) || 0));
-    pageCap = qualityTier === 0 ? 1 : qualityTier === 1 ? 0.85 : 0.7;
+    pageCap = qualityTier === 0 ? 2 : qualityTier === 1 ? 1.5 : 1;
     applyRenderScale();
   };
   refreshAll().catch((e) => { console.error('Initial 3D load failed', e); window.gsh3dReady = false; window.gsh3dAnchors = null; });

@@ -3,7 +3,7 @@ services:
     name: arenaglobalgames
     runtime: node
     plan: free
-    buildCommand: echo "no build step needed"
+    buildCommand: npm ci --no-audit --no-fund && npm run build
     startCommand: node scripts/serve-public.mjs
     healthCheckPath: /arena.html
     envVars:
