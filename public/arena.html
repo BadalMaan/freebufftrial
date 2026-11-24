@@ -1,0 +1,3140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Super Hero — Final Power Clash Arena</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@500;600;700;800;900&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .font-comic {
+      font-family: 'Bangers', Impact, cursive;
+      letter-spacing: 0.05em;
+    }
+
+    .font-display {
+      font-family: 'Orbitron', 'Inter', sans-serif;
+    }
+
+    /* Halftone comic accent for poster & headers */
+    .comic-halftone {
+      background-image: radial-gradient(rgba(15, 23, 42, 0.14) 1px, transparent 1px);
+      background-size: 8px 8px;
+    }
+
+    /* Power slot buttons (1 - 5) */
+    .power-slot-btn {
+      transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+    }
+
+    .power-slot-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px -6px rgba(15, 23, 42, 0.25);
+    }
+
+    .power-slot-btn:active:not(:disabled) {
+      transform: translateY(0px) scale(0.98);
+    }
+
+    .power-slot-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.42); }
+      50% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+    }
+
+    .attack-ready-pulse {
+      animation: pulseGlow 1.6s infinite;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+</style>
+
+<style id="light-arena-v4">
+  :root { color-scheme: light; }
+  body { background:#edf6ff !important; color:#163653 !important; }
+  #posterScreen { background:linear-gradient(135deg,#eaf6ff 0%,#ffffff 48%,#e9f2ff 100%) !important; }
+  #selectScreen, #arenaScreen { background:linear-gradient(145deg,#f8fcff,#eaf3ff 58%,#fff8f3) !important; }
+  #selectScreen header, #arenaScreen header, #arenaScreen footer {
+    border:1px solid #c8dcef !important; border-radius:20px !important;
+    box-shadow:0 12px 34px rgba(35,83,125,.10), inset 0 1px 0 #fff !important;
+  }
+  #arenaScreen main {
+    border:2px solid #a8d5f4 !important;
+    box-shadow:0 18px 45px rgba(45,105,153,.16), inset 0 1px 0 rgba(255,255,255,.9) !important;
+    background:#eaf6ff !important;
+  }
+  #selectScreen main > div:first-child {
+    background:linear-gradient(160deg,#fafdff,#e9f6ff) !important;
+    border-color:#72c7ff !important;
+    box-shadow:0 14px 35px rgba(35,130,200,.10) !important;
+  }
+  #selectScreen main > div:last-child {
+    background:linear-gradient(160deg,#fffdfb,#fff0eb) !important;
+    border-color:#ff9c83 !important;
+    box-shadow:0 14px 35px rgba(220,100,70,.10) !important;
+  }
+  button { transition:transform .18s ease, box-shadow .18s ease, filter .18s ease !important; }
+  button:not(:disabled):hover { transform:translateY(-2px); filter:saturate(1.12); }
+  #attackBtn:not(:disabled) {
+    min-width:142px; border:1px solid #1789d5 !important;
+    background:linear-gradient(135deg,#168fdf,#1766c8) !important;
+    box-shadow:0 8px 24px rgba(24,119,204,.30), inset 0 1px 0 rgba(255,255,255,.35) !important;
+    letter-spacing:.12em;
+  }
+  #attackBtn:disabled { opacity:.65; }
+  .power-slot-btn {
+    min-height:48px !important; border-radius:13px !important;
+    border:1px solid #c5d8e9 !important; background:linear-gradient(180deg,#fff,#f1f7fd) !important;
+    color:#163653 !important; box-shadow:0 3px 9px rgba(33,78,115,.06) !important;
+  }
+  .power-slot-btn:disabled { opacity:.78 !important; }
+  .power-slot-btn.border-blue-600 { background:linear-gradient(180deg,#e7f5ff,#cdeaff) !important; border:2px solid #1595e8 !important; }
+  #p2SlotsContainer .power-slot-btn.border-orange-600 { background:linear-gradient(180deg,#fff0e9,#ffd9ca) !important; border:2px solid #f47752 !important; }
+  input { box-shadow:inset 0 1px 3px rgba(30,64,90,.06) !important; }
+  .attack-ready-pulse { animation:readyPulseV4 1.05s infinite !important; }
+  @keyframes readyPulseV4 { 0%,100%{box-shadow:0 0 0 0 rgba(20,139,220,.28),0 8px 24px rgba(24,119,204,.3)} 50%{box-shadow:0 0 0 11px rgba(20,139,220,0),0 10px 28px rgba(24,119,204,.38)} }
+  @media(max-width:760px) {
+    #arenaScreen { padding:6px !important; }
+    #arenaScreen footer { padding:7px !important; }
+    .power-slot-btn { min-height:42px !important; }
+  }
+</style>
+
+
+<style id="blue-mountain-arena-v5">
+  body { background:#dcecff !important; color:#163b5d !important; }
+  #posterScreen { background:linear-gradient(140deg,#d9ecff,#f2f8ff 52%,#c8e0f5) !important; }
+  #selectScreen,#arenaScreen { background:linear-gradient(145deg,#e7f3ff,#d8e9f8 58%,#e4eff9) !important; }
+  #arenaScreen main { border-color:#78bde9 !important; box-shadow:0 18px 48px rgba(24,82,130,.18) !important; }
+  #arenaScreen header,#arenaScreen footer,#selectScreen header {
+    background:rgba(247,251,255,.94) !important; border-color:#b8d3e9 !important;
+    box-shadow:0 10px 28px rgba(25,75,118,.10) !important;
+  }
+  #attackBtn:not(:disabled) { background:linear-gradient(135deg,#168fdf,#1259b8) !important; box-shadow:0 8px 24px rgba(15,93,169,.35) !important; }
+</style>
+
+
+<style id="cinematic-power-clash-upgrade">
+  :root{--arena-glass:rgba(10,25,48,.72)}
+  #arenaScreen{background:radial-gradient(ellipse at 50% 0%,#d7efff 0%,#6d9ec1 55%,#183b5c 100%)!important}
+  #arenaScreen header,#arenaScreen footer{background:rgba(8,24,45,.82)!important;border:1px solid rgba(158,216,255,.38)!important;color:#eff8ff!important;box-shadow:0 14px 42px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.12)!important;backdrop-filter:blur(18px) saturate(1.35)}
+  #arenaScreen header span,#arenaScreen footer span{color:#eaf6ff!important}
+  #arenaScreen main{border:1px solid rgba(187,228,255,.55)!important;box-shadow:0 25px 65px rgba(3,19,38,.38),inset 0 1px rgba(255,255,255,.35)!important;background:#173c5b!important}
+  .power-inventory{position:absolute;z-index:8;top:12px;width:min(39%,440px);padding:8px 10px;border:1px solid rgba(255,255,255,.34);border-radius:15px;background:rgba(5,18,36,.60);backdrop-filter:blur(13px);box-shadow:0 10px 30px rgba(0,0,0,.20);color:white;pointer-events:none}
+  .power-inventory.left{left:12px}.power-inventory.right{right:12px;text-align:right}
+  .power-inventory strong{display:block;font:900 9px/1.2 Orbitron,sans-serif;letter-spacing:.18em;color:#bfe7ff;margin-bottom:6px}
+  .power-inventory .power-list{display:flex;gap:5px;flex-wrap:wrap}.power-inventory.right .power-list{justify-content:flex-end}
+  .power-inventory{width:min(46%,640px)!important;top:10px!important;padding:7px 10px!important}
+  .power-chip{display:inline-flex;align-items:center;gap:5px;font:800 11px/1.15 Inter,sans-serif;padding:7px 10px;border-radius:999px;border:1px solid var(--pc);color:#fff;background:color-mix(in srgb,var(--pc) 26%,rgba(4,14,30,.8));box-shadow:inset 0 1px rgba(255,255,255,.18),0 3px 9px rgba(0,0,0,.16)}
+  .power-chip .pc-icon{font-size:14px;line-height:1;display:inline-block}
+  .power-inventory .power-list{gap:7px!important}
+  #p1SlotsContainer,#p2SlotsContainer{padding:5px;border-radius:15px;background:rgba(20,45,72,.08);transition:background .35s,box-shadow .35s,transform .35s;}
+  #p1SlotsContainer.power-active,#p2SlotsContainer.power-active{background:color-mix(in srgb,var(--selected-power) 30%,rgba(4,17,35,.94));box-shadow:0 0 0 2px var(--selected-power),0 0 28px color-mix(in srgb,var(--selected-power) 62%,transparent);animation:powerPanelIgnite .55s ease-out both}
+  @keyframes powerPanelIgnite{0%{transform:scale(.94);filter:brightness(2)}65%{transform:scale(1.025)}100%{transform:scale(1);filter:brightness(1)}}
+  .power-slot-btn{min-height:54px!important;border-radius:12px!important;color:#f5fbff!important;background:linear-gradient(155deg,rgba(37,66,96,.95),rgba(8,25,48,.98))!important;border:1px solid rgba(173,218,250,.35)!important;box-shadow:inset 0 1px rgba(255,255,255,.12),0 5px 14px rgba(0,0,0,.16)!important}
+  .power-slot-btn.selected-power{background:linear-gradient(145deg,color-mix(in srgb,var(--selected-power) 85%,white),color-mix(in srgb,var(--selected-power) 65%,#071a30))!important;border:2px solid white!important;box-shadow:0 0 24px var(--selected-power)!important;transform:translateY(-4px) scale(1.035)!important}
+  .power-slot-btn .slot-number{font:900 17px Orbitron,sans-serif;color:#eaf6ff}
+  #attackBtn:not(:disabled){background:linear-gradient(135deg,#39c9ff,#1766d7)!important;box-shadow:0 0 25px rgba(47,177,255,.5),inset 0 1px rgba(255,255,255,.4)!important}
+  .power-slot-btn.rotating{transform-style:preserve-3d;backface-visibility:visible;animation:slotWheel .45s cubic-bezier(.18,.78,.2,1)}
+  #p1SlotsContainer,#p2SlotsContainer{perspective:900px}
+  .power-slot-btn .slot-number{display:inline-grid;place-items:center;min-width:25px;min-height:25px;border-radius:7px;background:rgba(255,255,255,.12);box-shadow:inset 0 1px rgba(255,255,255,.2)}
+  @keyframes slotWheel{0%{transform:perspective(900px) rotateY(-88deg) scale(.82);opacity:.15;filter:brightness(1.8)}38%{transform:perspective(900px) rotateY(12deg) scale(1.08);opacity:1;filter:brightness(1.45)}68%{transform:perspective(900px) rotateY(-8deg) scale(1.03)}100%{transform:perspective(900px) rotateY(0) scale(1);opacity:1;filter:brightness(1)}}
+  @media(max-width:700px){.power-inventory{top:7px;width:46%;padding:6px}.power-chip{font-size:9px;padding:5px 7px}.power-chip .pc-icon{font-size:11px}.power-inventory strong{font-size:7px}.power-slot-btn{min-height:43px!important}}
+</style>
+
+
+<style id="smooth-day-fullscreen-v3">
+  html,body,#posterScreen,#selectScreen,#arenaScreen{width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important}
+  #arenaScreen{position:fixed!important;inset:0!important;padding:7px!important;gap:7px!important;background:linear-gradient(180deg,#b9e3ff 0%,#e9f7ff 43%,#d7edff 70%,#b8d8ed 100%)!important;color:#163653!important}
+  #arenaScreen header,#arenaScreen footer{width:100%!important;max-width:none!important;flex-shrink:0!important;background:rgba(250,253,255,.96)!important;color:#163653!important;border:1px solid #b7d7ed!important;box-shadow:0 3px 10px rgba(31,83,125,.10)!important;backdrop-filter:none!important}
+  #arenaScreen header span,#arenaScreen footer span{color:#163653!important}
+  #arenaScreen main{width:100%!important;max-width:none!important;flex:1 1 auto!important;min-height:0!important;min-width:0!important;background:linear-gradient(180deg,#d7efff,#a8d4f0 60%,#8dbbdb)!important;border:1px solid #8ebfe0!important;box-shadow:0 4px 16px rgba(35,85,125,.12)!important}
+  .power-inventory{background:rgba(245,251,255,.94)!important;color:#173d5d!important;border:1px solid #9fc9e7!important;box-shadow:0 3px 10px rgba(35,85,125,.10)!important;backdrop-filter:none!important}
+  .power-inventory strong{color:#1b5a83!important}.power-chip{color:#173d5d!important;background:color-mix(in srgb,var(--pc) 24%,white)!important;box-shadow:none!important}
+  #p1SlotsContainer,#p2SlotsContainer{background:rgba(214,235,250,.8)!important;perspective:700px!important}
+  .power-slot-btn{background:linear-gradient(160deg,#fff,#e5f3ff)!important;color:#173d5d!important;border:1px solid #a9cbe3!important;box-shadow:0 2px 5px rgba(30,75,110,.10)!important;will-change:transform}
+  .power-slot-btn .slot-number{color:#17476a!important;background:#d7ebfa!important}
+  .power-slot-btn.rotating{animation:wheelNumberRoll .42s cubic-bezier(.16,.78,.24,1) both!important;backface-visibility:visible!important}
+  @keyframes wheelNumberRoll{0%{transform:perspective(700px) rotateX(-360deg) translateY(18px) scale(.76);opacity:.15}55%{transform:perspective(700px) rotateX(18deg) translateY(-3px) scale(1.06);opacity:1}78%{transform:perspective(700px) rotateX(-8deg) scale(1.02)}100%{transform:perspective(700px) rotateX(0) translateY(0) scale(1);opacity:1}}
+  #p1SlotsContainer.power-active,#p2SlotsContainer.power-active{background:color-mix(in srgb,var(--selected-power) 20%,#f4faff)!important;box-shadow:0 0 0 2px var(--selected-power),0 0 12px color-mix(in srgb,var(--selected-power) 38%,transparent)!important;animation:none!important}
+  .power-slot-btn.selected-power{color:#102f48!important;box-shadow:0 0 12px var(--selected-power)!important;transform:translateY(-2px)!important}
+  #attackBtn:not(:disabled){background:linear-gradient(135deg,#168fdf,#1259b8)!important;box-shadow:0 3px 10px rgba(15,93,169,.2)!important}
+  /* Keep motion smooth and avoid expensive full-screen compositing. */
+  *,*::before,*::after{scroll-behavior:auto!important}
+  @media(prefers-reduced-motion:reduce){.power-slot-btn.rotating{animation:none!important}}
+  @media(max-width:760px){#arenaScreen{padding:4px!important;gap:4px!important}#arenaScreen header,#arenaScreen footer{padding:6px!important}.power-inventory{top:5px!important}.power-slot-btn{min-height:40px!important}}
+</style>
+
+<style id="final-bright-day-arena-overrides">
+  html,body,#posterScreen,#selectScreen,#arenaScreen{background-color:#eaf7ff!important;color:#173c59!important}
+  #arenaScreen{background:linear-gradient(180deg,#d9f1ff 0%,#f7fcff 55%,#e2f2fa 100%)!important}
+  #arenaScreen header,#arenaScreen footer{background:rgba(255,255,255,.97)!important;color:#173c59!important;border:1px solid #b7d8e9!important;box-shadow:0 3px 12px rgba(34,91,125,.10)!important;backdrop-filter:none!important}
+  #arenaScreen header span,#arenaScreen footer span{color:#173c59!important}
+  #arenaScreen main{background:linear-gradient(180deg,#bce8ff,#f2fbff 60%,#d4ebf6)!important;border:1px solid #9bcce3!important;box-shadow:0 4px 16px rgba(35,85,125,.10)!important}
+  #arenaStatusPill{background:rgba(255,255,255,.94)!important;color:#174563!important;border:1px solid #a9d0e5!important;text-shadow:none!important}
+  .power-inventory{background:rgba(255,255,255,.94)!important;color:#173d5d!important;border:1px solid #a9cfe3!important;box-shadow:0 3px 10px rgba(35,85,125,.10)!important;backdrop-filter:none!important}
+  .power-inventory strong{color:#1b5a83!important}.power-chip{color:#173d5d!important;box-shadow:none!important}
+</style>
+
+<style>
+#warrior3DLayer{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+#warrior3DLayer canvas{display:block;width:100%;height:100%}
+#battleCanvas{position:relative;z-index:1}
+#posterCanvas,#p1PreviewCanvas,#p2PreviewCanvas,#battleCanvas{image-rendering:auto}
+
+/* ---- Cinematic victory reveal (shown after the champion's lap) ---- */
+#victoryBanner.victory-overlay{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:14px;text-align:center;background:radial-gradient(ellipse at 50% 40%,rgba(14,44,80,.42) 0%,rgba(4,16,32,.86) 58%,rgba(2,10,22,.95) 100%);opacity:0;transition:opacity .5s ease}
+#victoryBanner.victory-overlay:not(.hidden){display:flex}
+#victoryBanner.victory-overlay.show{opacity:1}
+.victory-rays{position:absolute;inset:-40%;background:conic-gradient(from 0deg,rgba(255,226,150,.18) 0 6deg,transparent 6deg 22deg);animation:victoryRays 42s linear infinite;opacity:.75;pointer-events:none}
+@keyframes victoryRays{to{transform:rotate(360deg)}}
+.victory-card{position:relative;z-index:2;width:min(580px,94%);padding:20px 24px 22px;border-radius:26px;border:1px solid rgba(255,222,150,.5);background:linear-gradient(180deg,rgba(26,52,90,.95),rgba(7,20,40,.97));box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.2),0 0 0 1px rgba(255,255,255,.05);transform:translateY(28px) scale(.93);opacity:0}
+.show .victory-card{animation:victoryCardPop .75s cubic-bezier(.16,.9,.3,1) .1s forwards}
+@keyframes victoryCardPop{60%{transform:translateY(-4px) scale(1.012);opacity:1}to{transform:translateY(0) scale(1);opacity:1}}
+.victory-crown{font-size:30px;line-height:1;filter:drop-shadow(0 6px 16px rgba(251,191,36,.55));margin-bottom:2px}
+.victory-kicker{display:flex;align-items:center;justify-content:center;gap:8px;font:900 10px/1.2 Orbitron,Inter,sans-serif;letter-spacing:.26em;color:#ffe6a8;text-transform:uppercase;margin:6px 0 4px}
+.victory-kicker span{display:block;width:36px;height:1px;background:linear-gradient(90deg,transparent,#ffd97a)}
+.victory-kicker span:last-child{background:linear-gradient(90deg,#ffd97a,transparent)}
+.victory-name{font-size:clamp(38px,7vw,72px);line-height:.95;letter-spacing:.02em;text-transform:uppercase;background:linear-gradient(180deg,#fffbe8 0%,#ffe08a 42%,#ffb43c 72%,#ff8a3d 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 22px rgba(255,170,60,.45))}
+.victory-subtext{margin-top:8px;font:700 12px/1.5 Inter,sans-serif;color:#cfe8ff;letter-spacing:.04em;text-transform:uppercase}
+.victory-stats{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+.victory-stat{min-width:104px;padding:8px 12px;border-radius:12px;border:1px solid rgba(160,214,255,.28);background:linear-gradient(180deg,rgba(30,64,105,.6),rgba(9,26,48,.7));text-align:center}
+.victory-stat b{display:block;font:900 16px/1.1 Orbitron,Inter,sans-serif;color:#fff}
+.victory-stat i{display:block;margin-top:3px;font:800 7px/1 Orbitron,Inter,sans-serif;font-style:normal;letter-spacing:.16em;color:#9fd0f0;text-transform:uppercase}
+.victory-win .victory-stat:first-child b{color:#ffe07a}
+.victory-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:18px}
+.victory-actions button{padding:11px 20px;border-radius:13px;font-family:Orbitron,Inter,sans-serif;font-weight:900;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}
+#editNamesAfterWinBtn{background:linear-gradient(135deg,#ffe27a,#ffb03a 55%,#ff7b52);color:#301a05;box-shadow:0 10px 26px rgba(255,160,60,.35),inset 0 1px rgba(255,255,255,.5)}
+#rematchBtn{background:rgba(255,255,255,.96);color:#0f2742;box-shadow:0 10px 26px rgba(0,0,0,.35)}
+.victory-actions button:hover{transform:translateY(-2px) scale(1.02);filter:saturate(1.1)}
+@media(max-width:520px){.victory-card{padding:16px}.victory-name{font-size:clamp(30px,9vw,44px)}.victory-stat{min-width:88px;padding:7px 9px}.victory-actions button{padding:10px 14px;font-size:10px}}
+</style>
+
+<style id="slot-reel-ticker">
+  /* Round-end power reel: real slot-machine strip that spins, brakes, lands and wipes. */
+  #p1SlotsContainer,#p2SlotsContainer{position:relative!important;overflow:hidden!important;contain:layout paint!important}
+  .slot-reel{position:absolute;inset:0;z-index:6;overflow:hidden;border-radius:12px;background:linear-gradient(180deg,#fbfdff,#dcefff);box-shadow:inset 0 0 0 1px #a9cfe9;pointer-events:none;opacity:1;transition:opacity .14s linear;--rl:#47b6ff}
+  .slot-reel.out{opacity:0}
+  .slot-reel::before,.slot-reel::after{content:'';position:absolute;top:0;bottom:0;width:16px;z-index:2;pointer-events:none}
+  .slot-reel::before{left:0;background:linear-gradient(90deg,#f4fbff,rgba(244,251,255,0))}
+  .slot-reel::after{right:0;background:linear-gradient(270deg,#f4fbff,rgba(244,251,255,0))}
+  .slot-reel-track{display:flex;gap:6px;height:100%;width:100%;will-change:transform;transform:translate3d(0,0,0)}
+  .slot-reel-track.spin-blur{opacity:.9}
+  /* Five cards wide: the whole slot row slides, so every power stays readable. */
+  .slot-reel-card{position:relative;flex:0 0 calc((100% - 24px)/5);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px;overflow:hidden}
+  /* The hint: as the strip brakes, the frame and the cards warm up with the landing colour. */
+  .slot-reel.hinting{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--rl) 45%,#ffffff),0 0 14px color-mix(in srgb,var(--rl) 38%,transparent)}
+  .slot-reel.hinting .slot-reel-card{filter:brightness(1.05)}
+  .slot-reel.reel-landed{box-shadow:inset 0 0 0 2px var(--rl),0 0 22px color-mix(in srgb,var(--rl) 55%,transparent)}
+  .slot-reel.reel-landed .slot-reel-card{animation:reelLand .32s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes reelLand{0%{transform:scale(.95)}60%{transform:scale(1.035)}100%{transform:scale(1)}}
+
+  /* Cinematic grade + impact flash for the clash. */
+  #arenaVignette{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;transition:opacity .5s ease;background:radial-gradient(ellipse at 50% 52%,rgba(2,8,16,0) 38%,rgba(2,8,16,.26) 80%,rgba(2,8,16,.46) 100%)}
+  #arenaVignette.on{opacity:1}
+  #arenaFlash{position:fixed;inset:0;z-index:7;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 52%,#ffffff,#dff1ff 44%,rgba(255,255,255,0) 80%);transition:opacity .2s ease}
+  #arenaFlash.hit{transition:none}
+
+  /* A locked pick stays a mystery card: the power is never shown before the clash. */
+  .power-slot-btn.mystery-slot{background:linear-gradient(180deg,#f4fbff,#d6ebfb)!important;border:1px dashed #78aed2!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.85),0 3px 9px rgba(9,38,64,.16)!important}
+  .power-slot-btn .slot-mystery{font:900 25px/1 Orbitron,Inter,sans-serif;color:#1b6fa8;text-shadow:0 1px 0 #fff,0 0 10px rgba(71,182,255,.55);animation:mysteryPulse 1.6s ease-in-out infinite}
+  .power-slot-btn.mystery-slot .slot-art-name{color:#2c6a95!important;letter-spacing:.14em}
+  @keyframes mysteryPulse{0%,100%{opacity:.72;transform:scale(.96)}50%{opacity:1;transform:scale(1.05)}}
+
+  /* Released-power arsenal: one card only, then the whole box in that colour. */
+  .power-inventory.arsenal-clash{background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(226,241,255,.96))!important}
+  .power-inventory.arsenal-clash .power-list{justify-content:center}
+  .power-inventory.arsenal-clash .power-card.released-card{width:98px;box-shadow:0 0 0 2px rgba(255,255,255,.92),0 0 20px color-mix(in srgb,var(--pc) 60%,transparent)}
+  .power-inventory.arsenal-clash .released-card .pc-name{font-size:8.6px}
+  .power-inventory.arsenal-clash-hot{background:linear-gradient(180deg,color-mix(in srgb,var(--rel-color) 84%,#ffffff),color-mix(in srgb,var(--rel-color) 96%,#04101d))!important;border-color:var(--rel-color)!important;box-shadow:0 0 26px color-mix(in srgb,var(--rel-color) 65%,transparent),inset 0 1px rgba(255,255,255,.5)!important;transition:background .3s ease,box-shadow .3s ease}
+  .power-inventory.arsenal-clash-hot{padding:11px 13px!important}
+  .power-inventory.arsenal-clash-hot .power-card.released-card{background:rgba(255,255,255,.76);box-shadow:0 0 0 1px rgba(255,255,255,.7),0 4px 12px rgba(4,16,29,.35)}
+  .power-inventory.arsenal-won{filter:brightness(1.06) saturate(1.08)}
+  .power-inventory.arsenal-won .released-card{box-shadow:0 0 0 2px #fff,0 0 30px #fff9d6,0 0 60px color-mix(in srgb,var(--rel-color) 80%,transparent)!important}
+  .power-inventory.arsenal-lost{filter:saturate(.5) brightness(.92)}
+  .power-inventory.arsenal-lost .released-card{opacity:.7}
+  .slot-settle .power-slot-btn{animation:slotSettle .3s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes slotSettle{0%{transform:scale(.88);opacity:.25}65%{transform:scale(1.07);opacity:1}100%{transform:scale(1);opacity:1}}
+  .slot-final .power-slot-btn{animation:slotFinal .42s cubic-bezier(.18,.9,.28,1) both}
+  @keyframes slotFinal{0%{transform:scale(.82) translateY(6px);opacity:.2}60%{transform:scale(1.08) translateY(-3px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
+  /* Full-screen play */
+  #fullscreenBtn{white-space:nowrap}
+  html:fullscreen,html:-webkit-full-screen,body:fullscreen{background:#07182b!important;overflow:hidden!important}
+  #arenaScreen:fullscreen,#arenaScreen:-webkit-full-screen{padding:6px!important;gap:6px!important}
+  @media(max-width:760px){#fullscreenBtn{font-size:9px!important;padding:2px 4px!important}}
+  @media(prefers-reduced-motion:reduce){.slot-final .power-slot-btn{animation-duration:.2s}}
+  /* Narrow layouts stack the arsenal chips over the top of the arena; keep the
+     round/status pill out of their way. */
+  @media(max-width:1000px){#arenaStatusPill{top:auto!important;bottom:10px!important;font-size:9px!important;padding:4px 10px!important}}
+</style>
+
+<style id="power-card-art">
+  /* ---------- Real power art: top arsenal cards, bottom slots and the reel ---------- */
+  /* The arsenal panel hugs its five cards — no empty white slab beside them. */
+  .power-inventory{width:auto!important;max-width:min(52%,720px)!important;padding:6px 8px!important}
+  .power-inventory .power-list{display:flex;gap:6px;flex-wrap:nowrap;align-items:flex-start}
+  .power-inventory.right .power-list{justify-content:flex-end}
+  .power-card{position:relative;flex:0 0 auto;width:79px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 4px 5px;border-radius:11px;border:1px solid color-mix(in srgb,var(--pc) 65%,#0b2237);background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(222,240,255,.96));box-shadow:0 4px 10px rgba(9,38,64,.20),inset 0 1px rgba(255,255,255,.8);overflow:hidden;transition:transform .18s ease,box-shadow .18s ease}
+  .power-card:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(9,38,64,.26)}
+  .power-card.is-mega{border-color:#a855f7;box-shadow:0 0 0 1px rgba(168,85,247,.55),0 0 16px rgba(168,85,247,.45),inset 0 1px rgba(255,255,255,.7)}
+  .power-card .pc-art{width:100%;aspect-ratio:1/1;border-radius:8px;object-fit:cover;display:block;background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--pc) 65%,#07182b),#04101d)}
+  .power-card .pc-art.is-icon{display:grid;place-items:center;font-size:26px;line-height:1}
+  .power-card .pc-name{font:900 7.4px/1 Orbitron,Inter,sans-serif;letter-spacing:.03em;color:#0e2f4c;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  /* Bottom slots are real cards: the whole emblem is visible inside the tile
+     (never cropped to a strip), sized square like the top arsenal art, and the
+     tile keeps one fixed height so picking a card cannot squeeze the arena. */
+  .power-slot-btn{height:74px!important;min-height:74px!important}
+  #p1SlotsContainer,#p2SlotsContainer{height:74px;align-items:stretch}
+  #p1SlotsContainer.reeling,#p2SlotsContainer.reeling{height:74px}
+  /* One card design for the 1–5 tiles AND the shuffle strip, built like the top
+     arsenal cards: art on top, name band under it, so the same power always
+     reads the same way. Slightly rectangular, sized to the fixed slot height. */
+  .power-slot-btn.has-art,.slot-reel-card{position:relative;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;padding:3px!important;overflow:hidden;border-radius:11px;background:linear-gradient(180deg,#fff,#e4f1fd);border:1px solid color-mix(in srgb,var(--selected-power) 55%,#8fb8d6);box-shadow:0 3px 9px rgba(9,38,64,.18),inset 0 1px rgba(255,255,255,.9);color:#0e2f4c}
+  .power-slot-btn.has-art{height:74px!important;min-height:74px!important;box-sizing:border-box!important}
+  .power-slot-btn .slot-art,.slot-reel-card .slot-art{width:44px;height:50px;min-height:0!important;flex:0 0 auto;object-fit:cover;border-radius:7px;display:block;background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--selected-power) 60%,#07182b),#04101d)}
+  .power-slot-btn .slot-art.is-icon,.slot-reel-card .slot-art.is-icon{display:grid;place-items:center;font-size:20px;color:#fff}
+  .power-slot-btn .slot-art-name,.slot-reel-card .slot-art-name{position:static;left:auto;right:auto;bottom:auto;width:100%;font:900 7.4px/1 Orbitron,Inter,sans-serif;letter-spacing:.03em;color:#0e2f4c;text-shadow:none;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .power-slot-btn .slot-index,.slot-reel-card .slot-index{position:absolute;top:2px;left:4px;z-index:2;font:900 8px/1 Orbitron,Inter,sans-serif;color:#2b6a95;background:rgba(255,255,255,.84);border-radius:4px;padding:1px 3px;box-shadow:0 1px 2px rgba(9,38,64,.18)}
+  .power-slot-btn.has-art.selected-power{box-shadow:0 0 20px var(--selected-power),inset 0 0 0 2px #fff!important}
+  /* ---------- Character picker ---------- */
+  .char-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+  .char-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:5px 4px;border-radius:10px;border:1px solid #c9dced;background:linear-gradient(180deg,#fff,#eef6ff);font:900 9px/1.1 Orbitron,Inter,sans-serif;letter-spacing:.06em;color:#173d5d;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+  .char-btn .char-emoji{font-size:15px;line-height:1}
+  .char-btn .char-tag{font:700 6.5px/1 Inter,sans-serif;letter-spacing:.12em;color:#7b9ab5}
+  .char-btn:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(22,72,110,.16)}
+  .char-btn.active{color:#fff;border-color:#0d7fd0;background:linear-gradient(150deg,#1a9ae8,#1157b6);box-shadow:0 6px 16px rgba(17,87,182,.35)}
+  .char-btn.active .char-tag{color:rgba(255,255,255,.88)}
+  /* ---------- Reel shows the real power cards ---------- */
+  .slot-reel-card{height:100%}
+  @media(max-width:1000px){
+    .power-card{width:52px}.power-card .pc-name{font-size:6.5px}.power-card .pc-art.is-icon{font-size:18px}
+    .power-inventory{max-width:min(56%,430px)!important}
+    .power-slot-btn,.power-slot-btn.has-art{height:58px!important;min-height:58px!important}
+    #p1SlotsContainer,#p2SlotsContainer,#p1SlotsContainer.reeling,#p2SlotsContainer.reeling{height:58px}
+    .power-slot-btn .slot-art,.slot-reel-card .slot-art{width:34px;height:38px}
+    .power-slot-btn .slot-art-name,.slot-reel-card .slot-art-name{font-size:6.4px}
+    .slot-reel-track{gap:4px}
+    .slot-reel-card{flex:0 0 calc((100% - 16px)/5)}
+    .char-btn{font-size:8px;padding:4px 3px}
+  }
+</style>
+</head>
+<body class="w-screen h-dvh overflow-hidden bg-slate-100 text-slate-900 flex flex-col">
+
+  <!-- ===================================================================== -->
+  <!-- SCREEN 1: COMIC-BOOK POSTER COVER                                     -->
+  <!-- ===================================================================== -->
+  <section id="posterScreen" class="hidden relative w-full h-full flex flex-col items-center justify-between p-3 sm:p-5 overflow-hidden bg-gradient-to-br from-sky-200 via-white to-amber-100">
+    <div class="absolute inset-0 comic-halftone pointer-events-none"></div>
+
+    <!-- Top Poster Badge -->
+    <div class="relative z-10 w-full max-w-6xl flex items-center justify-between gap-2 px-3 py-1.5 rounded-2xl bg-white/90 border border-slate-200 shadow-sm">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-600 text-white font-black text-xs shadow">&#9889;</span>
+        <span class="font-display text-[11px] sm:text-xs font-extrabold tracking-widest text-slate-800 uppercase">GLOBAL SUPER HERO</span>
+      </div>
+      <span class="text-[11px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+        1-SCREEN 2D CLASH
+      </span>
+    </div>
+
+    <!-- Center Poster Showcase -->
+    <div class="relative z-10 flex-1 w-full max-w-5xl my-2 rounded-3xl bg-white/85 backdrop-blur-md border-2 border-slate-200/90 shadow-2xl overflow-hidden flex flex-col items-center justify-between p-3 sm:p-5">
+      <div class="text-center">
+        <p class="font-display text-[10px] sm:text-xs font-extrabold tracking-[0.26em] text-blue-700 uppercase">
+          ELEMENTAL POWER TOURNAMENT
+        </p>
+        <h1 class="font-comic text-5xl sm:text-7xl leading-none text-slate-900 drop-shadow-sm mt-0.5">
+          GLOBAL SUPER HERO
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-600 font-medium mt-1">
+          Pick 1–5 mystery slots, lock your attack, and watch elemental powers collide on the sky terrace!
+        </p>
+      </div>
+
+      <!-- Live Poster Canvas Preview -->
+      <div class="relative w-full flex-1 min-h-0 my-2 rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-sky-100">
+        <canvas id="posterCanvas"></canvas>
+      </div>
+
+      <!-- Enter Button -->
+      <div class="flex items-center justify-center gap-3 w-full">
+        <button id="toSelectScreenBtn" type="button" class="px-7 sm:px-10 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-display font-black text-xs sm:text-sm tracking-widest uppercase shadow-lg transition cursor-pointer">
+          CHOOSE YOUR CHAMPIONS &rarr;
+        </button>
+      </div>
+    </div>
+
+    <div class="relative z-10 text-[11px] text-slate-500 font-medium">
+      Two players • Same screen • 0–100% Power Lines
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SCREEN 2: CHAMPION & NAME SELECTION                                   -->
+  <!-- ===================================================================== -->
+  <section id="selectScreen" class="w-full h-full flex flex-col justify-between p-2.5 sm:p-4 overflow-hidden bg-slate-50">
+    <!-- Top Header Bar -->
+    <header class="w-full max-w-6xl mx-auto flex items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-white border border-slate-200 shadow-sm shrink-0">
+      <button id="backToPosterBtn" type="button" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer">
+        &larr; DASHBOARD
+      </button>
+      <div class="text-center">
+        <div class="font-display text-xs sm:text-sm font-black tracking-wider text-slate-900 uppercase">
+          &#9813; GLOBAL SUPER HERO
+        </div>
+        <div class="text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+          CHOOSE YOUR CHAMPIONS
+        </div>
+      </div>
+      <div class="px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 font-bold text-[10px] sm:text-xs uppercase">
+        2 PLAYER CLASH
+      </div>
+    </header>
+
+    <!-- Main Two-Column Champion Cards -->
+    <main class="flex-1 min-h-0 w-full max-w-6xl mx-auto my-2 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 items-stretch">
+      <!-- Player 1 Card -->
+      <div class="rounded-3xl bg-gradient-to-b from-sky-50/90 to-white border-2 border-sky-200 shadow-md p-3 sm:p-4 flex flex-col justify-between min-h-0">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-extrabold tracking-widest text-sky-700 uppercase">PLAYER 1</span>
+          <span id="p1SuitBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800">GIANT</span>
+        </div>
+
+        <!-- Live P1 Preview Canvas -->
+        <div class="relative flex-1 min-h-[110px] my-1.5 rounded-2xl bg-gradient-to-b from-sky-100/70 to-white border border-sky-100 overflow-hidden">
+          <canvas id="p1PreviewCanvas"></canvas>
+        </div>
+
+        <!-- Editable Name + Quick Suit Pills -->
+        <div class="space-y-2 shrink-0">
+          <div>
+            <label for="p1NameInput" class="block text-[10px] font-bold tracking-wider text-slate-500 uppercase mb-1">
+              PLAYER 1 NAME
+            </label>
+            <input id="p1NameInput" type="text" maxlength="16" value="GIANT" placeholder="Enter Player 1 name..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none font-display font-extrabold text-sm text-sky-900 uppercase transition" />
+          </div>
+          <div id="p1SuitPills" class="char-pick"></div>
+        </div>
+      </div>
+
+      <!-- Player 2 Card -->
+      <div class="rounded-3xl bg-gradient-to-b from-orange-50/90 to-white border-2 border-orange-200 shadow-md p-3 sm:p-4 flex flex-col justify-between min-h-0">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-extrabold tracking-widest text-orange-700 uppercase">PLAYER 2</span>
+          <span id="p2SuitBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800">WARRIOR</span>
+        </div>
+
+        <!-- Live P2 Preview Canvas -->
+        <div class="relative flex-1 min-h-[110px] my-1.5 rounded-2xl bg-gradient-to-b from-orange-100/70 to-white border border-orange-100 overflow-hidden">
+          <canvas id="p2PreviewCanvas"></canvas>
+        </div>
+
+        <!-- Editable Name + Quick Suit Pills -->
+        <div class="space-y-2 shrink-0">
+          <div>
+            <label for="p2NameInput" class="block text-[10px] font-bold tracking-wider text-slate-500 uppercase mb-1">
+              PLAYER 2 NAME
+            </label>
+            <input id="p2NameInput" type="text" maxlength="16" value="WARRIOR" placeholder="Enter Player 2 name..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-300 focus:border-orange-600 focus:ring-2 focus:ring-orange-200 outline-none font-display font-extrabold text-sm text-orange-900 uppercase transition" />
+          </div>
+          <div id="p2SuitPills" class="char-pick"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Enter Arena Action -->
+    <footer class="w-full max-w-6xl mx-auto flex items-center justify-center shrink-0 pb-0.5">
+      <button id="enterArenaBtn" type="button" class="px-8 py-2.5 sm:py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-display font-black text-xs sm:text-sm tracking-widest uppercase shadow-lg transition cursor-pointer">
+        ENTER THE ARENA &#9876;
+      </button>
+    </footer>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SCREEN 3: 1-SCREEN BATTLE ARENA                                       -->
+  <!-- ===================================================================== -->
+  <section id="arenaScreen" class="hidden w-full h-full flex-col justify-between p-2 sm:p-3 overflow-hidden bg-slate-100">
+    <div id="arenaVignette" aria-hidden="true"></div>
+    <div id="arenaFlash" aria-hidden="true"></div>
+    <!-- Top Power Lines & Round Bar -->
+    <header class="w-full max-w-7xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 px-2.5 py-1.5 rounded-2xl bg-white border border-slate-200 shadow-sm shrink-0">
+      <!-- Player 1 Power Line (0 - 100%) -->
+      <div class="min-w-0">
+        <div class="flex items-center justify-between text-[11px] sm:text-xs font-extrabold mb-1">
+          <span id="hudP1Name" class="font-display text-sky-900 truncate uppercase">GIANT</span>
+          <span id="hudP1PowerText" class="font-display text-sky-700 tabular-nums">100%</span>
+        </div>
+        <div class="w-full h-2.5 sm:h-3 rounded-full bg-slate-200 overflow-hidden border border-slate-300/80">
+          <div id="hudP1PowerBar" class="h-full bg-gradient-to-r from-sky-500 to-blue-600 transition-all duration-300" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <!-- Round & Exit -->
+      <div class="flex flex-col items-center justify-center px-2">
+        <span class="text-[9px] font-extrabold tracking-widest text-slate-400 uppercase">ROUND</span>
+        <span id="hudRoundNum" class="font-display text-base sm:text-lg font-black text-slate-900 leading-none">01</span>
+        <div class="mt-1 flex items-center gap-1.5">
+          <button id="fullscreenBtn" type="button" class="text-[10px] font-black tracking-wide text-sky-800 bg-sky-100 hover:bg-sky-200 border border-sky-300 rounded px-1.5 py-0.5 cursor-pointer" title="Play in full screen">&#9974; FULLSCREEN</button>
+          <button id="exitArenaBtn" type="button" class="text-[10px] font-bold text-slate-500 hover:text-slate-900 underline cursor-pointer">
+            EXIT
+          </button>
+        </div>
+      </div>
+
+      <!-- Player 2 Power Line (0 - 100%) -->
+      <div class="min-w-0">
+        <div class="flex items-center justify-between text-[11px] sm:text-xs font-extrabold mb-1">
+          <span id="hudP2PowerText" class="font-display text-orange-700 tabular-nums">100%</span>
+          <span id="hudP2Name" class="font-display text-orange-900 truncate uppercase">WARRIOR</span>
+        </div>
+        <div class="w-full h-2.5 sm:h-3 rounded-full bg-slate-200 overflow-hidden border border-slate-300/80 flex justify-end">
+          <div id="hudP2PowerBar" class="h-full bg-gradient-to-l from-orange-500 to-rose-600 transition-all duration-300" style="width: 100%;"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Center Battle Canvas -->
+    <main class="relative flex-1 min-h-0 w-full max-w-7xl mx-auto my-1.5 rounded-3xl overflow-hidden border-2 border-slate-300 shadow-lg bg-sky-200">
+      <canvas id="battleCanvas"></canvas><div id="warrior3DLayer" aria-hidden="true"></div>
+      <div id="p1PowerInventory" class="power-inventory left"><div class="power-list"></div></div>
+      <div id="p2PowerInventory" class="power-inventory right"><div class="power-list"></div></div>
+
+      <!-- Subtle Status Pill (No explanations) -->
+      <div id="arenaStatusPill" class="hidden pointer-events-none absolute top-2.5 left-1/2 -translate-x-1/2 px-3.5 py-1 rounded-full bg-slate-900/80 text-white font-display text-[10px] sm:text-xs font-bold tracking-widest uppercase shadow z-10">
+        READY
+      </div>
+
+      <!-- Victory Celebration Overlay (revealed after the champion's lap) -->
+      <div id="victoryBanner" class="hidden victory-overlay">
+        <div class="victory-rays" aria-hidden="true"></div>
+        <div class="victory-card victory-win">
+          <div class="victory-crown" aria-hidden="true">&#128081;</div>
+          <div class="victory-kicker"><span></span> GRAND ARENA CHAMPION <span></span></div>
+          <h3 id="victoryWinnerName" class="font-comic victory-name">GIANT WINS!</h3>
+          <p id="victorySubtext" class="victory-subtext">Power Line supremacy achieved!</p>
+          <div id="victoryStats" class="victory-stats"></div>
+          <div class="victory-actions">
+            <button id="editNamesAfterWinBtn" type="button">&#9998; NEW NAMES &amp; BATTLE</button>
+            <button id="rematchBtn" type="button">&#8635; REMATCH</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom 1-5 Mystery Slots + Simple Blue ATTACK! Button -->
+    <footer class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-2 px-2.5 py-2 rounded-2xl bg-white border border-slate-200 shadow-sm shrink-0">
+      <!-- Player 1 Slots 1..5 -->
+      <div class="flex flex-col gap-1">
+        <div class="flex items-center justify-between text-[10px] font-extrabold tracking-wider text-sky-800 uppercase px-0.5">
+          <span id="p1SlotsLabel">PLAYER 1 — PICK 1–5</span>
+          <span id="p1LockBadge" class="text-slate-400">OPEN</span>
+        </div>
+        <div id="p1SlotsContainer" class="grid grid-cols-5 gap-1.5"></div>
+      </div>
+
+      <!-- Center Simple Blue ATTACK! Button -->
+      <div class="flex items-center justify-center px-1">
+        <button id="attackBtn" type="button" disabled class="px-6 py-2.5 sm:py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-display font-black text-xs sm:text-sm tracking-widest uppercase shadow transition cursor-pointer disabled:cursor-not-allowed">
+          ATTACK!
+        </button>
+      </div>
+
+      <!-- Player 2 Slots 1..5 -->
+      <div class="flex flex-col gap-1">
+        <div class="flex items-center justify-between text-[10px] font-extrabold tracking-wider text-orange-800 uppercase px-0.5">
+          <span id="p2LockBadge" class="text-slate-400">OPEN</span>
+          <span id="p2SlotsLabel">PLAYER 2 — PICK 1–5</span>
+        </div>
+        <div id="p2SlotsContainer" class="grid grid-cols-5 gap-1.5"></div>
+      </div>
+    </footer>
+  </section>
+
+  <script>
+    // =========================================================================
+    // 1. LOCAL CINEMATIC SOUND ASSETS + WEB AUDIO FALLBACK
+    // =========================================================================
+    class ArenaSoundFX {
+      constructor() {
+        this.ctx = null;
+        this.files = {};
+        this.master = null;
+        this.noiseBuf = null;
+        this.chargeStop = null;
+        const files = {
+          select: 'select.wav', launch: 'launch.wav', clash: 'clash.wav', draw: 'draw.wav', victory: 'victory.wav',
+          attack: 'attack.wav', impact: 'impact.wav', reel: 'reel.wav', shuffle: 'shuffle.wav',
+          fire: 'fire.wav', water: 'water.wav', thunder: 'thunder.wav', phoenix: 'phoenix.wav', megapower: 'megapower.wav',
+          frost: 'frost.wav', wind: 'wind.wav', plasma: 'plasma.wav', shadow: 'shadow.wav',
+          solar: 'solar.wav', earth: 'earth.wav'
+        };
+        for (const [key, file] of Object.entries(files)) {
+          const audio = new Audio('/audio/' + file);
+          audio.preload = 'auto';
+          audio.volume = 0.88;
+          this.files[key] = audio;
+        }
+      }
+      playFile(key) {
+        const audio = this.files[key];
+        if (!audio) return false;
+        try {
+          audio.pause(); audio.currentTime = 0;
+          const p = audio.play();
+          if (p && p.catch) p.catch(() => {});
+          return true;
+        } catch (_) { return false; }
+      }
+      playAttack() { if (this.playFile('attack')) return; this.playLaunch(); }
+      playImpact() { if (this.playFile('impact')) return; this.playClash(); }
+      playReel() { this.playFile('reel'); }
+      playShuffle() { this.playFile('shuffle'); }
+      // Slot-reel ratchet: one short click; the caller stretches the spacing as the
+      // strip brakes, so the reel is audible while it slows down.
+      playReelTick(pitch = 1200) {
+        this.ensure();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(Math.max(280, pitch), now);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.035);
+        osc.connect(gain); gain.connect(this.out());
+        osc.start(now); osc.stop(now + 0.04);
+      }
+      playReelStop() {
+        this.ensure();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(940, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.connect(gain); gain.connect(this.out());
+        osc.start(now); osc.stop(now + 0.17);
+      }
+      ensure() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      }
+      playSelect(pitch = 520) {
+        if (this.playFile('select')) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(pitch, now);
+        osc.frequency.exponentialRampToValueAtTime(pitch * 1.28, now + 0.09);
+        gain.gain.setValueAtTime(0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+        osc.connect(gain);
+        gain.connect(this.out());
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+      playLaunch() {
+        if (this.playFile('launch')) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(640, now + 0.24);
+        gain.gain.setValueAtTime(0.13, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+        osc.connect(gain);
+        gain.connect(this.out());
+        osc.start(now);
+        osc.stop(now + 0.27);
+      }
+      playClash() {
+        if (this.playFile('clash')) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        // Heavy cinematic collision: sub-bass boom, distorted body and a short debris crack.
+        const sub = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(92, now);
+        sub.frequency.exponentialRampToValueAtTime(27, now + 0.72);
+        subGain.gain.setValueAtTime(0.62, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.78);
+        sub.connect(subGain); subGain.connect(this.out());
+        sub.start(now); sub.stop(now + 0.8);
+        const body = this.ctx.createOscillator();
+        const bodyGain = this.ctx.createGain();
+        body.type = 'sawtooth';
+        body.frequency.setValueAtTime(210, now + 0.015);
+        body.frequency.exponentialRampToValueAtTime(48, now + 0.34);
+        bodyGain.gain.setValueAtTime(0.20, now + 0.015);
+        bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        body.connect(bodyGain); bodyGain.connect(this.out());
+        body.start(now + 0.015); body.stop(now + 0.4);
+        const crack = this.ctx.createOscillator();
+        const crackGain = this.ctx.createGain();
+        crack.type = 'triangle';
+        crack.frequency.setValueAtTime(1250, now + 0.025);
+        crack.frequency.exponentialRampToValueAtTime(115, now + 0.22);
+        crackGain.gain.setValueAtTime(0.17, now + 0.025);
+        crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        crack.connect(crackGain); crackGain.connect(this.out());
+        crack.start(now + 0.025); crack.stop(now + 0.25);
+      }
+      playPower(powerId) {
+        if (this.playFile(powerId)) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const presets = {
+          fire: [150, 720, 'sawtooth', .16],
+          water: [520, 180, 'sine', .14],
+          thunder: [980, 95, 'square', .13],
+          phoenix: [260, 880, 'sawtooth', .17],
+          megapower: [72, 34, 'sawtooth', .24],
+          venom: [320, 88, 'sawtooth', .14],
+          frost: [1180, 260, 'sine', .15],
+          wind: [420, 90, 'sawtooth', .09],
+          plasma: [260, 1450, 'sawtooth', .18],
+          shadow: [110, 34, 'sine', .18],
+          solar: [220, 1760, 'triangle', .16],
+          earth: [66, 24, 'sine', .22]
+        };
+        const preset = presets[powerId];
+        if (!preset) return;
+        const [start, end, type, volume] = preset;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        osc.type = type;
+        osc.frequency.setValueAtTime(start, now);
+        if (powerId === 'water') osc.frequency.exponentialRampToValueAtTime(end, now + .42);
+        else osc.frequency.exponentialRampToValueAtTime(end, now + .30);
+        filter.type = powerId === 'fire' || powerId === 'phoenix' ? 'lowpass' : 'lowpass';
+        filter.frequency.setValueAtTime(powerId === 'thunder' ? 2400 : 1400, now);
+        filter.frequency.exponentialRampToValueAtTime(180, now + .38);
+        gain.gain.setValueAtTime(volume, now);
+        gain.gain.exponentialRampToValueAtTime(.001, now + (powerId === 'megapower' ? .72 : .43));
+        osc.connect(filter); filter.connect(gain); gain.connect(this.out());
+        osc.start(now); osc.stop(now + (powerId === 'megapower' ? .74 : .45));
+      }
+      playDraw() {
+        if (this.playFile('draw')) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [330, 293.66].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+          gain.gain.setValueAtTime(0.11, now + idx * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.18);
+          osc.connect(gain);
+          gain.connect(this.out());
+          osc.start(now + idx * 0.12);
+          osc.stop(now + idx * 0.12 + 0.2);
+        });
+      }
+      playWinFanfare() {
+        if (this.playFile('victory')) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + i * 0.11);
+          gain.gain.setValueAtTime(0.13, now + i * 0.11);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.28);
+          osc.connect(gain);
+          gain.connect(this.out());
+          osc.start(now + i * 0.11);
+          osc.stop(now + i * 0.11 + 0.3);
+        });
+      }
+
+      // ---- Upgraded mix: one compressed bus for every synthesized cue ----
+      out() {
+        this.ensure();
+        if (!this.ctx) return null;
+        if (!this.master) {
+          const bus = this.ctx.createGain();
+          bus.gain.value = 0.95;
+          const comp = this.ctx.createDynamicsCompressor();
+          comp.threshold.value = -16;
+          comp.knee.value = 20;
+          comp.ratio.value = 6;
+          comp.attack.value = 0.004;
+          comp.release.value = 0.22;
+          bus.connect(comp);
+          comp.connect(this.ctx.destination);
+          this.master = bus;
+        }
+        return this.master;
+      }
+      noise(dur) {
+        const need = Math.max(dur, .6);
+        if (!this.noiseBuf || this.noiseBuf.duration < need) {
+          const len = Math.ceil(this.ctx.sampleRate * need);
+          const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+          this.noiseBuf = buf;
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuf;
+        return src;
+      }
+      blip(type, f0, f1, dur, vol, delay = 0) {
+        const ctx = this.ctx;
+        const out = this.out();
+        if (!ctx || !out) return;
+        const t = ctx.currentTime + delay;
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(Math.max(20, f0), t);
+        if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+        o.connect(g); g.connect(out);
+        o.start(t); o.stop(t + dur + .03);
+      }
+      burst(dur, vol, freq, delay = 0) {
+        const ctx = this.ctx;
+        const out = this.out();
+        if (!ctx || !out) return;
+        const t = ctx.currentTime + delay;
+        const src = this.noise(dur);
+        const g = ctx.createGain();
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = freq;
+        bp.Q.value = 1.1;
+        src.playbackRate.value = 1.4;
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+        src.connect(bp); bp.connect(g); g.connect(out);
+        src.start(t); src.stop(t + dur + .03);
+      }
+      // A long power gather under the CHARGING phase, stopped the moment the
+      // clash resolves so it never bleeds into the impact.
+      playCharge(duration = 1.85) {
+        this.ensure();
+        const ctx = this.ctx;
+        const out = this.out();
+        if (!ctx || !out) return;
+        this.stopCharge();
+        const t0 = ctx.currentTime;
+        const g = ctx.createGain();
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(340, t0);
+        lp.frequency.exponentialRampToValueAtTime(2800, t0 + duration);
+        const o1 = ctx.createOscillator(); o1.type = 'sawtooth';
+        o1.frequency.setValueAtTime(58, t0); o1.frequency.exponentialRampToValueAtTime(210, t0 + duration);
+        const o2 = ctx.createOscillator(); o2.type = 'triangle';
+        o2.frequency.setValueAtTime(116, t0); o2.frequency.exponentialRampToValueAtTime(430, t0 + duration);
+        const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.setValueAtTime(7.5, t0);
+        const lfoGain = ctx.createGain(); lfoGain.gain.value = .035;
+        lfo.connect(lfoGain); lfoGain.connect(g.gain);
+        g.gain.setValueAtTime(.0001, t0);
+        g.gain.exponentialRampToValueAtTime(.13, t0 + duration * .82);
+        g.gain.exponentialRampToValueAtTime(.0001, t0 + duration + .06);
+        o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(out);
+        o1.start(t0); o2.start(t0); lfo.start(t0);
+        o1.stop(t0 + duration + .12); o2.stop(t0 + duration + .12); lfo.stop(t0 + duration + .12);
+        this.chargeStop = () => {
+          try {
+            const n = ctx.currentTime;
+            g.gain.cancelScheduledValues(n);
+            g.gain.setTargetAtTime(.0001, n, .035);
+          } catch (_) { /* cue already finished */ }
+        };
+      }
+      stopCharge() {
+        if (this.chargeStop) { this.chargeStop(); this.chargeStop = null; }
+      }
+      // Each champion's own battle cry / weapon signature.
+      championCue(id) {
+        this.ensure();
+        if (!this.ctx || !this.out()) return;
+        switch (id) {
+          case 'giant':
+            this.blip('sawtooth', 98, 46, .55, .20);
+            this.blip('sine', 152, 62, .5, .16, .03);
+            this.burst(.34, .12, 260);
+            break;
+          case 'warrior':
+            this.blip('square', 760, 560, .16, .10);
+            this.blip('square', 1140, 860, .22, .07, .045);
+            this.burst(.2, .10, 3200);
+            break;
+          case 'zombie':
+            this.blip('sawtooth', 132, 84, .58, .13);
+            this.blip('sine', 94, 128, .5, .10, .12);
+            this.burst(.38, .07, 420);
+            break;
+          case 'wizard':
+            this.blip('triangle', 880, 880, .2, .10);
+            this.blip('triangle', 1174, 1174, .22, .085, .07);
+            this.blip('triangle', 1568, 1568, .34, .075, .14);
+            this.burst(.32, .05, 5200);
+            break;
+          case 'soldier':
+            this.burst(.14, .26, 2600);
+            this.blip('square', 168, 52, .18, .14);
+            this.burst(.06, .12, 900, .02);
+            break;
+          case 'superhero':
+            this.blip('sawtooth', 240, 980, .42, .12);
+            this.burst(.42, .10, 1800);
+            this.blip('triangle', 620, 1240, .3, .07, .1);
+            break;
+          default:
+            this.blip('triangle', 320, 520, .2, .08);
+        }
+      }
+      // Power beam leaving one side of the arena (1 = left, 2 = right).
+      playBeam(side) {
+        this.ensure();
+        const ctx = this.ctx;
+        const out = this.out();
+        if (!ctx || !out) return;
+        const t = ctx.currentTime;
+        const g = ctx.createGain();
+        const lp = ctx.createBiquadFilter();
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(440, t);
+        o.frequency.exponentialRampToValueAtTime(88, t + .5);
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(3400, t);
+        lp.frequency.exponentialRampToValueAtTime(320, t + .52);
+        g.gain.setValueAtTime(.0001, t);
+        g.gain.exponentialRampToValueAtTime(.12, t + .05);
+        g.gain.exponentialRampToValueAtTime(.0008, t + .55);
+        o.connect(lp); lp.connect(g);
+        if (ctx.createStereoPanner) {
+          const pan = ctx.createStereoPanner();
+          pan.pan.value = side === 2 ? .55 : -.55;
+          g.connect(pan); pan.connect(out);
+        } else {
+          g.connect(out);
+        }
+        o.start(t); o.stop(t + .58);
+        this.burst(.3, .08, 2200);
+      }
+      // Knockdown: body hits the floor.
+      playFallThud() {
+        this.ensure();
+        if (!this.ctx || !this.out()) return;
+        this.blip('sine', 112, 34, .5, .26);
+        this.blip('triangle', 62, 28, .42, .16, .02);
+        this.burst(.26, .14, 340);
+      }
+      // Push back up off the floor.
+      playGetUp() {
+        this.ensure();
+        if (!this.ctx || !this.out()) return;
+        this.blip('triangle', 175, 520, .34, .09);
+        this.burst(.22, .06, 1200);
+      }
+    }
+    const sfx = new ArenaSoundFX();
+
+    // =========================================================================
+    // 2. HERO SUITS, SIMPLE POWER NAMES & ELEMENTAL MATCHUP LOGIC
+    // =========================================================================
+    const HERO_SUITS = [
+      {
+        id: 'nova',
+        label: 'NOVA',
+        archetype: 'LIGHTNING VANGUARD',
+        capeColor: '#1d4ed8',
+        suitPrimary: '#2563eb',
+        suitSecondary: '#0ea5e9',
+        armorPlate: '#e2e8f0',
+        skinTone: '#f1c29b',
+        hairColor: '#3b2314',
+        visorColor: '#38bdf8'
+      },
+      {
+        id: 'volt',
+        label: 'VOLT',
+        archetype: 'STORM STRIKER',
+        capeColor: '#0284c7',
+        suitPrimary: '#0369a1',
+        suitSecondary: '#38bdf8',
+        armorPlate: '#f8fafc',
+        skinTone: '#e8b38a',
+        hairColor: '#1e293b',
+        visorColor: '#7dd3fc'
+      },
+      {
+        id: 'frost',
+        label: 'FROST',
+        archetype: 'CRYO WARDEN',
+        capeColor: '#0f766e',
+        suitPrimary: '#0d9488',
+        suitSecondary: '#67e8f9',
+        armorPlate: '#f0f9ff',
+        skinTone: '#f5cba7',
+        hairColor: '#475569',
+        visorColor: '#a5f3fc'
+      },
+      {
+        id: 'ember',
+        label: 'EMBER',
+        archetype: 'BLAZE CHAMPION',
+        capeColor: '#b91c1c',
+        suitPrimary: '#dc2626',
+        suitSecondary: '#f97316',
+        armorPlate: '#fde68a',
+        skinTone: '#eab68c',
+        hairColor: '#451a03',
+        visorColor: '#fbbf24'
+      },
+      {
+        id: 'hex',
+        label: 'HEX',
+        archetype: 'PLASMA DUELIST',
+        capeColor: '#7e22ce',
+        suitPrimary: '#9333ea',
+        suitSecondary: '#ec4899',
+        armorPlate: '#f3e8ff',
+        skinTone: '#e0a980',
+        hairColor: '#1f2937',
+        visorColor: '#f472b6'
+      },
+      {
+        id: 'solis',
+        label: 'SOLIS',
+        archetype: 'SOLAR TITAN',
+        capeColor: '#d97706',
+        suitPrimary: '#ea580c',
+        suitSecondary: '#facc15',
+        armorPlate: '#fef3c7',
+        skinTone: '#d99b6c',
+        hairColor: '#292524',
+        visorColor: '#fde047'
+      }
+    ];
+
+    const POWER_ARSENAL = [
+      { id: 'fire', name: 'FIRE', icon: '🔥', color: '#f97316', primary: '#ea580c', core: '#fef08a', strength: 78, style: 'fire' },
+      { id: 'water', name: 'WATER', icon: '💧', color: '#0ea5e9', primary: '#0284c7', core: '#e0f2fe', strength: 82, style: 'water' },
+      { id: 'thunder', name: 'THUNDER', icon: '⚡', color: '#eab308', primary: '#ca8a04', core: '#ffffff', strength: 86, style: 'thunder' },
+      { id: 'frost', name: 'FROST', icon: '❄️', color: '#06b6d4', primary: '#0891b2', core: '#ecfeff', strength: 76, style: 'frost' },
+      { id: 'wind', name: 'WIND', icon: '🌪️', color: '#10b981', primary: '#059669', core: '#ecfdf5', strength: 75, style: 'wind' },
+      { id: 'plasma', name: 'PLASMA', icon: '🔮', color: '#d946ef', primary: '#a21caf', core: '#fae8ff', strength: 84, style: 'plasma' },
+      { id: 'shadow', name: 'SHADOW', icon: '🌑', color: '#6366f1', primary: '#4338ca', core: '#e0e7ff', strength: 80, style: 'shadow' },
+      { id: 'venom', name: 'VENOM', icon: '💀', color: '#84cc16', primary: '#3f6212', core: '#ecfccb', strength: 79, style: 'venom' },
+      { id: 'megapower', name: 'MEGAPOWER', icon: '💥', color: '#c084fc', primary: '#7e22ce', core: '#f5d0fe', strength: 100, style: 'megapower' },
+      { id: 'phoenix', name: 'PHOENIX', icon: '🦅', color: '#f43f5e', primary: '#e11d48', core: '#fef08a', strength: 88, style: 'phoenix' },
+      { id: 'solar', name: 'SOLAR', icon: '☀️', color: '#f59e0b', primary: '#d97706', core: '#ffffff', strength: 90, style: 'solar' },
+      { id: 'earth', name: 'EARTH', icon: '🌋', color: '#a3a3a3', primary: '#57534e', core: '#fef3c7', strength: 80, style: 'earth' }
+    ];
+
+    // Logical Elemental Matchup Map:
+    // - Same power vs same power => 0 (no one wins, draw)
+    // - Water beats Fire (water controls fire)
+    // - Thunder beats Phoenix (thunder strikes down phoenix)
+    // - Phoenix beats Water (phoenix crosses/vaporizes water)
+    // - Additional balanced elemental counters across the roster
+    const ELEMENT_ADVANTAGES = {
+      water: ['fire', 'solar'],
+      fire: ['frost', 'wind'],
+      thunder: ['phoenix', 'plasma'],
+      phoenix: ['water', 'frost', 'shadow'],
+      frost: ['thunder', 'wind'],
+      solar: ['shadow', 'frost', 'phoenix'],
+      wind: ['thunder', 'plasma'],
+      plasma: ['venom', 'frost', 'fire'],
+      shadow: ['thunder', 'wind', 'venom'],
+      venom: ['water', 'earth']
+    };
+
+    // Real card art for the arsenal (generated 1:1 emblems).
+    const POWER_ART = {
+      fire: '/images/power-cards/fire.jpg',
+      water: '/images/power-cards/water.jpg',
+      thunder: '/images/power-cards/thunder.jpg',
+      frost: '/images/power-cards/frost.jpg',
+      wind: '/images/power-cards/wind.jpg',
+      plasma: '/images/power-cards/plasma.jpg',
+      shadow: '/images/power-cards/shadow.jpg',
+      megapower: '/images/power-cards/megapower.jpg',
+      phoenix: '/images/power-cards/phoenix.jpg',
+      solar: '/images/power-cards/solar.jpg',
+      earth: '/images/power-cards/earth.jpg'
+    };
+    POWER_ARSENAL.forEach((power) => { power.art = POWER_ART[power.id] || null; });
+
+    // Six selectable champions. Every champion is fully rigged and animated, has
+    // its own fighting flavour and its own five-power arsenal. MEGAPOWER is the
+    // fixed finisher; VENOM is the shared wildcard and obeys the same clash rules
+    // as every other power, so it can win or lose like the rest.
+    const CHARACTERS = [
+      {
+        id: 'giant', name: 'GIANT', tag: 'BRUTE', emoji: '\u{1F5FF}', suitId: 'nova', accent: '#22c55e',
+        model: '/models/animated-ogre-warrior.glb', height: 5.15,
+        powers: ['earth', 'fire', 'thunder', 'megapower', 'venom'],
+        style: { lean: 1.20, lunge: 1.22, jump: 1.10, lap: 1.10, recoil: 1.25, taunt: 'roar' }
+      },
+      {
+        id: 'warrior', name: 'WARRIOR', tag: 'KNIGHT', emoji: '\u{2694}\u{FE0F}', suitId: 'ember', accent: '#38bdf8',
+        model: '/models/animated-plate-knight.glb', height: 4.95,
+        powers: ['frost', 'wind', 'phoenix', 'megapower', 'venom'],
+        style: { lean: 0.95, lunge: 1.05, jump: 0.95, lap: 1.0, recoil: 1.0, taunt: 'salute' }
+      },
+      {
+        id: 'zombie', name: 'ZOMBIE', tag: 'UNDEAD', emoji: '\u{1F9DF}', suitId: 'frost', accent: '#84cc16',
+        model: '/models/zombie.glb', height: 4.85,
+        powers: ['shadow', 'earth', 'water', 'megapower', 'venom'],
+        style: { lean: 1.45, lunge: 0.72, jump: 0.55, lap: 0.62, recoil: 1.30, taunt: 'lurch' }
+      },
+      {
+        id: 'wizard', name: 'WIZARD', tag: 'ARCANE', emoji: '\u{1F9D9}', suitId: 'hex', accent: '#a855f7',
+        model: '/models/wizard.glb', height: 4.95,
+        powers: ['plasma', 'frost', 'solar', 'megapower', 'venom'],
+        style: { lean: 0.82, lunge: 0.68, jump: 0.80, lap: 0.72, recoil: 0.90, taunt: 'spin' }
+      },
+      {
+        id: 'soldier', name: 'SOLDIER', tag: 'TACTICAL', emoji: '\u{1F52B}', suitId: 'volt', accent: '#22d3ee',
+        model: '/models/soldier-tactical.glb', height: 4.90,
+        powers: ['thunder', 'fire', 'shadow', 'megapower', 'venom'],
+        style: { lean: 1.00, lunge: 0.92, jump: 1.05, lap: 0.95, recoil: 1.15, taunt: 'march' }
+      },
+      {
+        id: 'superhero', name: 'SUPERHERO', tag: 'COSMIC', emoji: '\u{1F9B8}', suitId: 'solis', accent: '#ef4444',
+        model: '/models/superhero.glb', height: 5.00,
+        powers: ['solar', 'wind', 'water', 'megapower', 'venom'],
+        style: { lean: 0.90, lunge: 1.35, jump: 1.45, lap: 1.25, recoil: 0.85, taunt: 'fly' }
+      }
+    ];
+    const CHARACTER_MAP = new Map(CHARACTERS.map(c => [c.id, c]));
+    function getCharacter(id) { return CHARACTER_MAP.get(id) || CHARACTERS[0]; }
+
+
+    // User-selected voice clips hosted by MyInstants. No generated/browser speech.
+    const loserVoice = new Audio('https://www.myinstants.com/media/sounds/get-out-loser.mp3');
+    loserVoice.preload = 'auto';
+    loserVoice.loop = false;
+    loserVoice.playbackRate = 1;
+    let activeVoiceClip = null;
+    function playVoiceClip(audio) {
+      // Let an active voice clip finish naturally; never cut the hurt cry in half
+      // by restarting it on a repeated damage callback.
+      try {
+        if (activeVoiceClip === audio && !audio.paused && !audio.ended) return;
+        if (activeVoiceClip && activeVoiceClip !== audio) {
+          activeVoiceClip.pause();
+          activeVoiceClip.currentTime = 0;
+        }
+        audio.pause();
+        audio.currentTime = 0;
+        audio.playbackRate = 1;
+        activeVoiceClip = audio;
+        const playback = audio.play();
+        if (playback && typeof playback.catch === 'function') playback.catch(() => {});
+      } catch (_) { /* Sound clips are optional; combat never depends on audio. */ }
+    }
+
+    // Universal clash rules (identical for every champion):
+    //   MEGAPOWER vs MEGAPOWER -> zero damage
+    //   MEGAPOWER vs anything  -> Mega wins with 45% damage
+    //   every other pairing    -> strength-weighted coin flip for balance, 16-24% damage
+    // so no champion is pre-selected to always win and every power can win or lose.
+    function resolveElementalClash(pw1, pw2) {
+      if (!pw1 || !pw2) return { winner: 0, damage: 0, kind: 'draw' };
+      const p1Mega = pw1.id === 'megapower';
+      const p2Mega = pw2.id === 'megapower';
+
+      if (p1Mega && p2Mega) return { winner: 0, damage: 0, kind: 'mega-draw' };
+      if (p1Mega) return { winner: 1, damage: 45, kind: 'mega' };
+      if (p2Mega) return { winner: 2, damage: 45, kind: 'mega' };
+
+      const w1 = Math.max(1, pw1.strength || 78);
+      const w2 = Math.max(1, pw2.strength || 78);
+      // Weighted but never certain: even the weaker power keeps a real chance.
+      const p1Chance = Math.min(0.72, Math.max(0.28, w1 / (w1 + w2)));
+      const winner = Math.random() < p1Chance ? 1 : 2;
+      const damage = 16 + Math.round(Math.random() * 8);
+      return { winner, damage, kind: 'clash' };
+    }
+
+    // =========================================================================
+    // 3. GAME STATE & DOM REFERENCES
+    // =========================================================================
+    const posterScreen = document.getElementById('posterScreen');
+    const selectScreen = document.getElementById('selectScreen');
+    const arenaScreen = document.getElementById('arenaScreen');
+
+    const toSelectScreenBtn = document.getElementById('toSelectScreenBtn');
+    const backToPosterBtn = document.getElementById('backToPosterBtn');
+    const enterArenaBtn = document.getElementById('enterArenaBtn');
+    const exitArenaBtn = document.getElementById('exitArenaBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const attackBtn = document.getElementById('attackBtn');
+const p1NameInput = document.getElementById('p1NameInput');
+    const p2NameInput = document.getElementById('p2NameInput');
+    const p1SuitPills = document.getElementById('p1SuitPills');
+    const p2SuitPills = document.getElementById('p2SuitPills');
+    const p1SuitBadge = document.getElementById('p1SuitBadge');
+    const p2SuitBadge = document.getElementById('p2SuitBadge');
+
+    const hudP1Name = document.getElementById('hudP1Name');
+    const hudP2Name = document.getElementById('hudP2Name');
+    const hudP1PowerText = document.getElementById('hudP1PowerText');
+    const hudP2PowerText = document.getElementById('hudP2PowerText');
+    const hudP1PowerBar = document.getElementById('hudP1PowerBar');
+    const hudP2PowerBar = document.getElementById('hudP2PowerBar');
+    const hudRoundNum = document.getElementById('hudRoundNum');
+    const arenaStatusPill = document.getElementById('arenaStatusPill');
+    const arenaVignette = document.getElementById('arenaVignette');
+    const arenaFlash = document.getElementById('arenaFlash');
+
+    const p1SlotsContainer = document.getElementById('p1SlotsContainer');
+    const p2SlotsContainer = document.getElementById('p2SlotsContainer');
+    const p1LockBadge = document.getElementById('p1LockBadge');
+    const p2LockBadge = document.getElementById('p2LockBadge');
+
+    const victoryBanner = document.getElementById('victoryBanner');
+    const victoryWinnerName = document.getElementById('victoryWinnerName');
+    const victorySubtext = document.getElementById('victorySubtext');
+    const editNamesAfterWinBtn = document.getElementById('editNamesAfterWinBtn');
+    const rematchBtn = document.getElementById('rematchBtn');
+
+    const posterCanvas = document.getElementById('posterCanvas');
+    const p1PreviewCanvas = document.getElementById('p1PreviewCanvas');
+    const p2PreviewCanvas = document.getElementById('p2PreviewCanvas');
+    const battleCanvas = document.getElementById('battleCanvas');
+
+    const game = {
+      screen: 'SELECT', // Website dashboard poster -> SELECT -> ARENA
+      phase: 'PICKING', // PICKING | READY_TO_ATTACK | CHARGING | TRAVEL_TO_CENTER | CENTER_CLASH | SURGE_HIT | DRAW_PULSE | VICTORY
+      round: 1,
+      winner: 0,
+      time: 0,
+      shake: 0,
+      hitStop: 0,
+      slotsLocked: false,
+      slotSequence: 0,
+      p1: {
+        name: 'GIANT',
+        characterId: 'giant',
+        suitId: 'nova',
+        hero: HERO_SUITS[0],
+        power: 100,
+        slots: [],
+        pickedIndex: null,
+        pickedPower: null,
+        anim: 'idle',
+        hurtTimer: 0,
+        fallTimer: 0,
+        recoilX: 0
+      },
+      p2: {
+        name: 'WARRIOR',
+        characterId: 'warrior',
+        suitId: 'ember',
+        hero: HERO_SUITS[3],
+        power: 100,
+        slots: [],
+        pickedIndex: null,
+        pickedPower: null,
+        anim: 'idle',
+        hurtTimer: 0,
+        fallTimer: 0,
+        recoilX: 0
+      },
+      clash: {
+        timer: 0,
+        p1Reach: 0,
+        p2Reach: 0,
+        clashXRatio: 0.5,
+        winnerSide: 0,
+        drainAmount: 0,
+        appliedDamage: false,
+        surgeProgress: 0
+      },
+      bannerDelay: 0,
+      celebrationTimer: 0
+    };
+
+    // How long a knocked-down fighter owns the screen before the next round.
+    // Knockdown + lying + standing back up all happen inside this window.
+    // Cinematic clash timings. Short and punchy: the powers fire almost at once,
+    // collide fast and the loser is on the floor well inside two seconds.
+    // Cinematic clash timings: a long, tense gather, a short flight, a real
+    // struggle at the centre, then the breakthrough lands almost instantly.
+    const CHARGE_TIME = 1.7;
+    const TRAVEL_TIME = 0.85;
+    const IMPACT_HOLD = 0.55;   // the moment the two forces slam together
+    const CLASH_TIME = 2.2;     // hold + power struggle at the centre
+    const SURGE_TIME = 0.34;
+    const DRAW_TIME = 0.95;
+    const AFTERMATH_TIME = 3.25;
+    const FALL_DURATION = 2.9;
+    const FALL_TIMINGS = { stagger: .45, riseStart: 2.0, riseEnd: 2.72 };
+
+    let vfxParticles = [];
+    let shockRings = [];
+
+    // =========================================================================
+    // 4. SCREEN NAVIGATION & CHAMPION SELECTION
+    // =========================================================================
+    function showScreen(target) {
+      game.screen = target;
+      posterScreen.classList.toggle('hidden', target !== 'POSTER');
+      posterScreen.classList.toggle('flex', target === 'POSTER');
+
+      selectScreen.classList.toggle('hidden', target !== 'SELECT');
+      selectScreen.classList.toggle('flex', target === 'SELECT');
+
+      arenaScreen.classList.toggle('hidden', target !== 'ARENA');
+      arenaScreen.classList.toggle('flex', target === 'ARENA');
+
+      requestAnimationFrame(resizeAllCanvases);
+    }
+
+    function buildSuitPills() {
+      [1, 2].forEach((playerNum) => {
+        const wrap = playerNum === 1 ? p1SuitPills : p2SuitPills;
+        wrap.innerHTML = '';
+        CHARACTERS.forEach((ch) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'char-btn';
+          btn.dataset.char = ch.id;
+          btn.innerHTML = `<span class="char-emoji">${ch.emoji}</span><span>${ch.name}</span><span class="char-tag">${ch.tag}</span>`;
+          btn.addEventListener('click', () => selectCharacter(playerNum, ch.id));
+          wrap.appendChild(btn);
+        });
+      });
+
+      refreshSuitSelectionUI();
+    }
+
+    function selectCharacter(playerNum, id) {
+      const p = playerNum === 1 ? game.p1 : game.p2;
+      if (p.characterId === id) return;
+      const ch = getCharacter(id);
+      p.characterId = id;
+      p.suitId = ch.suitId;
+      p.hero = HERO_SUITS.find((s) => s.id === ch.suitId) || HERO_SUITS[0];
+      sfx.playSelect(playerNum === 1 ? 480 : 560);
+      // Every champion answers with its own voice / weapon signature.
+      sfx.championCue(id);
+      // The champion's own name fills the field so the HUD always matches the fighter.
+      (playerNum === 1 ? p1NameInput : p2NameInput).value = ch.name;
+      refreshSuitSelectionUI();
+      syncNamesFromInputs();
+      if (typeof window.gshRefresh3D === 'function') window.gshRefresh3D();
+    }
+
+    function refreshSuitSelectionUI() {
+      const c1 = getCharacter(game.p1.characterId);
+      const c2 = getCharacter(game.p2.characterId);
+      p1SuitBadge.textContent = c1.name;
+      p2SuitBadge.textContent = c2.name;
+
+      [...p1SuitPills.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.char === c1.id));
+      [...p2SuitPills.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.char === c2.id));
+    }
+
+    function syncNamesFromInputs() {
+      const n1 = (p1NameInput.value || '').trim().toUpperCase() || 'PLAYER 1';
+      const n2 = (p2NameInput.value || '').trim().toUpperCase() || 'PLAYER 2';
+      game.p1.name = n1;
+      game.p2.name = n2;
+      hudP1Name.textContent = n1;
+      hudP2Name.textContent = n2;
+    }
+
+    // =========================================================================
+    // 5. ROUND ROLL, 1-5 SLOTS & ATTACK TRIGGER
+    // =========================================================================
+    function characterOf(playerNum) {
+      return getCharacter((playerNum === 1 ? game.p1 : game.p2).characterId);
+    }
+    function characterPowers(playerNum) {
+      return characterOf(playerNum).powers
+        .map(id => POWER_ARSENAL.find(power => power.id === id))
+        .filter(Boolean);
+    }
+    function rollFivePowers(playerNum) {
+      const powers = characterPowers(playerNum);
+      const rotation = (game.round - 1) % powers.length;
+      return powers.slice(rotation).concat(powers.slice(0, rotation));
+    }
+    function powerArtMarkup(pw, cls) {
+      return pw.art
+        ? `<img class="${cls}" src="${pw.art}" alt="${pw.name}">`
+        : `<span class="${cls} is-icon">${pw.icon}</span>`;
+    }
+    function renderPowerInventories(){
+      [1,2].forEach(n=>{
+        const root=document.querySelector(`#p${n}PowerInventory .power-list`);
+        if(!root)return;
+        root.innerHTML=characterPowers(n).map(pw=>{
+          const extra = pw.id==='megapower' ? ' is-mega' : '';
+          return `<span class="power-card${extra}" style="--pc:${pw.color}" title="${pw.name}">${powerArtMarkup(pw,'pc-art')}<span class="pc-name">${pw.name}</span></span>`;
+        }).join('');
+      });
+    }
+
+    // The top arsenal shows the five cards while the players pick, and only shows
+    // the released card once the clash starts — then the whole box flushes with
+    // that power's colour when the two forces meet in the centre.
+    function setArsenalClashMode(pw1, pw2) {
+      [[1, pw1], [2, pw2]].forEach(([n, pw]) => {
+        const box = document.getElementById(`p${n}PowerInventory`);
+        const root = box && box.querySelector('.power-list');
+        if (!box || !root || !pw) return;
+        root.innerHTML = `<span class="power-card released-card rel-${pw.id}" style="--pc:${pw.color}" title="${pw.name}">${powerArtMarkup(pw, 'pc-art')}<span class="pc-name">${pw.name}</span></span>`;
+        box.style.setProperty('--rel-color', pw.color);
+        box.classList.add('arsenal-clash');
+        box.classList.remove('arsenal-clash-hot', 'arsenal-won', 'arsenal-lost');
+      });
+    }
+    function heatArsenalClashMode() {
+      [1, 2].forEach((n) => document.getElementById(`p${n}PowerInventory`)?.classList.add('arsenal-clash-hot'));
+    }
+    function clearArsenalClashMode() {
+      [1, 2].forEach((n) => {
+        const box = document.getElementById(`p${n}PowerInventory`);
+        if (!box) return;
+        box.classList.remove('arsenal-clash', 'arsenal-clash-hot', 'arsenal-won', 'arsenal-lost');
+        box.style.removeProperty('--rel-color');
+      });
+    }
+
+    // Cinematic grade and a single white pop when the breakthrough lands.
+    function setCine(on) {
+      if (arenaVignette) arenaVignette.classList.toggle('on', !!on);
+    }
+    function flashScreen(strength = 1) {
+      if (!arenaFlash) return;
+      arenaFlash.style.opacity = String(Math.min(.86, .42 + strength * .32));
+      arenaFlash.classList.add('hit');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        arenaFlash.classList.remove('hit');
+        arenaFlash.style.opacity = '0';
+      }));
+    }
+
+    function startNewRound(resetPowers = false) {
+      if (resetPowers) {
+        game.p1.power = 100;
+        game.p2.power = 100;
+        game.round = 1;
+        game.winner = 0;
+        victoryBanner.classList.add('hidden');
+      }
+
+      game.phase = 'PICKING';
+      game.clash.phaseAt = performance.now();
+      game.p1.slots = rollFivePowers(1);
+      game.p2.slots = rollFivePowers(2);
+      clearArsenalClashMode();
+      setCine(false);
+      renderPowerInventories();
+      game.p1.pickedIndex = null;
+      game.p2.pickedIndex = null;
+      game.p1.pickedPower = null;
+      game.p2.pickedPower = null;
+      game.p1.anim = 'idle';
+      game.p2.anim = 'idle';
+      game.p1.recoilX = 0;
+      game.p2.recoilX = 0;
+      game.p1.fallTimer = 0;
+      game.p2.fallTimer = 0;
+
+      game.clash.timer = 0;
+      game.clash.p1Reach = 0;
+      game.clash.p2Reach = 0;
+      game.clash.winnerSide = 0;
+      game.clash.drainAmount = 0;
+      game.clash.appliedDamage = false;
+      game.clash.surgeProgress = 0;
+      game.celebrationTimer = 0;
+      game.bannerDelay = 0;
+
+      victoryBanner.classList.add('hidden');
+      victoryBanner.classList.remove('show');
+
+      vfxParticles = [];
+      shockRings = [];
+
+      hudRoundNum.textContent = String(game.round).padStart(2, '0');
+      updatePowerLinesHUD();
+      game.slotsLocked = !resetPowers;
+      renderSlotButtons();
+      if (resetPowers) {
+        [...p1SlotsContainer.children,...p2SlotsContainer.children].forEach((el,i)=>{el.classList.remove('rotating'); void el.offsetWidth; el.classList.add('rotating'); el.style.animationDelay=`${(i%5)*105}ms`; el.addEventListener('animationend',()=>{el.classList.remove('rotating');el.style.animationDelay='';},{once:true});});
+        setStatusPill(`ROUND ${String(game.round).padStart(2, '0')} — PICK 1–5`, true);
+      } else {
+        playSlotReelSequence();
+      }
+      updateAttackButtonState();
+    }
+
+    function setStatusPill(text, show = true) {
+      arenaStatusPill.textContent = text;
+      arenaStatusPill.classList.toggle('hidden', !show);
+    }
+
+    // Runs every frame, so the DOM is only touched when a number really changed.
+    let hudP1Last = -1, hudP2Last = -1;
+    function updatePowerLinesHUD() {
+      const p1Pct = Math.max(0, Math.min(100, Math.round(game.p1.power)));
+      const p2Pct = Math.max(0, Math.min(100, Math.round(game.p2.power)));
+      if (p1Pct !== hudP1Last) {
+        hudP1Last = p1Pct;
+        hudP1PowerText.textContent = `${p1Pct}%`;
+        hudP1PowerBar.style.width = `${p1Pct}%`;
+      }
+      if (p2Pct !== hudP2Last) {
+        hudP2Last = p2Pct;
+        hudP2PowerText.textContent = `${p2Pct}%`;
+        hudP2PowerBar.style.width = `${p2Pct}%`;
+      }
+    }
+
+    function renderSlotButtons() {
+      p1SlotsContainer.innerHTML = ''; p2SlotsContainer.innerHTML = '';
+      const canPick = game.phase === 'PICKING' && !game.slotsLocked;
+      [1,2].forEach(playerNum=>{
+        const p=playerNum===1?game.p1:game.p2;
+        const container=playerNum===1?p1SlotsContainer:p2SlotsContainer;
+        container.classList.toggle('power-active',p.pickedPower!==null);
+        // The locked tile keeps a neutral accent so the power's colour never leaks.
+        container.style.setProperty('--selected-power','#2f7fc0');
+        for(let i=0;i<5;i++){
+          const pw=p.slots[i], selected=p.pickedIndex===i;
+          const btn=document.createElement('button');btn.type='button';btn.disabled=!canPick;
+          btn.className='power-slot-btn py-2 px-1 rounded-xl border font-display font-black text-xs flex flex-col items-center justify-center cursor-pointer '+(selected?'selected-power':'');
+          // The resting tiles stay hidden — just the slot number — so the powers are
+          // only ever seen while the shuffle strip is spinning. A picked slot shows
+          // a mystery card, never its power.
+          if(selected){btn.classList.add('has-art','mystery-slot');btn.innerHTML=`<span class="slot-mystery">?</span><span class="slot-art-name">LOCKED ${i+1}</span>`;}
+          else btn.innerHTML=`<span class="slot-number">${i+1}</span><span class="text-[8px] tracking-widest opacity-65 mt-1">POWER</span>`;
+          btn.addEventListener('click',()=>handleSlotPick(playerNum,i));container.appendChild(btn);
+        }
+      });
+      p1LockBadge.textContent=game.p1.pickedIndex!==null?'SELECTED':'OPEN';
+      p2LockBadge.textContent=game.p2.pickedIndex!==null?'SELECTED':'OPEN';
+    }
+
+    // Round-end power reel: a real three-symbol slot window per row. The strip
+    // tears past blurred, brakes hard, then crawls the last card under the centre
+    // frame while the window takes on the winning colour (the hint), snaps home
+    // on a random power and is wiped away a heartbeat later.
+    // Fast and unreadable on purpose: the whole shuffle is over in a third of a
+    // second, so nobody can track a card across the strip and work out where a
+    // power landed. A short strip keeps the DOM rebuild (and its layout cost) tiny.
+    const REEL_SPIN_MS = 340;
+    function reelCard(pw, index) {
+      const card = document.createElement('div');
+      card.className = 'slot-reel-card';
+      card.style.setProperty('--selected-power', pw.color);
+      card.innerHTML = `<span class="slot-index">${index + 1}</span>${powerArtMarkup(pw, 'slot-art')}<span class="slot-art-name">${pw.name}</span>`;
+      return card;
+    }
+    function playSlotReelSequence() {
+      const stamp = ++game.slotSequence;
+      const rows = [p1SlotsContainer, p2SlotsContainer];
+      const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      const spinMs = reduced ? 220 : REEL_SPIN_MS;
+      const blurOn = !reduced && QUALITY.tier === 0;
+      game.slotsLocked = true;
+      renderSlotButtons();
+      setStatusPill('SHUFFLING POWER SLOTS', true);
+      sfx.playReel();
+
+      rows.forEach((el, rowIndex) => {
+        el.querySelector('.slot-reel')?.remove();
+        el.classList.remove('slot-settle', 'slot-final');
+        const p = rowIndex === 0 ? game.p1 : game.p2;
+        // A real shuffle: the five powers are reordered for this round, and the
+        // strip is five cards wide, so every power stays properly visible as it spins.
+        const pows = (p.slots.length ? p.slots : characterPowers(rowIndex + 1)).slice();
+        for (let i = pows.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const tmp = pows[i]; pows[i] = pows[j]; pows[j] = tmp;
+        }
+        p.slots = pows.slice();
+        const reel = document.createElement('div');
+        reel.className = 'slot-reel';
+        const track = document.createElement('div');
+        track.className = 'slot-reel-track' + (blurOn ? ' spin-blur' : '');
+        const reps = 3, lead = 1;
+        for (let i = 0; i < lead; i++) pows.forEach((pw, k) => track.appendChild(reelCard(pw, k)));
+        for (let rep = 0; rep < reps; rep++) pows.forEach((pw, k) => track.appendChild(reelCard(pw, k)));
+        reel.appendChild(track);
+        el.appendChild(reel);
+        el.classList.add('reeling');
+
+        const accent = (pows[2] || pows[0] || {}).color || '#47b6ff';
+        reel.style.setProperty('--rl', accent);
+        reel.style.setProperty('--pc', accent);
+
+        // Still lands on a whole set of five, so the strip always stops perfectly
+        // aligned with the five tiles underneath — never half a card.
+        const cards = track.children;
+        const step = cards.length > 1 ? Math.max(1, cards[1].offsetLeft - cards[0].offsetLeft) : (el.clientWidth || 300) / 5;
+        const dist = Math.max(step, (reps - 1) * pows.length * step);
+
+        if (track.animate) {
+          const anim = track.animate([
+            // Flat out from the first frame, braking hard only in the last fifth so
+            // the strip never crawls slowly enough to be read.
+            { transform: 'translate3d(0,0,0)', offset: 0, easing: 'linear' },
+            { transform: `translate3d(${-dist * .72}px,0,0)`, offset: .5, easing: 'linear' },
+            { transform: `translate3d(${-dist * .93}px,0,0)`, offset: .8, easing: 'linear' },
+            { transform: `translate3d(${-dist}px,0,0)`, offset: 1, easing: 'cubic-bezier(.15,.85,.3,1)' }
+          ], { duration: spinMs, fill: 'forwards' });
+          window.setTimeout(() => {
+            if (stamp !== game.slotSequence) return;
+            track.classList.remove('spin-blur');
+            reel.classList.add('hinting');
+          }, Math.round(spinMs * .62));
+          anim.finished.then(() => {
+            if (stamp !== game.slotSequence) return;
+            el.classList.remove('reeling');
+            // The strip fades the instant it stops. Holding the landed set would
+            // show exactly which power ended up in which slot, which has to stay secret.
+            reel.classList.remove('hinting');
+            reel.classList.add('out');
+          }).catch(() => {});
+        } else {
+          track.style.transform = `translate3d(${-dist}px,0,0)`;
+          el.classList.remove('reeling');
+          reel.classList.add('out');
+        }
+      });
+
+      // Ratchet ticks start frantic and stretch out as the reel brakes.
+      let ticking = true;
+      const t0 = performance.now();
+              const tick = () => {
+        if (!ticking || stamp !== game.slotSequence) return;
+        const e = performance.now() - t0;
+        if (e > spinMs) return;
+        const k = e / spinMs;
+        sfx.playReelTick(1520 - k * 980);
+        window.setTimeout(tick, 30 + Math.pow(k, 2.1) * 140);
+      };
+      window.setTimeout(tick, 30);
+
+      window.setTimeout(() => {
+        if (stamp !== game.slotSequence) return;
+        ticking = false;
+        sfx.playReelStop();
+        // The landed strip holds for a heartbeat, then vanishes.
+        rows.forEach((el) => el.querySelector('.slot-reel')?.classList.add('out'));
+        window.setTimeout(() => {
+          if (stamp !== game.slotSequence) return;
+          rows.forEach((el) => el.querySelector('.slot-reel')?.remove());
+          game.slotsLocked = false;
+          renderSlotButtons();
+          rows.forEach((el) => {
+            [...el.children].forEach((btn, i) => { btn.style.animationDelay = `${i * 35}ms`; });
+            el.classList.add('slot-final');
+          });
+          window.setTimeout(() => {
+            rows.forEach((el) => {
+              el.classList.remove('slot-final');
+              [...el.children].forEach((btn) => { btn.style.animationDelay = ''; });
+            });
+          }, 460);
+          updateAttackButtonState();
+          setStatusPill(`ROUND ${String(game.round).padStart(2, '0')} — PICK 1–5`, true);
+        }, 150);
+      }, spinMs + 180);
+    }
+
+    function handleSlotPick(playerNum, slotIndex) {
+      if (game.phase !== 'PICKING' || game.slotsLocked) return;
+      const p = playerNum === 1 ? game.p1 : game.p2;
+      const chosen = p.slots[slotIndex];
+      if (!chosen) return;
+
+      p.pickedIndex = slotIndex;
+      p.pickedPower = chosen;
+      sfx.playSelect(playerNum === 1 ? 500 : 600);
+
+      renderSlotButtons();
+      updateAttackButtonState();
+    }
+
+    function updateAttackButtonState() {
+      const bothReady =
+        game.phase === 'PICKING' &&
+        !game.slotsLocked &&
+        game.p1.pickedPower !== null &&
+        game.p2.pickedPower !== null;
+
+      if (bothReady) {
+        game.phase = 'READY_TO_ATTACK';
+        attackBtn.disabled = false;
+        attackBtn.classList.add('attack-ready-pulse');
+        setStatusPill('BOTH READY — PRESS ATTACK!', true);
+      } else if (game.phase === 'PICKING') {
+        attackBtn.disabled = true;
+        attackBtn.classList.remove('attack-ready-pulse');
+      }
+    }
+
+    function triggerAttack() {
+      if (game.phase !== 'READY_TO_ATTACK') return;
+      const pw1 = game.p1.pickedPower;
+      const pw2 = game.p2.pickedPower;
+      if (!pw1 || !pw2) return;
+
+      attackBtn.disabled = true;
+      attackBtn.classList.remove('attack-ready-pulse');
+
+      enterPhase('CHARGING');
+      game.p1.anim = 'cast';
+      game.p2.anim = 'cast';
+      game.clash.timer = 0;
+      game.clash.p1Reach = 0;
+      game.clash.p2Reach = 0;
+      game.clash.appliedDamage = false;
+      game.clash.surgeProgress = 0;
+
+      const outcome = resolveElementalClash(pw1, pw2);
+      game.clash.winnerSide = outcome.winner;
+      game.clash.outcomeKind = outcome.kind;
+      game.clash.damage = outcome.damage;
+
+      game.clash.clashXRatio = 0.5;
+      game.clash.drainAmount = 0; // damage is calculated simultaneously after the centre collision
+
+      sfx.playAttack();
+      // Rising power gather under the whole charge, plus a battle cry from each side.
+      sfx.playCharge(CHARGE_TIME);
+      sfx.championCue(game.p1.characterId);
+      window.setTimeout(() => sfx.championCue(game.p2.characterId), 300);
+      // Nothing is revealed yet: the arsenal keeps all five cards through the
+      // charge so the clash itself is the moment the powers are named.
+      setCine(true);
+      setStatusPill('POWERS LOCKED — CHARGING...', true);
+    }
+
+    // =========================================================================
+    // 6. REALISTIC 2D HERO RENDERER (ATHLETIC PROPORTIONS, ARMOR & CAPE)
+    // =========================================================================
+    function drawRealisticHero(ctx, cx, groundY, scale, facing, hero, animState, time, hurtTimer, recoilX, fallTimer = 0) {
+      ctx.save();
+      const sway = Math.sin(time * 3.4) * 2.2;
+      const breath = Math.cos(time * 3.4) * 1.8;
+      const shakeOffset = hurtTimer > 0 ? Math.sin(time * 55) * 6 : 0;
+
+      ctx.translate(cx + recoilX + shakeOffset, groundY);
+      // fallTimer counts DOWN, so the fall has to be driven by the elapsed part of
+      // it — otherwise the body snaps straight into a full lean on the hit frame.
+      const fallElapsed = fallTimer > 0 ? Math.max(0, FALL_DURATION - fallTimer) : 0;
+      const fallProgress = fallTimer > 0 ? Math.min(1, fallElapsed / 0.55) : 0;
+      const getUp = fallTimer > 0 ? Math.max(0, Math.min(1, (fallElapsed - FALL_TIMINGS.riseStart) / Math.max(.01, FALL_TIMINGS.riseEnd - FALL_TIMINGS.riseStart))) : 0;
+      const fallAmount = Math.sin(fallProgress * Math.PI / 2) * (1 - getUp);
+      // A hit knocks the complete body sideways; the cape and limbs follow the fall.
+      ctx.rotate(-facing * fallAmount * 1.12);
+      ctx.translate(0, fallAmount * 10);
+      ctx.scale(facing * scale, scale);
+
+      // Ground contact shadow
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 48, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Flowing Cloth Cape behind back
+      const capeWave = Math.sin(time * 5.2) * 8 + (animState === 'cast' ? -10 : 0);
+      const capeGrad = ctx.createLinearGradient(-12, -118, -56, -12);
+      capeGrad.addColorStop(0, hero.capeColor);
+      capeGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = capeGrad;
+      ctx.beginPath();
+      ctx.moveTo(-10, -116 + breath);
+      ctx.quadraticCurveTo(-48 + capeWave * 0.5, -72, -58 + capeWave, -14);
+      ctx.lineTo(-22 + capeWave * 0.6, -24);
+      ctx.lineTo(-4, -102 + breath);
+      ctx.closePath();
+      ctx.fill();
+
+      // Back Leg & Boot
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(-14, -56);
+      ctx.lineTo(-28, -8);
+      ctx.lineTo(-10, -8);
+      ctx.lineTo(2, -56);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = hero.suitPrimary;
+      ctx.fillRect(-30, -16, 22, 16);
+
+      // Front Leg & Sculpted Greave
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(4, -56);
+      ctx.lineTo(22, -8);
+      ctx.lineTo(40, -8);
+      ctx.lineTo(22, -56);
+      ctx.closePath();
+      ctx.fill();
+
+      const legGrad = ctx.createLinearGradient(6, -54, 34, -10);
+      legGrad.addColorStop(0, hero.suitPrimary);
+      legGrad.addColorStop(1, hero.suitSecondary);
+      ctx.fillStyle = legGrad;
+      ctx.beginPath();
+      ctx.moveTo(6, -52);
+      ctx.lineTo(18, -14);
+      ctx.lineTo(34, -14);
+      ctx.lineTo(22, -52);
+      ctx.closePath();
+      ctx.fill();
+
+      // Athletic Torso & Chest Armor
+      const torsoGrad = ctx.createLinearGradient(-22, -116, 24, -54);
+      torsoGrad.addColorStop(0, hero.suitPrimary);
+      torsoGrad.addColorStop(0.6, hero.suitSecondary);
+      torsoGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = torsoGrad;
+      ctx.beginPath();
+      ctx.moveTo(-27, -116 + breath);
+      ctx.lineTo(27, -116 + breath);
+      ctx.lineTo(19, -56);
+      ctx.lineTo(-19, -56);
+      ctx.closePath();
+      ctx.fill();
+
+      // Chest Emblem Highlight
+      ctx.fillStyle = hero.visorColor;
+      ctx.beginPath();
+      ctx.moveTo(4, -102 + breath);
+      ctx.lineTo(15, -92 + breath);
+      ctx.lineTo(4, -81 + breath);
+      ctx.lineTo(-4, -92 + breath);
+      ctx.closePath();
+      ctx.fill();
+
+      // Front Arm & Power Gauntlet (extends forward when casting)
+      const armReach = animState === 'cast' ? 28 : (animState === 'win' ? 14 : 4);
+      const armLift = animState === 'cast' ? -10 : (animState === 'win' ? -24 : sway * 0.4);
+      ctx.strokeStyle = hero.suitPrimary;
+      ctx.lineWidth = 17;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(14, -108 + breath);
+      ctx.lineTo(30 + armReach * 0.5, -82 + armLift);
+      ctx.lineTo(38 + armReach, -68 + armLift);
+      ctx.stroke();
+
+      // Gauntlet
+      ctx.fillStyle = hero.armorPlate;
+      ctx.beginPath();
+      ctx.arc(38 + armReach, -68 + armLift, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Broad shoulder armour gives the champions a stronger superhero silhouette.
+      const shoulderGrad=ctx.createLinearGradient(-36,-112,36,-88);
+      shoulderGrad.addColorStop(0,hero.armorPlate); shoulderGrad.addColorStop(.45,hero.suitSecondary); shoulderGrad.addColorStop(1,hero.suitPrimary);
+      ctx.fillStyle=shoulderGrad;
+      ctx.beginPath();ctx.moveTo(-27,-113);ctx.lineTo(-42,-103);ctx.lineTo(-34,-86);ctx.lineTo(-17,-91);ctx.lineTo(-15,-108);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(22,-113);ctx.lineTo(39,-103);ctx.lineTo(31,-86);ctx.lineTo(15,-91);ctx.lineTo(14,-108);ctx.closePath();ctx.fill();
+
+      // Head & Sculpted Hair / Visor
+      const headY = -132 + breath;
+      ctx.fillStyle = hero.skinTone;
+      ctx.beginPath();
+      ctx.arc(4, headY, 13.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Glowing Visor / Mask
+      ctx.fillStyle = hero.visorColor;
+      ctx.beginPath();
+      ctx.roundRect(4, headY - 4, 14, 6.5, 3);
+      ctx.fill();
+
+      // Styled Hair Crest
+      ctx.fillStyle = hero.hairColor;
+      ctx.beginPath();
+      ctx.moveTo(-10, headY - 2);
+      ctx.quadraticCurveTo(-8, headY - 19, 8, headY - 17);
+      ctx.lineTo(18, headY - 12);
+      ctx.lineTo(10, headY - 7);
+      ctx.lineTo(-2, headY - 9);
+      ctx.closePath();
+      ctx.fill();
+
+      // Layered specular armour details: bevels, panel seams and metallic hardware.
+      ctx.save();
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = 'rgba(2,12,28,.48)'; ctx.shadowBlur = 9; ctx.shadowOffsetY = 3;
+      const chestPlate = ctx.createLinearGradient(-17,-111,18,-78);
+      chestPlate.addColorStop(0,'rgba(255,255,255,.58)');
+      chestPlate.addColorStop(.22,hero.armorPlate);
+      chestPlate.addColorStop(.72,hero.suitSecondary);
+      chestPlate.addColorStop(1,'rgba(4,18,35,.78)');
+      ctx.fillStyle=chestPlate;
+      ctx.beginPath();ctx.moveTo(-16,-108+breath);ctx.lineTo(17,-108+breath);ctx.lineTo(12,-79+breath);ctx.lineTo(0,-73+breath);ctx.lineTo(-12,-79+breath);ctx.closePath();ctx.fill();
+      ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+      ctx.strokeStyle='rgba(255,255,255,.48)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(-12,-103+breath);ctx.lineTo(-8,-84+breath);ctx.moveTo(12,-103+breath);ctx.lineTo(8,-84+breath);ctx.stroke();
+      // Segmented abdominal armour and illuminated energy seams.
+      ctx.strokeStyle='rgba(3,18,37,.58)';ctx.lineWidth=2;
+      [-72,-82].forEach(y=>{ctx.beginPath();ctx.moveTo(-12,y+breath);ctx.quadraticCurveTo(0,y+4+breath,12,y+breath);ctx.stroke();});
+      ctx.strokeStyle=hero.visorColor;ctx.globalAlpha=.82;ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.moveTo(-8,-77+breath);ctx.lineTo(8,-77+breath);ctx.stroke();ctx.globalAlpha=1;
+      // Metallic belt and centre core.
+      const belt=ctx.createLinearGradient(0,-62,0,-53);belt.addColorStop(0,'#f8fafc');belt.addColorStop(.5,hero.armorPlate);belt.addColorStop(1,'#64748b');
+      ctx.fillStyle=belt;ctx.fillRect(-19,-63,38,7);
+      ctx.fillStyle=hero.visorColor;ctx.beginPath();ctx.roundRect(-4,-64,9,9,2);ctx.fill();
+      // Armour edge highlights on greaves and boots add depth at full-body scale.
+      ctx.strokeStyle='rgba(255,255,255,.48)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(18,-48);ctx.lineTo(29,-16);ctx.moveTo(-17,-49);ctx.lineTo(-25,-16);ctx.stroke();
+      ctx.fillStyle=hero.armorPlate;ctx.globalAlpha=.8;
+      ctx.beginPath();ctx.roundRect(20,-20,12,4,2);ctx.fill();
+      ctx.beginPath();ctx.roundRect(-27,-20,12,4,2);ctx.fill();ctx.globalAlpha=1;
+      // Gauntlet rings and visor reflection.
+      ctx.strokeStyle=hero.visorColor;ctx.lineWidth=2;ctx.beginPath();ctx.arc(38+armReach,-68+armLift,8,-.9,.9);ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,.75)';ctx.beginPath();ctx.ellipse(8,headY-7,4,1.4,-.35,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+
+      // Hurt flash overlay
+      if (hurtTimer > 0) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
+        ctx.beginPath();
+        ctx.arc(4, -72, 54, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 7. SKY-TERRACE MOUNTAIN ARENA BACKDROP
+    // =========================================================================
+    // The backdrop never changes, so it is painted once at full device resolution
+    // and then blitted every frame: 4K-sharp detail with a tiny per-frame cost.
+    const BG_CACHE = new Map();
+    function renderSkyTerraceArena(ctx, w, h) {
+      const sx = ctx.getTransform().a || 1;
+      const key = `${Math.round(w)}x${Math.round(h)}@${sx.toFixed(2)}`;
+      let bg = BG_CACHE.get(key);
+      if (!bg) {
+        bg = document.createElement('canvas');
+        bg.width = Math.max(1, Math.round(w * sx));
+        bg.height = Math.max(1, Math.round(h * sx));
+        const bx = bg.getContext('2d');
+        bx.setTransform(sx, 0, 0, sx, 0, 0);
+        paintSkyCityArena(bx, w, h);
+        BG_CACHE.set(key, bg);
+        if (BG_CACHE.size > 4) BG_CACHE.delete(BG_CACHE.keys().next().value);
+      }
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(bg, 0, 0);
+      ctx.restore();
+    }
+
+    function paintSkyCityArena(ctx, w, h) {
+      // Bright daytime city arena: same sunny sky as before, but the washed-out
+      // lower half is now a full multi-layer skyline of towers and rooftops.
+      const horizon = h * .56, floorY = h * .80;
+
+      const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+      sky.addColorStop(0, '#3fb2f2');
+      sky.addColorStop(.31, '#9fdfff');
+      sky.addColorStop(.62, '#d9f2ff');
+      sky.addColorStop(1, '#effaff');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, floorY + 1);
+
+      // Soft sun glow and broad translucent clouds.
+      const sun = ctx.createRadialGradient(w*.78, h*.14, 3, w*.78, h*.14, w*.26);
+      sun.addColorStop(0, 'rgba(255,255,226,.92)');
+      sun.addColorStop(.34, 'rgba(255,255,255,.42)');
+      sun.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sun; ctx.fillRect(0, 0, w, horizon + h*.1);
+      ctx.fillStyle = 'rgba(255,255,255,.32)';
+      [[.16,.16,.11],[.40,.10,.085],[.63,.23,.12],[.88,.28,.09],[.29,.29,.07]].forEach(([x,y,r])=>{
+        ctx.beginPath(); ctx.ellipse(w*x,h*y,w*r,h*.023,0,0,Math.PI*2); ctx.fill();
+      });
+
+      // Hazy mountain ridge behind the skyline.
+      const ridge = ctx.createLinearGradient(0, horizon - h*.22, 0, horizon);
+      ridge.addColorStop(0, '#a3c9de'); ridge.addColorStop(1, '#c3e0ee');
+      ctx.fillStyle = ridge;
+      ctx.beginPath(); ctx.moveTo(0, horizon + 1);
+      ctx.lineTo(0, horizon - h*.10);
+      ctx.lineTo(w*.09, horizon - h*.185); ctx.lineTo(w*.16, horizon - h*.10);
+      ctx.lineTo(w*.25, horizon - h*.20); ctx.lineTo(w*.34, horizon - h*.11);
+      ctx.lineTo(w*.45, horizon - h*.215); ctx.lineTo(w*.55, horizon - h*.12);
+      ctx.lineTo(w*.66, horizon - h*.19); ctx.lineTo(w*.77, horizon - h*.10);
+      ctx.lineTo(w*.88, horizon - h*.18); ctx.lineTo(w, horizon - h*.09);
+      ctx.lineTo(w, horizon + 1); ctx.closePath(); ctx.fill();
+
+      const rnd = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+
+      // One depth layer of towers. Every tower is anchored on the terrace line so
+      // the whole lower half of the frame is filled with city, never blank.
+      function towerLayer(seed, minH, maxH, minW, varW, body, lit, win) {
+        let x = -w * .07, i = 0;
+        while (x < w * 1.07) {
+          const n = seed + i * 5.31;
+          const bw = Math.min(w * .15, w * (minW + rnd(n) * varW));
+          const bh = h * (minH + rnd(n + 1.7) * (maxH - minH));
+          const top = floorY - bh;
+          const g = ctx.createLinearGradient(x, top, x + bw, top);
+          g.addColorStop(0, body[0]); g.addColorStop(.42, body[1]); g.addColorStop(1, body[2]);
+          ctx.fillStyle = g; ctx.fillRect(x, top, bw, floorY - top);
+          // Sunlit edge, shaded edge and rooftop trim give each block volume.
+          ctx.fillStyle = 'rgba(255,255,255,.22)';
+          ctx.fillRect(x, top, Math.max(1.2, bw * .05), floorY - top);
+          ctx.fillStyle = 'rgba(28,72,102,.10)';
+          ctx.fillRect(x + bw - Math.max(1.2, bw * .05), top, Math.max(1.2, bw * .05), floorY - top);
+          const capH = Math.max(2, h * (.006 + rnd(n + 2.4) * .012));
+          ctx.fillStyle = body[2]; ctx.fillRect(x - bw*.03, top - capH, bw*1.06, capH);
+          if (rnd(n + 3.3) > .48) {
+            const ax = x + bw*(.2 + rnd(n + 4.4)*.55);
+            const ah = h*(.016 + rnd(n + 5.5)*.034);
+            const aw = Math.max(1.3, bw*.018);
+            ctx.fillStyle = 'rgba(96,132,158,.85)';
+            ctx.fillRect(ax, top - capH - ah, aw, ah);
+            if (rnd(n + 6.6) > .58) {
+              ctx.fillStyle = '#ef5f52';
+              ctx.beginPath(); ctx.arc(ax + aw/2, top - capH - ah, Math.max(1.6, bw*.028), 0, Math.PI*2); ctx.fill();
+            }
+          }
+          if (win) {
+            const padX = bw * .13, padY = bh * .055;
+            const cols = Math.max(2, Math.round((bw - padX) / (w * win.colGap)));
+            const rows = Math.max(3, Math.round((bh - padY) / (h * win.rowGap)));
+            const gw = (bw - padX) / cols, gh = (bh - padY) / rows;
+            for (let r = 0; r < rows; r++) {
+              for (let c = 0; c < cols; c++) {
+                const q = rnd(n + r * 13.7 + c * 5.9);
+                const wx = x + padX*.5 + c*gw + gw*.18;
+                const wy = top + padY*.5 + r*gh + gh*.20;
+                if (q > .86) ctx.fillStyle = lit ? 'rgba(255,232,150,.96)' : 'rgba(255,244,200,.6)';
+                else if (q > .55) ctx.fillStyle = lit ? 'rgba(206,238,255,.98)' : 'rgba(228,245,255,.66)';
+                else ctx.fillStyle = lit ? 'rgba(118,170,204,.96)' : 'rgba(170,205,229,.6)';
+                ctx.fillRect(wx, wy, gw*.62, gh*.5);
+              }
+            }
+          }
+          x += bw + w * (.003 + rnd(n + 8.9) * .012);
+          i++;
+        }
+      }
+
+      // Far skyline (tall, pale, soft) → haze → mid blocks → detailed near towers.
+      towerLayer(11.3, .20, .345, .028, .052, ['#c2dfee', '#a9cbdd', '#97bdd2'], false, null);
+      const haze = ctx.createLinearGradient(0, floorY - h*.30, 0, floorY);
+      haze.addColorStop(0, 'rgba(232,247,255,0)');
+      haze.addColorStop(1, 'rgba(228,245,254,.40)');
+      ctx.fillStyle = haze; ctx.fillRect(0, floorY - h*.30, w, h*.30);
+      towerLayer(47.7, .13, .25, .040, .055, ['#a8cddf', '#8fbacf', '#7caac2'], false, {colGap:.019, rowGap:.032});
+      towerLayer(83.1, .075, .185, .052, .062, ['#8fb7cb', '#6f99b3', '#5b88a5'], true, {colGap:.017, rowGap:.027});
+
+      // Warm afternoon light raking across the near towers.
+      const rake = ctx.createLinearGradient(0, floorY - h*.2, 0, floorY);
+      rake.addColorStop(0, 'rgba(255,238,205,0)');
+      rake.addColorStop(1, 'rgba(255,224,170,.20)');
+      ctx.fillStyle = rake; ctx.fillRect(0, floorY - h*.2, w, h*.2);
+
+      // Sunlit pale-stone terrace the fighters actually stand on.
+      const floor = ctx.createLinearGradient(0, floorY, 0, h);
+      floor.addColorStop(0, '#eaf8ff'); floor.addColorStop(.38, '#d2ebf7'); floor.addColorStop(1, '#aacfe2');
+      ctx.fillStyle = floor; ctx.fillRect(0, floorY, w, h - floorY + 1);
+      const edge = ctx.createLinearGradient(0, floorY - h*.012, 0, floorY + h*.02);
+      edge.addColorStop(0, 'rgba(255,255,255,.95)');
+      edge.addColorStop(.45, 'rgba(152,216,246,.9)');
+      edge.addColorStop(1, 'rgba(90,160,195,0)');
+      ctx.fillStyle = edge; ctx.fillRect(0, floorY - h*.012, w, h*.032);
+      ctx.strokeStyle = 'rgba(66,136,172,.20)'; ctx.lineWidth = 1;
+      for (let i = 1; i <= 6; i++) {
+        const yy = floorY + (h - floorY) * i / 6;
+        ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(w, yy); ctx.stroke();
+      }
+      for (let i = 0; i <= 16; i++) {
+        const xx = w * (.5 + (i - 8) * .085);
+        ctx.beginPath(); ctx.moveTo(w*.5, floorY); ctx.lineTo(xx, h); ctx.stroke();
+      }
+      const cx = w*.5, cy = floorY + (h - floorY) * .54;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(31,145,194,.42)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(cx, cy, w*.34, (h - floorY)*.38, 0, 0, Math.PI*2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(cx, cy, w*.25, (h - floorY)*.27, 0, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+
+
+    // =========================================================================
+    // 8. POWER BEAM & IMPACT VFX RENDERER
+    // =========================================================================
+    function drawPowerBeam(ctx, startX, endX, y, power, time) {
+      if (!power || Math.abs(endX - startX) < 4) return;
+      const dir = endX >= startX ? 1 : -1;
+      const len = Math.abs(endX - startX);
+      const pulse = 1 + Math.sin(time * 14) * 0.055;
+      const style = power.style;
+      const c = power.color;
+      const p = power.primary;
+      const core = power.core;
+
+      // Draw in the direction of travel. Avoid additive white blending: each
+      // element keeps its own saturated colour and silhouette.
+      ctx.save();
+      ctx.translate(startX, y);
+      ctx.scale(dir, 1);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Coloured outer wake with a dark edge so it remains visible on bright skies.
+      // No shadowBlur on this long stroke: blurring a path hundreds of pixels wide
+      // every frame was the most expensive thing in the beam. The translucent wake
+      // already reads as a glow, so dropping the blur costs nothing visually.
+      ctx.globalAlpha = .36;
+      ctx.strokeStyle = p;
+      ctx.lineWidth = 38 * pulse;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(len, 0);
+      ctx.stroke();
+
+      // Saturated central body — deliberately not white.
+      ctx.globalAlpha = .98;
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 23 * pulse;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(len, 0);
+      ctx.stroke();
+
+      // Contrasting coloured travelling bands create a visible sense of speed.
+      ctx.globalAlpha = .95;
+      const bands = QUALITY.tier >= 2 ? 6 : 10;
+      for (let i = 0; i < bands; i++) {
+        const x = ((time * 300 + i * 59) % Math.max(1, len));
+        ctx.strokeStyle = i % 2 ? core : p;
+        ctx.lineWidth = i % 3 === 0 ? 7 : 4;
+        ctx.beginPath();
+        ctx.moveTo(x - 18, -8);
+        ctx.lineTo(x - 7, 0);
+        ctx.lineTo(x + 9, 8);
+        ctx.stroke();
+      }
+
+      // Distinct travelling shape language for every element.
+      if (style === 'fire' || style === 'phoenix') {
+        for (let i = 0; i < Math.max(3, Math.floor(len / 38)); i++) {
+          const x = (i * 41 + time * 205) % Math.max(1, len);
+          const h = 15 + (i % 3) * 6;
+          ctx.fillStyle = i % 2 ? '#ffcf45' : '#ff542e';
+          ctx.beginPath();
+          ctx.moveTo(x - 13, 0);
+          ctx.quadraticCurveTo(x - 4, -h * 1.8, x + 9, -h);
+          ctx.quadraticCurveTo(x + 20, 0, x + 4, h);
+          ctx.quadraticCurveTo(x - 8, h * 1.4, x - 13, 0);
+          ctx.fill();
+        }
+        if (style === 'phoenix') {
+          ctx.strokeStyle = '#ffe18a'; ctx.lineWidth = 3;
+          for (let i = 0; i < 4; i++) {
+            const x = (time * 170 + i * len / 4) % len;
+            ctx.beginPath(); ctx.moveTo(x, -17); ctx.quadraticCurveTo(x + 13, -32, x + 28, -12); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x, 17); ctx.quadraticCurveTo(x + 13, 32, x + 28, 12); ctx.stroke();
+          }
+        }
+      } else if (style === 'water') {
+        // Two deep-blue wave rails and a bright cyan crest; droplets travel ahead.
+        for (let rail = 0; rail < 3; rail++) {
+          ctx.strokeStyle = rail === 1 ? '#8cecff' : '#0879d5';
+          ctx.lineWidth = rail === 1 ? 6 : 4;
+          ctx.beginPath();
+          for (let x = 0; x <= len; x += 7) {
+            const yy = Math.sin(x * .045 - time * 13 + rail * 1.7) * (8 + rail * 3);
+            if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+          }
+          ctx.stroke();
+        }
+        for (let i = 0; i < 12; i++) {
+          const x = (time * 240 + i * 37) % Math.max(1, len);
+          const yy = Math.sin(x * .045 - time * 13) * 13;
+          ctx.fillStyle = i % 2 ? '#b9f5ff' : '#168de8';
+          ctx.beginPath(); ctx.ellipse(x, yy - 12, 4, 8, -.35, 0, Math.PI * 2); ctx.fill();
+        }
+      } else if (style === 'thunder') {
+        // Repeated angular yellow lightning forks, outlined in amber.
+        for (let i = 0; i < Math.max(2, Math.floor(len / 75)); i++) {
+          const x = (i * 79 + time * 260) % Math.max(1, len);
+          ctx.strokeStyle = '#9b6500'; ctx.lineWidth = 8;
+          ctx.beginPath(); ctx.moveTo(x - 18, 0); ctx.lineTo(x - 5, -19); ctx.lineTo(x + 1, 3); ctx.lineTo(x + 17, -13); ctx.stroke();
+          ctx.strokeStyle = '#ffe34f'; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.moveTo(x - 18, 0); ctx.lineTo(x - 5, -19); ctx.lineTo(x + 1, 3); ctx.lineTo(x + 17, -13); ctx.stroke();
+        }
+      } else if (style === 'frost') {
+        for (let i = 0; i < Math.max(2, Math.floor(len / 48)); i++) {
+          const x = (i * 51 + time * 115) % Math.max(1, len);
+          ctx.fillStyle = '#bafaff';
+          ctx.strokeStyle = '#087fbd'; ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x, -19); ctx.lineTo(x + 9, -5); ctx.lineTo(x + 4, 0);
+          ctx.lineTo(x + 10, 7); ctx.lineTo(x, 20); ctx.lineTo(x - 9, 7);
+          ctx.lineTo(x - 4, 0); ctx.lineTo(x - 9, -5); ctx.closePath();
+          ctx.fill(); ctx.stroke();
+        }
+      } else if (style === 'wind') {
+        // Clearly visible emerald corkscrew ribbons, not a white beam.
+        for (let strand = 0; strand < 3; strand++) {
+          ctx.strokeStyle = strand === 1 ? '#c9ff70' : '#008b62';
+          ctx.lineWidth = strand === 1 ? 5 : 4;
+          ctx.beginPath();
+          for (let x = 0; x <= len; x += 5) {
+            const yy = Math.sin(x * .055 - time * 12 + strand * 2.1) * (13 + strand * 3);
+            if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+          }
+          ctx.stroke();
+        }
+        for (let i = 0; i < 9; i++) {
+          const x = (time * 220 + i * 43) % Math.max(1, len);
+          ctx.save(); ctx.translate(x, Math.sin(x * .055 - time * 12) * 14);
+          ctx.rotate(Math.sin(time * 5 + i) * .8);
+          ctx.fillStyle = i % 2 ? '#a7f45b' : '#00a879';
+          ctx.beginPath(); ctx.moveTo(-10, 0); ctx.quadraticCurveTo(0, -13, 14, -2);
+          ctx.quadraticCurveTo(3, 12, -10, 0); ctx.fill(); ctx.restore();
+        }
+      } else if (style === 'plasma') {
+        for (let i = 0; i < 8; i++) {
+          const x = (time * 240 + i * 42) % Math.max(1, len);
+          ctx.strokeStyle = i % 2 ? '#ff9cff' : '#8d27d9';
+          ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.arc(x, Math.sin(time * 8 + i) * 8, 10 + (i % 3) * 3, time * 3 + i, time * 3 + i + 4.5); ctx.stroke();
+        }
+      } else if (style === 'shadow') {
+        for (let i = 0; i < 9; i++) {
+          const x = (time * 170 + i * 45) % Math.max(1, len);
+          ctx.fillStyle = i % 2 ? '#34206f' : '#8b5cf6';
+          ctx.beginPath(); ctx.ellipse(x, Math.sin(time * 6 + i) * 10, 15, 9, time + i, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 3;
+        ctx.setLineDash([9, 8]); ctx.lineDashOffset = -time * 60;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, 0); ctx.stroke(); ctx.setLineDash([]);
+      } else if (style === 'venom') {
+        // Acid stream: rising toxic bubbles with dripping globs under each one.
+        for (let i = 0; i < Math.max(3, Math.floor(len / 46)); i++) {
+          const x = (i * 47 + time * 150) % Math.max(1, len);
+          const yy = Math.sin(x * .06 - time * 7 + i) * 10;
+          const r = 7 + (i % 3) * 4;
+          ctx.fillStyle = i % 2 ? '#b6f24a' : '#5fae10';
+          ctx.strokeStyle = '#2c6b02'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(x, yy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#9ade2f';
+          ctx.beginPath(); ctx.ellipse(x + r * .45, yy + r + 5, 3, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+        }
+      } else if (style === 'solar') {
+        for (let i = 0; i < 9; i++) {
+          const x = (time * 190 + i * 43) % Math.max(1, len);
+          ctx.strokeStyle = i % 2 ? '#fff0a3' : '#d97706';
+          ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.moveTo(x, -20); ctx.lineTo(x + 7, 0); ctx.lineTo(x, 20); ctx.stroke();
+        }
+      }
+
+      // Large, saturated projectile head. The dark rim keeps its shape readable.
+      // Only drawn once the bolt has actually left the hand: at near-zero length it
+      // used to park a glowing ring right on the champion's fist.
+      if (len > 70) {
+      const headX = len;
+      ctx.save();
+      ctx.translate(headX, 0);
+      ctx.scale(pulse, pulse);
+      ctx.globalAlpha = 1;
+      ctx.shadowColor = c; ctx.shadowBlur = 17;
+      ctx.fillStyle = p;
+      ctx.beginPath(); ctx.arc(0, 0, 31, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#153b61'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(0, 0, 29, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(0, 0, 23, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = core; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(0, 0, 15, time * 2, time * 2 + Math.PI * 1.55); ctx.stroke();
+      ctx.fillStyle = core;
+      ctx.beginPath(); ctx.arc(-3, -3, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.restore();
+      }
+    }
+
+    function spawnImpactBurst(x, y, power) {
+      const c=power?power.color:'#38bdf8';
+      [1, .72, .46].forEach((factor,index)=>shockRings.push({
+        x,y,radius:8+index*12,maxRadius:150*factor,color:index===1?'#ffffff':c,alpha:.98-index*.12
+      }));
+      const count = QUALITY.tier === 0 ? 30 : QUALITY.tier === 1 ? 18 : 12;
+      for(let i=0;i<count;i++){
+        const angle=(Math.PI*2*i/count)+(Math.random()-.5)*.16;
+        const speed=2.5+Math.random()*9;
+        vfxParticles.push({
+          x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
+          gravity:.045,life:.9+Math.random()*.35,decay:.012+Math.random()*.009,
+          radius:2+Math.random()*4,color:i%5===0?'#ffffff':c
+        });
+      }
+      // Bright central flash ring, fades as the shockwave expands.
+      shockRings.push({x,y,radius:3,maxRadius:82,color:'#ffffff',alpha:1});
+    }
+
+    function updateAndDrawVFX(ctx) {
+      for (let i = shockRings.length - 1; i >= 0; i--) {
+        const r = shockRings[i];
+        r.radius += (r.maxRadius - r.radius) * 0.14;
+        r.alpha -= 0.03;
+        if (r.alpha <= 0) {
+          shockRings.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, r.alpha);
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      for (let i = vfxParticles.length - 1; i >= 0; i--) {
+        const pt = vfxParticles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.vy += pt.gravity;
+        pt.life -= pt.decay;
+        if (pt.life <= 0) {
+          vfxParticles.splice(i, 1);
+          continue;
+        }
+        // Cheap additive glow: soft halo plus solid core. shadowBlur per particle
+        // was the single heaviest thing in the clash and is gone.
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = pt.color;
+        if (QUALITY.tier === 0) {
+          ctx.globalAlpha = Math.max(0, pt.life) * .22;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.radius * 2.1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = Math.max(0, Math.min(1, pt.life * 1.15));
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.radius * .8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // Both fighters' fist positions in canvas pixels. The 3D layer publishes
+    // them every frame while the models are ready; the illustrated fallback
+    // heroes use their own gauntlet positions so powers always launch from a hand.
+    // Reused every frame. This used to allocate five fresh objects per call, twice
+    // per frame, which is exactly the steady garbage that turns into a hitch.
+    const ANCHOR_SCRATCH = { p1: { x: 0, y: 0 }, p2: { x: 0, y: 0 }, mid: { x: 0, y: 0 } };
+    function getFighterScreenAnchors(w, h) {
+      const live = window.gsh3dAnchors;
+      const scale = Math.max(1.15, Math.min(2.15, h / 235));
+      const out = ANCHOR_SCRATCH;
+      if (live && live.p1) { out.p1.x = live.p1.x * w; out.p1.y = live.p1.y * h; }
+      else { out.p1.x = w * 0.175 + 47 * scale; out.p1.y = h * 0.57; }
+      if (live && live.p2) { out.p2.x = live.p2.x * w; out.p2.y = live.p2.y * h; }
+      else { out.p2.x = w * 0.825 - 47 * scale; out.p2.y = h * 0.57; }
+      out.mid.x = (out.p1.x + out.p2.x) * 0.5;
+      out.mid.y = (out.p1.y + out.p2.y) * 0.5;
+      return out;
+    }
+
+    function drawChargeOrb(ctx, x, y, power, time, charge, dir) {
+      if (!power) return;
+      const c = power.color, p = power.primary, core = power.core;
+      const grow = Math.max(0, Math.min(1, charge));
+      const r = 9 + 24 * grow + Math.sin(time * 20) * 2.2 * grow;
+      ctx.save();
+      ctx.translate(x, y + Math.sin(time * 6) * 2);
+      ctx.globalCompositeOperation = 'lighter';
+      const glow = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2.8);
+      glow.addColorStop(0, core);
+      glow.addColorStop(.22, c);
+      glow.addColorStop(.55, p + 'aa');
+      glow.addColorStop(1, p + '00');
+      ctx.globalAlpha = .35 + .6 * grow;
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(0, 0, r * 2.8, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = p;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(0, 0, r * .8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = core;
+      ctx.beginPath(); ctx.arc(-r * .12, -r * .12, r * .36, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 4; i++) {
+        const a = time * 3.2 + i * Math.PI / 2;
+        ctx.strokeStyle = i % 2 ? core : c;
+        ctx.globalAlpha = .8;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (1.42 + i * .22 + (1 - grow) * .45), a, a + 1.05);
+        ctx.stroke();
+      }
+      // Motes spiral inward so the gathered power visibly builds up.
+      for (let i = 0; i < 8; i++) {
+        const t = ((time * 1.1 + i * .13) % 1 + 1) % 1;
+        const dist = r * (3.1 - 2.0 * t) * (.7 + (i % 3) * .12);
+        const a = i * 2.2 + dir * time * 2.1;
+        ctx.globalAlpha = (1 - t) * .9;
+        ctx.fillStyle = i % 2 ? core : c;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * dist, Math.sin(a) * dist * .82, 1.6 + 1.4 * grow, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 9. COMBAT PHASE SIMULATION & VICTORY CELEBRATION
+    // =========================================================================
+    function updateCombat(dt, w, h) {
+      if (game.phase === 'VICTORY') {
+        // The result card waits for the champion's lap to finish. This countdown
+        // runs on game time, so it stays in sync with the animation on any frame rate.
+        if (game.bannerDelay > 0) {
+          game.bannerDelay = Math.max(0, game.bannerDelay - dt);
+          if (game.bannerDelay === 0) {
+            victoryBanner.classList.remove('hidden');
+            requestAnimationFrame(() => victoryBanner.classList.add('show'));
+          }
+        }
+        // Confetti-style power bursts keep raining down during the champion lap.
+        game.celebrationTimer = (game.celebrationTimer || 0) + dt;
+        if (game.celebrationTimer >= (QUALITY.tier >= 1 ? 1.4 : .72)) {
+          game.celebrationTimer = 0;
+          spawnImpactBurst(
+            w * (.14 + Math.random() * .72),
+            h * (.14 + Math.random() * .24),
+            { color: Math.random() > .45 ? '#ffd24a' : (game.winner === 1 ? '#4ec3ff' : '#ff9a5c') }
+          );
+        }
+      }
+      if (game.p1.hurtTimer > 0) game.p1.hurtTimer = Math.max(0, game.p1.hurtTimer - dt);
+      if (game.p2.hurtTimer > 0) game.p2.hurtTimer = Math.max(0, game.p2.hurtTimer - dt);
+      if (game.p1.fallTimer > 0) game.p1.fallTimer = Math.max(0, game.p1.fallTimer - dt);
+      if (game.p2.fallTimer > 0) game.p2.fallTimer = Math.max(0, game.p2.fallTimer - dt);
+      game.p1.recoilX *= 0.86;
+      game.p2.recoilX *= 0.86;
+
+      const nowMs = performance.now();
+      if (game.clash.phaseAt == null) game.clash.phaseAt = nowMs;
+
+      if (game.phase === 'CHARGING') {
+        game.clash.timer = (nowMs - game.clash.phaseAt) / 1000;
+        const pw1 = game.p1.pickedPower, pw2 = game.p2.pickedPower;
+        if (!pw1 || !pw2) {
+          // A round reset mid-sequence leaves nothing to launch; return safely.
+          enterPhase('PICKING');
+          renderSlotButtons();
+          updateAttackButtonState();
+          return;
+        }
+        if (game.clash.timer >= CHARGE_TIME) {
+          enterPhase('TRAVEL_TO_CENTER');
+          sfx.stopCharge();
+          sfx.playLaunch();
+          sfx.playBeam(1);
+          window.setTimeout(() => sfx.playBeam(2), 90);
+          // Give each selected element its own short cue, staggered so they remain distinct.
+          sfx.playPower(pw1.id);
+          const secondPowerId = pw2.id;
+          window.setTimeout(() => sfx.playPower(secondPowerId), 560);
+          setStatusPill('POWERS RELEASED!', true);
+        }
+      } else if (game.phase === 'TRAVEL_TO_CENTER') {
+        game.clash.timer = (nowMs - game.clash.phaseAt) / 1000;
+        const t = Math.min(1, game.clash.timer / TRAVEL_TIME);
+        const eased = 1 - Math.pow(1 - t, 2.2);
+        game.clash.p1Reach = eased;
+        game.clash.p2Reach = eased;
+
+        if (t >= 1) {
+          enterPhase('CENTER_CLASH');
+          game.clash.p1Reach = 1;
+          game.clash.p2Reach = 1;
+          game.shake = 16;
+          sfx.playClash();
+          // The powers hit first. Only now does each top box reveal which power it
+          // was, and a beat later the whole box floods with that power's colour.
+          setArsenalClashMode(game.p1.pickedPower, game.p2.pickedPower);
+          window.setTimeout(() => {
+            if (game.phase === 'CENTER_CLASH' || game.phase === 'SURGE_HIT') heatArsenalClashMode();
+          }, 320);
+          setStatusPill('CLASH — POWER STRUGGLE', true);
+          const mid = getFighterScreenAnchors(w, h).mid;
+          spawnImpactBurst(mid.x, mid.y, game.p1.pickedPower);
+        }
+      } else if (game.phase === 'CENTER_CLASH') {
+        game.clash.timer = (nowMs - game.clash.phaseAt) / 1000;
+        // Impact hold: the two forces slam together and hang there for a beat, so
+        // the hit lands before any shoving starts. Then a long, readable struggle.
+        const tClash = game.clash.timer;
+        const inHold = tClash < IMPACT_HOLD;
+        const tS = Math.min(1, Math.max(0, tClash - IMPACT_HOLD) / Math.max(.01, CLASH_TIME - IMPACT_HOLD));
+        const breakAt = .82;
+        const breakHold = 1 - Math.max(0, Math.min(1, (tS - breakAt) / Math.max(.01, 1 - breakAt)));
+        const struggle = inHold ? 0
+          : (Math.sin(tClash * 15) * .052 + Math.sin(tClash * 6.1) * .028) * breakHold * Math.min(1, tS * 4);
+        game.clash.p1Reach = 1 + struggle;
+        game.clash.p2Reach = 1 - struggle;
+        // The screen vibrates harder as the deadlock tightens.
+        game.shake = Math.max(game.shake, inHold ? 9 * (1 - tClash / IMPACT_HOLD) : 3 + 4 * tS);
+
+        if (game.clash.timer >= CLASH_TIME) {
+          if (game.clash.winnerSide === 1 || game.clash.winnerSide === 2) {
+            enterPhase('SURGE_HIT');
+            game.clash.surgeProgress = 0;
+            sfx.playLaunch();
+          } else {
+            // Same power: draw -> no winner, no damage
+            enterPhase('DRAW_PULSE');
+            sfx.playDraw();
+            setStatusPill('DRAW — NO WINNER', true);
+          }
+        }
+      } else if (game.phase === 'SURGE_HIT') {
+        if (!game.clash.appliedDamage) {
+          game.clash.timer = (nowMs - game.clash.phaseAt) / 1000;
+          game.clash.surgeProgress = Math.min(1, game.clash.timer / SURGE_TIME);
+        }
+        const s = game.clash.surgeProgress;
+        // The winning force breaks through the clash while the losing force collapses.
+        // The winning beam pushes past the centre all the way into the rival.
+        if (game.clash.winnerSide === 1) {
+          game.clash.p1Reach = 1 + s * 1.04;
+          game.clash.p2Reach = Math.max(0.08, 1 - s * 0.9);
+        } else {
+          game.clash.p2Reach = 1 + s * 1.04;
+          game.clash.p1Reach = Math.max(0.08, 1 - s * 0.9);
+        }
+
+        if (s >= 1 && !game.clash.appliedDamage) {
+          game.clash.appliedDamage = true;
+          game.shake = 28;
+          flashScreen(1);
+          const a=game.p1.pickedPower, b=game.p2.pickedPower;
+          // The impact lands on the fighter who actually lost the clash.
+          const rows=getFighterScreenAnchors(w,h);
+          const victim=game.clash.winnerSide===1?rows.p2:rows.p1;
+          spawnImpactBurst(victim.x,victim.y,a); spawnImpactBurst(victim.x,victim.y,b);
+          const outcomeKind = game.clash.outcomeKind || 'clash';
+          const clashDamage = game.clash.damage || 0;
+          let damageToP1=0, damageToP2=0;
+          // Damage comes straight from the universal clash rules resolved on attack.
+          if(clashDamage > 0){
+            if(game.clash.winnerSide === 1) damageToP2 = clashDamage;
+            else if(game.clash.winnerSide === 2) damageToP1 = clashDamage;
+          }
+          game.p1.power=Math.max(0,game.p1.power-damageToP1);
+          game.p2.power=Math.max(0,game.p2.power-damageToP2);
+          if(damageToP1>0){game.p1.hurtTimer=1.2;game.p1.fallTimer=FALL_DURATION;game.p1.recoilX=-34;game.p1.anim='fall';}
+          if(damageToP2>0){game.p2.hurtTimer=1.2;game.p2.fallTimer=FALL_DURATION;game.p2.recoilX=34;game.p2.anim='fall';}
+          if(damageToP1>0 || damageToP2>0){
+            sfx.playImpact();
+            // The losing fighter hits the floor, then pushes back up.
+            window.setTimeout(() => sfx.playFallThud(), 120);
+            window.setTimeout(() => sfx.playGetUp(), Math.round(FALL_TIMINGS.riseStart * 1000));
+            // Dust kicks up at the exact moment the body slams the terrace.
+            window.setTimeout(() => {
+              const g = getFighterScreenAnchors(battleCanvas._cssW || w, battleCanvas._cssH || h);
+              const body = game.clash.winnerSide === 1 ? g.p2 : g.p1;
+              spawnImpactBurst(body.x, h * .9, { color: '#cbd5e1', core: '#f8fafc' });
+            }, Math.round((FALL_TIMINGS.stagger + .62) * 1000));
+          }
+          if (damageToP1 > 0 || damageToP2 > 0) {
+            // The hit cry plays only when a fighter actually takes damage.
+            // The loser taunt is reserved for the final match result below.
+          }
+          if(outcomeKind==='mega-draw') setStatusPill('MEGAPOWER VS MEGAPOWER — ZERO DAMAGE',true);
+          else if(outcomeKind==='mega') setStatusPill(`MEGAPOWER BREAKTHROUGH — PLAYER ${game.clash.winnerSide} WINS · ${clashDamage}% DAMAGE`,true);
+          else setStatusPill(`CENTRE CLASH — PLAYER ${game.clash.winnerSide} WINS · ${clashDamage}% DAMAGE`,true);
+          // The released power stays on screen after the clash: the winner's card
+          // burns bright, the beaten one dims, until the next round reshuffles.
+          if (game.clash.winnerSide === 1 || game.clash.winnerSide === 2) {
+            [1, 2].forEach((n) => {
+              const box = document.getElementById(`p${n}PowerInventory`);
+              if (!box) return;
+              box.classList.toggle('arsenal-won', n === game.clash.winnerSide);
+              box.classList.toggle('arsenal-lost', n !== game.clash.winnerSide);
+            });
+          }
+          updatePowerLinesHUD();
+          // Restart the clock for the aftermath beat.
+          game.clash.phaseAt = performance.now();
+          game.clash.timer = 0;
+        }
+
+        if (game.clash.appliedDamage) {
+          game.clash.timer = (performance.now() - game.clash.phaseAt) / 1000;
+          // The released powers collapse back into the hands after the breakthrough.
+          const beamFade = Math.max(0, 1 - game.clash.timer / 0.42);
+          game.clash.p1Reach = beamFade;
+          game.clash.p2Reach = beamFade;
+          if (game.clash.timer >= AFTERMATH_TIME) {
+            if (game.p1.power <= 0) {
+              finishMatch(2);
+            } else if (game.p2.power <= 0) {
+              finishMatch(1);
+            } else {
+              game.round += 1;
+              startNewRound(false);
+            }
+          }
+        }
+      } else if (game.phase === 'DRAW_PULSE') {
+        game.clash.timer = (nowMs - game.clash.phaseAt) / 1000;
+        // Both released powers retract from the centre together.
+        const dp = Math.min(1, game.clash.timer / DRAW_TIME);
+        game.clash.p1Reach = Math.max(0.10, 1 - dp * 0.90);
+        game.clash.p2Reach = Math.max(0.10, 1 - dp * 0.90);
+        if (game.clash.timer >= DRAW_TIME) {
+          game.round += 1;
+          startNewRound(false);
+        }
+      }
+    }
+
+    function finishMatch(winnerNum) {
+      enterPhase('VICTORY');
+      setCine(false);
+      game.winner = winnerNum;
+      // Keep the 3D layer in sync so exactly one fighter celebrates and one goes down.
+      game.clash.winnerSide = winnerNum;
+      const winP = winnerNum === 1 ? game.p1 : game.p2;
+      const loseP = winnerNum === 1 ? game.p2 : game.p1;
+
+      winP.anim = 'win';
+      loseP.anim = 'lose';
+      sfx.playWinFanfare();
+      sfx.stopCharge();
+      window.setTimeout(() => sfx.championCue(winP.characterId), 520);
+      // Hurt voice is disabled. Play the loser taunt only after the victory fanfare.
+      window.setTimeout(() => playVoiceClip(loserVoice), 1850);
+      setStatusPill(`${winP.name} WINS!`, true);
+
+      const cx = battleCanvas.width * 0.5;
+      const cy = battleCanvas.height * 0.45;
+      for (let burst = 0; burst < 4; burst++) {
+        const bx = battleCanvas.width * (0.2 + burst * 0.2);
+        const by = battleCanvas.height * (0.24 + (burst % 2) * 0.14);
+        shockRings.push({ x: bx, y: by, radius: 8, maxRadius: 72, color: '#fbbf24', alpha: 1 });
+        for (let i = 0; i < (QUALITY.tier === 0 ? 20 : 10); i++) {
+          const ang = (Math.PI * 2 * i) / 20;
+          const spd = 2.2 + Math.random() * 5;
+          vfxParticles.push({
+            x: bx,
+            y: by,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 1,
+            radius: 2.8 + Math.random() * 3.2,
+            color: i % 2 === 0 ? '#fde047' : (winnerNum === 1 ? '#38bdf8' : '#fb923c'),
+            life: 1.15,
+            decay: 0.02,
+            gravity: 0.08
+          });
+        }
+      }
+      spawnImpactBurst(cx, cy + 40, winP.pickedPower || { color: '#fbbf24', core: '#ffffff' });
+
+      victoryWinnerName.textContent = `${winP.name} WINS!`;
+      victorySubtext.textContent = `${winP.name} (${characterOf(winnerNum).name}) defeated ${loseP.name} in Round ${game.round}!`;
+      const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      victoryStats.innerHTML = [
+        `<div class="victory-stat"><b>${Math.round(winP.power)}%</b><i>${esc(winP.name)} POWER</i></div>`,
+        `<div class="victory-stat"><b>${Math.round(loseP.power)}%</b><i>${esc(loseP.name)} POWER</i></div>`,
+        `<div class="victory-stat"><b>R${String(game.round).padStart(2, '0')}</b><i>FINAL ROUND</i></div>`
+      ].join('');
+      // The winner's lap (jump → run → strike) plays out first; the result card
+      // lands only after the celebration, so it never covers the action.
+      victoryBanner.classList.add('hidden');
+      victoryBanner.classList.remove('show');
+      game.bannerDelay = 5.6;
+    }
+
+    // =========================================================================
+    // 10. CANVAS RENDERING FOR POSTER, PREVIEWS & BATTLE ARENA
+    // =========================================================================
+    function renderPosterCanvas() {
+      const { ctx, w, h } = beginCanvasFrame(posterCanvas);
+      if (!w || !h) return;
+
+      ctx.save(); ctx.filter = 'none'; renderSkyTerraceArena(ctx, w, h); ctx.restore();
+      const groundY = h * 0.84;
+      const scale = Math.max(0.85, Math.min(1.65, h / 270));
+
+      drawRealisticHero(ctx, w * 0.28, groundY, scale, 1, HERO_SUITS[0], 'idle', game.time, 0, 0);
+      drawRealisticHero(ctx, w * 0.72, groundY, scale, -1, HERO_SUITS[3], 'idle', game.time, 0, 0);
+      updateAndDrawVFX(ctx);
+    }
+
+    function renderChampionPreviews() {
+      [
+        { canvas: p1PreviewCanvas, hero: game.p1.hero, facing: 1 },
+        { canvas: p2PreviewCanvas, hero: game.p2.hero, facing: -1 }
+      ].forEach(({ canvas, hero, facing }) => {
+        // A live 3D model already draws itself in this card.
+        if (window.gshPreview3d && canvas.style.display === 'none') return;
+        const { ctx, w, h } = beginCanvasFrame(canvas);
+        if (!w || !h) return;
+        ctx.clearRect(0, 0, w, h);
+
+        const groundY = h * 0.9;
+        const scale = Math.max(0.75, Math.min(1.45, h / 165));
+        drawRealisticHero(ctx, w * 0.5, groundY, scale, facing, hero, 'idle', game.time, 0, 0);
+      });
+    }
+
+    function renderBattleArena() {
+      const { ctx, w, h } = beginCanvasFrame(battleCanvas);
+      if (!w || !h) return;
+
+      ctx.save();
+      if (game.shake > 0.2) {
+        const sx = (Math.random() - 0.5) * game.shake;
+        const sy = (Math.random() - 0.5) * game.shake;
+        ctx.translate(sx, sy);
+        game.shake *= 0.84;
+      } else {
+        game.shake = 0;
+      }
+
+      ctx.save(); ctx.filter = 'none'; renderSkyTerraceArena(ctx, w, h); ctx.restore();
+
+      // Cinematic dusk while the powers are live: the terrace dims so the beams
+      // and the two fighters own the frame.
+      if (game.phase === 'CHARGING' || game.phase === 'TRAVEL_TO_CENTER' ||
+          game.phase === 'CENTER_CLASH' || game.phase === 'SURGE_HIT' || game.phase === 'DRAW_PULSE') {
+        const dusk = game.phase === 'CHARGING' ? Math.min(1, game.clash.timer / CHARGE_TIME) : 1;
+        ctx.fillStyle = `rgba(5,12,24,${(0.2 * dusk).toFixed(3)})`;
+        ctx.fillRect(-30, -30, w + 60, h + 60);
+      }
+
+      const groundY = h * 0.88;
+      const p1X = w * 0.175;
+      const p2X = w * 0.825;
+      const scale = Math.max(1.15, Math.min(2.15, h / 235));
+
+      // Keep the illustrated fighters as a safe fallback until both rigged human GLB models load.
+      if (!window.gsh3dReady) {
+        drawRealisticHero(ctx, p1X, groundY, scale, 1, game.p1.hero, game.p1.anim, game.time, game.p1.hurtTimer, game.p1.recoilX, game.p1.fallTimer);
+        drawRealisticHero(ctx, p2X, groundY, scale, -1, game.p2.hero, game.p2.anim, game.time, game.p2.hurtTimer, game.p2.recoilX, game.p2.fallTimer);
+      }
+
+      // ---- LIVE POWERS: charge → release → centre clash → breakthrough -----
+      const anchors = getFighterScreenAnchors(w, h);
+      const a1 = anchors.p1, a2 = anchors.p2, clashMid = anchors.mid;
+      const pw1 = game.p1.pickedPower, pw2 = game.p2.pickedPower;
+      const powerPhase = game.phase === 'CHARGING' || game.phase === 'TRAVEL_TO_CENTER' ||
+        game.phase === 'CENTER_CLASH' || game.phase === 'SURGE_HIT' || game.phase === 'DRAW_PULSE';
+
+      if (powerPhase) {
+        if (game.phase === 'CHARGING') {
+          // Energy gathers at each raised fist before either power is released.
+          const charge = Math.max(0, Math.min(1, game.clash.timer / (CHARGE_TIME * .95)));
+          if (pw1) drawChargeOrb(ctx, a1.x, a1.y, pw1, game.time, charge, 1);
+          if (pw2) drawChargeOrb(ctx, a2.x, a2.y, pw2, game.time, charge, -1);
+        } else {
+          // Both powers leave the hands and travel to meet dead centre.
+          const dir1 = clashMid.x >= a1.x ? 1 : -1;
+          const dir2 = clashMid.x >= a2.x ? 1 : -1;
+          const end1 = a1.x + dir1 * Math.abs(clashMid.x - a1.x) * game.clash.p1Reach;
+          const end2 = a2.x + dir2 * Math.abs(clashMid.x - a2.x) * game.clash.p2Reach;
+          if (pw1 && game.clash.p1Reach > 0.03) drawPowerBeam(ctx, a1.x, end1, a1.y, pw1, game.time);
+          if (pw2 && game.clash.p2Reach > 0.03) drawPowerBeam(ctx, a2.x, end2, a2.y, pw2, game.time);
+        }
+      }
+
+      // Central collision vortex: the two forces compress, pulse, then one breaks through.
+      if ((game.phase === 'CENTER_CLASH' || game.phase === 'SURGE_HIT' || game.phase === 'DRAW_PULSE') && pw1 && pw2) {
+        const cx = clashMid.x, cy = clashMid.y;
+        const t = game.clash.timer;
+        const decay = game.phase === 'CENTER_CLASH' ? 1
+          : game.phase === 'SURGE_HIT' ? Math.max(.12, 1 - game.clash.surgeProgress * .95)
+          : Math.max(.12, 1 - t / DRAW_TIME);
+        const pulse = 1 + Math.sin(t * 23) * .13;
+        const radius = (Math.max(34, Math.min(76, w * .048)) * pulse + Math.sin(t * 11) * 5) * decay;
+        if (radius > 3) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          const core = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius * 2.7);
+          core.addColorStop(0, 'rgba(255,255,255,1)');
+          core.addColorStop(.16, 'rgba(220,246,255,.98)');
+          core.addColorStop(.39, pw1.color + 'cc');
+          core.addColorStop(.62, pw2.color + '99');
+          core.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, radius * 2.7, 0, Math.PI * 2); ctx.fill();
+          const ringCount = QUALITY.tier >= 2 ? 2 : 4;
+          for (let ring = 0; ring < ringCount; ring++) {
+            ctx.strokeStyle = ring % 2 ? pw1.core : pw2.core;
+            ctx.globalAlpha = .75 - ring * .12; ctx.lineWidth = ring === 0 ? 5 : 2.5;
+            ctx.beginPath(); ctx.arc(cx, cy, radius * (.72 + ring * .30), t * (ring % 2 ? 3 : -2), t * (ring % 2 ? 3 : -2) + Math.PI * (1.35 + ring * .12)); ctx.stroke();
+          }
+          // Crackling spokes radiating from the compressed power sphere.
+          const spokeCount = QUALITY.tier >= 2 ? 8 : 14;
+          for (let ray = 0; ray < spokeCount; ray++) {
+            const ang = (Math.PI * 2 * ray / spokeCount) + t * 2.1;
+            const inner = radius * .75, outer = radius * (1.45 + (ray % 3) * .24);
+            ctx.strokeStyle = ray % 2 ? pw1.core : pw2.core;
+            ctx.lineWidth = ray % 3 === 0 ? 4 : 2; ctx.globalAlpha = .8;
+            ctx.beginPath(); ctx.moveTo(cx + Math.cos(ang) * inner, cy + Math.sin(ang) * inner);
+            ctx.lineTo(cx + Math.cos(ang + .08) * outer * .72, cy + Math.sin(ang + .08) * outer * .72);
+            ctx.lineTo(cx + Math.cos(ang - .04) * outer, cy + Math.sin(ang - .04) * outer); ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+
+      updateAndDrawVFX(ctx);
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 11. RESPONSIVE CANVAS SIZING & MAIN LOOP
+    // =========================================================================
+    // Cinematic phases run on the wall clock, not on accumulated frame time, so a
+    // slow device shows the same punchy timing as a fast one instead of stretching
+    // every clash out over several seconds.
+    function enterPhase(next) {
+      game.phase = next;
+      game.clash.timer = 0;
+      game.clash.phaseAt = performance.now();
+    }
+
+    // ---- Adaptive render quality ------------------------------------------
+    // Start sharp, then step the backing stores and particle budget down if the
+    // device cannot hold a smooth frame. It only ever steps down, so it cannot
+    // oscillate between two resolutions.
+    // Tier 0 caps the backing store at 1.15x so a 1440p-class panel never pays for
+    // a 2x-supersampled repaint; the canvas art is soft enough that the difference
+    // is invisible while the frame budget roughly halves again.
+    const QUALITY = { tier: 0, dpr: Math.min(window.devicePixelRatio || 1, 1), acc: 0, frames: 0, holdUntil: 0 };
+    function applyQuality() {
+      QUALITY.dpr = QUALITY.tier === 0 ? Math.min(window.devicePixelRatio || 1, 1)
+                   : QUALITY.tier === 1 ? Math.min(window.devicePixelRatio || 1, 0.85)
+                   : 0.7;
+      if (typeof window.gshSetQuality === 'function') window.gshSetQuality(QUALITY.tier);
+      BG_CACHE.clear();
+      resizeAllCanvases();
+      holdQuality(900);
+    }
+    // A resolution change, a canvas resize and the GLB parse all produce a couple
+    // of long frames. Pausing the sampler over them keeps the tier tied to steady
+    // gameplay instead of dropping a fast machine to low resolution for the match.
+    function holdQuality(ms) {
+      QUALITY.acc = 0; QUALITY.frames = 0;
+      QUALITY.holdUntil = performance.now() + (ms || 900);
+    }
+    // A 19 ms average counts as "not smooth enough" (about 52 fps): well below the
+    // 16.6 ms budget of a 60 Hz panel, so it only fires when the device is genuinely
+    // dropping. Bad frames are caught faster (20 samples) so a hitch steps down fast.
+    function trackQuality(dt) {
+      if (QUALITY.tier >= 2 || dt > 0.06 || performance.now() < QUALITY.holdUntil) return;
+      QUALITY.acc += dt; QUALITY.frames += 1;
+      if (QUALITY.frames < (QUALITY.acc > 0.030 ? 16 : 34)) return;
+      const avg = QUALITY.acc / QUALITY.frames;
+      QUALITY.acc = 0; QUALITY.frames = 0;
+      if (avg > 0.019) { QUALITY.tier += 1; applyQuality(); }
+    }
+
+    // Every canvas gets a device-pixel-resolution backing store sized by the
+    // quality tier while drawing stays in CSS pixels.
+    function resizeCanvasToParent(canvas) {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const rect = parent.getBoundingClientRect();
+      const cssW = Math.max(1, Math.floor(rect.width));
+      const cssH = Math.max(1, Math.floor(rect.height));
+      const dpr = QUALITY.dpr;
+      const targetW = Math.round(cssW * dpr);
+      const targetH = Math.round(cssH * dpr);
+      canvas._cssW = cssW; canvas._cssH = cssH; canvas._dpr = dpr;
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+    }
+
+    function beginCanvasFrame(canvas) {
+      // No layout reads here on purpose: reading offsetWidth every frame forced the
+      // browser to flush layout twice per tick. The cached CSS size is kept up to date
+      // by the resize observer instead, and the main loop only calls this for the
+      // canvas of the screen that is actually showing.
+      if (!canvas) return { ctx: null, w: 0, h: 0 };
+      const dpr = canvas._dpr || 1;
+      const ctx = canvas._ctx || (canvas._ctx = canvas.getContext('2d'));
+      const w = canvas._cssW || Math.round(canvas.width / dpr);
+      const h = canvas._cssH || Math.round(canvas.height / dpr);
+      if (!w || !h) return { ctx: null, w: 0, h: 0 };
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, w, h };
+    }
+
+    function resizeAllCanvases() {
+      holdQuality(250);
+      resizeCanvasToParent(posterCanvas);
+      resizeCanvasToParent(p1PreviewCanvas);
+      resizeCanvasToParent(p2PreviewCanvas);
+      resizeCanvasToParent(battleCanvas);
+      // A resized backing store is blank, so the next ARENA ticks must repaint.
+      battleRepaintPending = 2;
+    }
+    // Keep the cached canvas sizes honest without touching layout inside the frame loop.
+    if (typeof ResizeObserver === 'function') {
+      const canvasRO = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const canvas = entry.target.querySelector('canvas');
+          if (canvas) resizeCanvasToParent(canvas);
+        }
+      });
+      [posterCanvas, p1PreviewCanvas, p2PreviewCanvas, battleCanvas].forEach((canvas) => {
+        if (canvas && canvas.parentElement) canvasRO.observe(canvas.parentElement);
+      });
+    }
+
+    // ---- 3D frame bridge ---------------------------------------------------
+    // Published on every animation frame, not once per 2D repaint, so the WebGL
+    // layer keeps driving the champions even while the backdrop is skipped.
+    // One persistent object: the hot path allocates nothing per frame.
+    const frame3D = {
+      phase: 'PICKING', timer: 0, winnerSide: 0, applied: false, fallMax: 0, surge: 0,
+      durs: { charge: CHARGE_TIME, travel: TRAVEL_TIME, draw: DRAW_TIME },
+      fallTimings: FALL_TIMINGS,
+      p1: { anim: 'idle', hurt: 0, fall: 0, recoil: 0 },
+      p2: { anim: 'idle', hurt: 0, fall: 0, recoil: 0 }
+    };
+    function publish3DFrame() {
+      frame3D.phase = game.phase;
+      frame3D.timer = game.clash.timer;
+      frame3D.winnerSide = game.clash.winnerSide;
+      frame3D.applied = game.clash.appliedDamage;
+      frame3D.fallMax = FALL_DURATION;
+      frame3D.surge = game.clash.surgeProgress;
+      const a = frame3D.p1, b = frame3D.p2;
+      a.anim = game.p1.anim; a.hurt = game.p1.hurtTimer; a.fall = game.p1.fallTimer; a.recoil = game.p1.recoilX;
+      b.anim = game.p2.anim; b.hurt = game.p2.hurtTimer; b.fall = game.p2.fallTimer; b.recoil = game.p2.recoilX;
+      window.gsh3dFrame = frame3D;
+    }
+
+    // The backdrop only changes when something on it moves. During a calm
+    // PICKING beat the previous frame stays on screen and the canvas is skipped,
+    // which frees the whole frame budget for the skinned 3D champions.
+    let battleRepaintPending = 2;
+    let lastBattlePhase = '';
+    let last3DReady = false;
+    function needsBattleRepaint() {
+      if (!!window.gsh3dReady !== last3DReady) {
+        // Swapping between the illustrated fallback and the GLB layer leaves old
+        // pixels behind, so force a fresh paint either way.
+        last3DReady = !!window.gsh3dReady;
+        battleRepaintPending = 2;
+      }
+      if (battleRepaintPending > 0) { battleRepaintPending--; lastBattlePhase = game.phase; return true; }
+      if (!window.gsh3dReady) { lastBattlePhase = game.phase; return true; }
+      if (game.phase !== lastBattlePhase) { lastBattlePhase = game.phase; return true; }
+      if (game.phase !== 'PICKING') return true;
+      if (game.shake > 0.2) return true;
+      if (shockRings.length || vfxParticles.length) return true;
+      return false;
+    }
+
+    let lastFrameTime = performance.now();
+    function mainLoop(now) {
+      // Falls and recoils stay near real time down to ~10 fps; the cinematic
+      // phase clocks are wall-clock driven independently.
+      const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
+      if (document.hidden) { lastFrameTime = now; requestAnimationFrame(mainLoop); return; }
+      game.time += dt;
+      trackQuality(dt);
+
+      if (game.screen === 'POSTER') {
+        renderPosterCanvas();
+      } else if (game.screen === 'SELECT') {
+        renderChampionPreviews();
+      } else if (game.screen === 'ARENA') {
+        updateCombat(dt, battleCanvas._cssW || battleCanvas.width, battleCanvas._cssH || battleCanvas.height);
+        if (window.gsh3dReady) publish3DFrame();
+        if (needsBattleRepaint()) renderBattleArena();
+      }
+
+      requestAnimationFrame(mainLoop);
+    }
+
+    // =========================================================================
+    // 12. EVENT LISTENERS
+    // =========================================================================
+    toSelectScreenBtn.addEventListener('click', () => {
+      sfx.playSelect(540);
+      showScreen('SELECT');
+    });
+
+    backToPosterBtn.addEventListener('click', () => {
+      sfx.playSelect(420);
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'GPA_EXIT_ARENA' }, window.location.origin);
+      } else {
+        window.location.href = '/';
+      }
+    });
+
+    p1NameInput.addEventListener('input', syncNamesFromInputs);
+    p2NameInput.addEventListener('input', syncNamesFromInputs);
+
+    // ---- Full screen play ---------------------------------------------------
+    // Entering the arena is a user gesture, so the browser lets the match open
+    // full screen right away; the header button toggles it at any time.
+    const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    function refreshFullscreenLabel() {
+      if (!fullscreenBtn) return;
+      fullscreenBtn.innerHTML = isFullscreen() ? '&#10530; EXIT FULL' : '&#9974; FULLSCREEN';
+    }
+    function enterFullscreen() {
+      if (isFullscreen()) return;
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (!req) return;
+      try {
+        const p = req.call(el);
+        if (p && p.catch) p.catch(() => {});
+      } catch (_) { /* full screen is optional */ }
+    }
+    function toggleFullscreen() {
+      if (isFullscreen()) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        try { exit && exit.call(document); } catch (_) { /* ignore */ }
+      } else {
+        enterFullscreen();
+      }
+    }
+    if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+    const onFullscreenChange = () => {
+      refreshFullscreenLabel();
+      requestAnimationFrame(() => { resizeAllCanvases(); if (window.gshRefresh3D) window.gshRefresh3D(); });
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+    enterArenaBtn.addEventListener('click', () => {
+      sfx.playLaunch();
+      syncNamesFromInputs();
+      enterFullscreen();
+      if (typeof window.gshRefresh3D === 'function') window.gshRefresh3D();
+      // Every match starts at full sharpness; the sampler decides afterwards.
+      QUALITY.tier = 0;
+      applyQuality();
+      holdQuality(1500);
+      showScreen('ARENA');
+      startNewRound(true);
+    });
+
+    exitArenaBtn.addEventListener('click', () => {
+      sfx.playSelect(440);
+      if (isFullscreen()) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        try { exit && exit.call(document); } catch (_) { /* ignore */ }
+      }
+      showScreen('SELECT');
+    });
+
+    attackBtn.addEventListener('click', triggerAttack);
+
+    editNamesAfterWinBtn.addEventListener('click', () => {
+      sfx.playSelect(520);
+      victoryBanner.classList.add('hidden');
+      showScreen('SELECT');
+      p1NameInput.focus();
+    });
+
+    rematchBtn.addEventListener('click', () => {
+      sfx.playLaunch();
+      syncNamesFromInputs();
+      startNewRound(true);
+    });
+
+    window.addEventListener('resize', resizeAllCanvases);
+
+    // Initialize UI
+    window.gshGetCharacters = () => [game.p1.characterId, game.p2.characterId];
+    buildSuitPills();
+    syncNamesFromInputs();
+    resizeAllCanvases();
+    requestAnimationFrame(mainLoop);
+  </script>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module" src="/arena-3d.js"></script>
+</body>
+</html>
