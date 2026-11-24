@@ -425,7 +425,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   // used here, invisible: the adaptive scaler below already supersamples the models
   // on hi-dpi panels. Turning it off is the cheapest steady-frame win available.
   try {
-    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: 'high-performance', stencil: false, depth: true });
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance', stencil: false, depth: true });
   } catch (e) {
     console.error('3D renderer unavailable', e);
     return;
@@ -435,16 +435,18 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = 1.16;
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(44, 1, .1, 100);
   camera.position.set(0, 3.2, 12.6);
   camera.lookAt(0, 3.72, 0);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x59677d, 1.9));
-  const key = new THREE.DirectionalLight(0xffffff, 2.25); key.position.set(-3, 7, 6); scene.add(key);
-  const rim = new THREE.DirectionalLight(0xb9dcff, 1.0); rim.position.set(4, 4, -4); scene.add(rim);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x59677d, 2.05));
+  const key = new THREE.DirectionalLight(0xfff4e2, 2.45); key.position.set(-3, 7, 6); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xb9dcff, 1.15); rim.position.set(4, 4, -4); scene.add(rim);
+  // Warm bounce from the terrace so faces are never lit from one side only.
+  const bounce = new THREE.DirectionalLight(0xffd9a8, .55); bounce.position.set(2, -1.5, 5); scene.add(bounce);
 
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
@@ -770,6 +772,22 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     f.root.rotation.set(0, f.baseRot, 0);
     f.sX = f.baseX; f.sY = 0; f.sRz = 0; f.sRy = f.baseRot;
   }
+  // Soft contact shadow so the champions sit on the terrace instead of floating.
+  const SHADOW_TEX = (() => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 128;
+    const g = cv.getContext('2d');
+    const grd = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+    grd.addColorStop(0, 'rgba(6, 10, 16, .62)');
+    grd.addColorStop(.5, 'rgba(6, 10, 16, .26)');
+    grd.addColorStop(1, 'rgba(6, 10, 16, 0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+
   function makeFighter(index, charId, asset) {
     const model = instantiate(asset);
     const root = new THREE.Group();
@@ -797,6 +815,14 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       victoryAt: 0, wasVictory: false,
       sX: 0, sY: 0, sRz: 0, sRy: toward * FACE_TURN
     };
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(f.bodyH * .95, f.bodyH * .95),
+      new THREE.MeshBasicMaterial({ map: SHADOW_TEX, transparent: true, depthWrite: false, opacity: .9 })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = .015;
+    root.add(shadow);
+    f.shadow = shadow;
     buildRig(f);
     attachProps(f);
     applySpread(f);
@@ -804,6 +830,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     return f;
   }
 
+  let baseCamY = 3.2, baseCamZ = 12.6, cineZoom = 0;
   function resize() {
     const w = Math.max(1, host.clientWidth), h = Math.max(1, host.clientHeight);
     renderer.setSize(w, h, false);
@@ -811,6 +838,8 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     const aspect = w / h;
     camera.fov = aspect < 1 ? 48 : 44;
     camera.position.set(0, aspect < 1 ? 3.4 : 3.2, aspect < 1 ? 13.6 : 12.6);
+    baseCamY = aspect < 1 ? 3.4 : 3.2;
+    baseCamZ = aspect < 1 ? 13.6 : 12.6;
     camera.lookAt(0, 3.72, 0);
     camera.updateProjectionMatrix();
     const halfW = Math.tan(camera.fov * Math.PI / 360) * (camera.position.z - FIGHTER_Z) * aspect;
@@ -1011,8 +1040,18 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       // Hit-stop: the page freezes its own clocks at the moment of impact and asks
       // the rig to do the same, so the champions hang dead still for a beat while
       // the screen shakes. A tiny tremble keeps it from looking like a dropped frame.
-      const freeze = Math.max(0, Math.min(.4, state.hitStop || 0));
-      const adt = freeze > 0 ? dt * .045 : dt;
+      // Cinematic push-in while the powers grind together, plus a slow handheld
+      // drift so the arena never looks like a frozen camera.
+      const wantZoom = phase === 'CENTER_CLASH' || phase === 'SURGE_HIT' ? 1 : 0;
+      cineZoom += (wantZoom - cineZoom) * Math.min(1, dt * 2.6);
+      camera.position.set(
+        Math.sin(elapsed * .55) * .07 * (1 - cineZoom),
+        baseCamY + cineZoom * .24 + Math.cos(elapsed * .47) * .045,
+        baseCamZ - cineZoom * 1.3
+      );
+      camera.lookAt(0, 3.72 + cineZoom * .06, 0);
+      // The hit-stop jolt: a small kick that settles as the freeze ends.
+      if (freeze > 0) camera.position.x += Math.sin(elapsed * 90) * .02;
       // The page owns the cinematic tempo; read it here so both stay in sync.
       const DURS = state.durs || { charge: 1.85, travel: 1.28, draw: 1.15 };
       const FT = state.fallTimings || { stagger: .30, riseStart: 1.86, riseEnd: 2.55 };

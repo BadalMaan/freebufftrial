@@ -905,8 +905,8 @@ const p1NameInput = document.getElementById('p1NameInput');
     const SURGE_TIME = 0.34;
     const DRAW_TIME = 0.95;
     const AFTERMATH_TIME = 3.25;
-    const FALL_DURATION = 2.9;
-    const FALL_TIMINGS = { stagger: .45, riseStart: 2.0, riseEnd: 2.72 };
+    const FALL_DURATION = 3.15;
+    const FALL_TIMINGS = { stagger: .45, riseStart: 1.98, riseEnd: 2.92 };
 
     let vfxParticles = [];
     let shockRings = [];
@@ -1905,6 +1905,343 @@ const p1NameInput = document.getElementById('p1NameInput');
       }
     }
 
+    // ---- Elemental constructs --------------------------------------------
+    // Each power attacks with its own body — a fire phoenix, a lightning cage,
+    // an ice crystal, a rock barrage, a hex barrier — instead of a coloured line.
+    function drawPowerConstruct(ctx, x, y, power, time, scale, facing) {
+      if (!power) return;
+      const s = Math.max(.6, scale || 1);
+      const c = power.color, p = power.primary, core = power.core;
+      const style = power.style;
+      const face = facing === -1 ? -1 : 1;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(face * s, s);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      // Shared halo behind every construct so it reads against sky or ground.
+      const halo = ctx.createRadialGradient(0, 0, 2, 0, 0, 62);
+      halo.addColorStop(0, core);
+      halo.addColorStop(.22, c);
+      halo.addColorStop(.6, p + '88');
+      halo.addColorStop(1, p + '00');
+      ctx.globalAlpha = .5;
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(0, 0, 62, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      if (style === 'phoenix' || style === 'fire') {
+        const flap = Math.sin(time * 7.5) * .18;
+        // Sweeping wings built from layered feather arcs.
+        for (let side = -1; side <= 1; side += 2) {
+          for (let f = 0; f < 4; f++) {
+            const spread = .55 + f * .19 + flap;
+            const len = 52 - f * 7;
+            ctx.fillStyle = f % 2 ? '#ff8a2b' : (f === 0 ? core : '#ff4d1a');
+            ctx.globalAlpha = .85 - f * .12;
+            ctx.beginPath();
+            ctx.moveTo(0, -2);
+            ctx.quadraticCurveTo(-len * .55, side * len * spread * .8, -len, side * len * spread);
+            ctx.quadraticCurveTo(-len * .35, side * len * spread * .35, 0, 8);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+        // Body, neck and head with a hooked beak.
+        ctx.fillStyle = style === 'phoenix' ? '#ffb703' : c;
+        ctx.beginPath();
+        ctx.ellipse(-6, 2, 22, 13, -.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(4, -4);
+        ctx.quadraticCurveTo(18, -16, 30, -12);
+        ctx.quadraticCurveTo(24, -4, 8, 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(32, -13, 7.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = core;
+        ctx.beginPath();
+        ctx.moveTo(38, -15);
+        ctx.lineTo(52, -10);
+        ctx.lineTo(37, -7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#241206';
+        ctx.beginPath();
+        ctx.arc(34, -15.5, 1.9, 0, Math.PI * 2);
+        ctx.fill();
+        // Long tail plumes and embers.
+        for (let i = 0; i < 5; i++) {
+          const wob = Math.sin(time * 6 + i) * 7;
+          ctx.strokeStyle = i % 2 ? '#ffd166' : '#ff5a1f';
+          ctx.lineWidth = 3.2 - i * .4;
+          ctx.globalAlpha = .8;
+          ctx.beginPath();
+          ctx.moveTo(-24, 2 + i * 2);
+          ctx.quadraticCurveTo(-44, wob, -62 - i * 3, wob * 1.6 + 6);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        for (let i = 0; i < 7; i++) {
+          const a = time * 3 + i * .9;
+          ctx.fillStyle = i % 2 ? '#ffd166' : '#ff6b1a';
+          ctx.globalAlpha = .8;
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * 34, Math.sin(a * 1.4) * 22, 1.6 + (i % 3), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (style === 'thunder') {
+        const flick = Math.sin(time * 30) > 0 ? 1 : .6;
+        ctx.globalAlpha = .9;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(0, 0, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = core;
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+        // Forked cage around the core.
+        for (let i = 0; i < 8; i++) {
+          const a = i * (Math.PI / 4) + time * 1.6;
+          const jitter = Math.sin(time * 22 + i) * 6;
+          ctx.strokeStyle = i % 2 ? core : p;
+          ctx.lineWidth = 2.4;
+          ctx.globalAlpha = .85 * flick;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * 12, Math.sin(a) * 12);
+          ctx.lineTo(Math.cos(a) * 26 + jitter, Math.sin(a) * 26 - jitter * .6);
+          ctx.lineTo(Math.cos(a) * 38 - jitter, Math.sin(a) * 38 + jitter * .4);
+          ctx.lineTo(Math.cos(a) * 54, Math.sin(a) * 54);
+          ctx.stroke();
+        }
+      } else if (style === 'frost') {
+        // A faceted six-point crystal with shattered shards orbiting it.
+        ctx.globalAlpha = .95;
+        ctx.fillStyle = c;
+        for (let i = 0; i < 6; i++) {
+          const a = i * (Math.PI / 3) + time * .6;
+          const len = i % 2 ? 30 : 46;
+          ctx.fillStyle = i % 2 ? c : core;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(a - .18) * 10, Math.sin(a - .18) * 10);
+          ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+          ctx.lineTo(Math.cos(a + .18) * 10, Math.sin(a + .18) * 10);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.strokeStyle = core;
+        ctx.lineWidth = 1.6;
+        ctx.globalAlpha = .8;
+        for (let i = 0; i < 5; i++) {
+          const a = time * 2.2 + i * 1.3;
+          const rr = 44 + Math.sin(time * 5 + i) * 8;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * rr * .6, Math.sin(a) * rr * .6);
+          ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+          ctx.stroke();
+        }
+      } else if (style === 'water') {
+        ctx.globalAlpha = .9;
+        for (let i = 0; i < 3; i++) {
+          const wob = Math.sin(time * 9 + i) * 6;
+          ctx.strokeStyle = i === 1 ? '#8cecff' : c;
+          ctx.lineWidth = 7 - i * 2;
+          ctx.beginPath();
+          ctx.moveTo(-40, wob);
+          ctx.quadraticCurveTo(-10, -26 - wob, 18, wob);
+          ctx.quadraticCurveTo(34, 18 + wob, 46, wob * .5);
+          ctx.stroke();
+        }
+        for (let i = 0; i < 10; i++) {
+          const a = time * 4 + i;
+          ctx.fillStyle = i % 2 ? core : c;
+          ctx.globalAlpha = .85;
+          ctx.beginPath();
+          ctx.ellipse(Math.cos(a) * 30, Math.sin(a) * 22, 4, 7, a, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (style === 'wind') {
+        ctx.globalAlpha = .85;
+        for (let ring = 0; ring < 3; ring++) {
+          ctx.strokeStyle = ring === 1 ? core : c;
+          ctx.lineWidth = 5 - ring;
+          ctx.beginPath();
+          for (let t = 0; t <= 1.001; t += .05) {
+            const a = time * 4 + t * Math.PI * 4 + ring * 1.2;
+            const rr = 12 + t * (34 + ring * 9);
+            const px = Math.cos(a) * rr;
+            const py = Math.sin(a) * rr * .68;
+            if (t === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        }
+      } else if (style === 'earth') {
+        // Boulder barrage with dust and glowing cracks.
+        for (let i = 0; i < 5; i++) {
+          const a = time * 2.4 + i * 1.25;
+          const rr = 18 + (i % 3) * 14;
+          const bx = Math.cos(a) * rr, by = Math.sin(a * 1.2) * rr * .8;
+          const size = 9 + (i % 3) * 5;
+          ctx.fillStyle = i % 2 ? '#8d8378' : '#6f665c';
+          ctx.beginPath();
+          for (let k = 0; k < 7; k++) {
+            const ka = k * (Math.PI * 2 / 7);
+            const kr = size * (0.72 + seededNoise(i * 9 + k) * .5);
+            const px = bx + Math.cos(ka) * kr, py = by + Math.sin(ka) * kr;
+            if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 196, 92, .6)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(bx - size * .4, by - size * .4);
+          ctx.lineTo(bx + size * .2, by);
+          ctx.lineTo(bx - size * .1, by + size * .5);
+          ctx.stroke();
+        }
+      } else if (style === 'plasma' || style === 'shadow' || style === 'venom') {
+        // Bubbled energy sphere with a hexagonal skin: the shield reads as a wall.
+        const rr = 34 + Math.sin(time * 5) * 3;
+        ctx.globalAlpha = .28;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr * 1.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = .5;
+        ctx.fillStyle = p;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = .9;
+        ctx.strokeStyle = core;
+        ctx.lineWidth = 1.5;
+        const hexR = rr / 3.4;
+        for (let row = -3; row <= 3; row++) {
+          for (let col = -3; col <= 3; col++) {
+            const hx = col * hexR * 1.5;
+            const hy = row * hexR * 1.32 + (col % 2 ? hexR * .66 : 0);
+            if (hx * hx + hy * hy > rr * rr * .92) continue;
+            ctx.beginPath();
+            for (let k = 0; k < 6; k++) {
+              const a = k * Math.PI / 3 + .52;
+              const px = hx + Math.cos(a) * hexR * .62;
+              const py = hy + Math.sin(a) * hexR * .62;
+              if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+          }
+        }
+        ctx.fillStyle = core;
+        ctx.globalAlpha = .95;
+        ctx.beginPath();
+        ctx.arc(-rr * .12, -rr * .12, rr * .3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (style === 'solar' || style === 'megapower') {
+        const rr = 26 + Math.sin(time * 4) * 3;
+        ctx.globalAlpha = .95;
+        ctx.fillStyle = core;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr * .7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = c;
+        ctx.lineWidth = 3;
+        for (let i = 0; i < 12; i++) {
+          const a = i * (Math.PI / 6) + time * .8;
+          ctx.globalAlpha = .8;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * rr * .95, Math.sin(a) * rr * .95);
+          ctx.lineTo(Math.cos(a) * rr * 1.9, Math.sin(a) * rr * 1.9);
+          ctx.stroke();
+        }
+        // Slow orbital rings for MEGAPOWER.
+        if (style === 'megapower') {
+          for (let k = 0; k < 3; k++) {
+            ctx.globalAlpha = .55;
+            ctx.strokeStyle = k % 2 ? core : p;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rr * (1.6 + k * .3), rr * (.5 + k * .12), time * (.7 + k * .4), 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    // Defensive shell drawn around a champion while the two powers press together.
+    function drawPowerShield(ctx, x, y, r, power, time, alpha) {
+      if (!power) return;
+      const c = power.color, p = power.primary, core = power.core;
+      const style = power.style;
+      ctx.save();
+      ctx.translate(x, y);
+      const breathe = 1 + Math.sin(time * 4.4) * .03;
+      const rr = r * breathe;
+      ctx.globalAlpha = .16 * (alpha == null ? 1 : alpha);
+      const glow = ctx.createRadialGradient(0, 0, rr * .2, 0, 0, rr * 1.15);
+      glow.addColorStop(0, core);
+      glow.addColorStop(.55, c);
+      glow.addColorStop(1, p + '00');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, rr * 1.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      const hexed = style === 'plasma' || style === 'shadow' || style === 'venom' || style === 'frost';
+      if (hexed) {
+        // Honeycomb shell, brighter where the pressure hits.
+        const hexR = rr / 5.2;
+        ctx.globalAlpha = .5 * (alpha == null ? 1 : alpha);
+        ctx.strokeStyle = core;
+        ctx.lineWidth = 1.6;
+        for (let row = -5; row <= 5; row++) {
+          for (let col = -6; col <= 6; col++) {
+            const hx = col * hexR * 1.5;
+            const hy = row * hexR * 1.32 + (col % 2 ? hexR * .66 : 0);
+            if (hx * hx + hy * hy > rr * rr) continue;
+            ctx.beginPath();
+            for (let k = 0; k < 6; k++) {
+              const a = k * Math.PI / 3 + .52;
+              const px = hx + Math.cos(a) * hexR * .62;
+              const py = hy + Math.sin(a) * hexR * .62;
+              if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+          }
+        }
+      } else {
+        // Layered energy bands for the elemental shells.
+        for (let i = 0; i < 4; i++) {
+          const a0 = time * (1.6 + i * .5);
+          ctx.globalAlpha = (.42 - i * .06) * (alpha == null ? 1 : alpha);
+          ctx.strokeStyle = i % 2 ? core : c;
+          ctx.lineWidth = 3 - i * .4;
+          ctx.beginPath();
+          ctx.arc(0, 0, rr * (.86 + i * .05), a0, a0 + Math.PI * 1.35);
+          ctx.stroke();
+        }
+      }
+      // Rim highlight so the bubble has a real edge.
+      ctx.globalAlpha = .5 * (alpha == null ? 1 : alpha);
+      ctx.strokeStyle = core;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, rr, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function spawnImpactBurst(x, y, power) {
       const c=power?power.color:'#38bdf8';
       [1, .72, .46].forEach((factor,index)=>shockRings.push({
@@ -2334,6 +2671,13 @@ const p1NameInput = document.getElementById('p1NameInput');
 
       drawRealisticHero(ctx, w * 0.28, groundY, scale, 1, HERO_SUITS[0], 'idle', game.time, 0, 0);
       drawRealisticHero(ctx, w * 0.72, groundY, scale, -1, HERO_SUITS[3], 'idle', game.time, 0, 0);
+      // The winning element drives straight through the loser.
+      if (game.phase === 'SURGE_HIT' && game.clash.winnerSide && game.clash.surgeProgress > .3) {
+        const winnerPw = game.clash.winnerSide === 1 ? pw1 : pw2;
+        const loser = game.clash.winnerSide === 1 ? a2 : a1;
+        if (winnerPw) drawPowerConstruct(ctx, loser.x, loser.y, winnerPw, game.time, 1.55, game.clash.winnerSide === 1 ? 1 : -1);
+      }
+
       updateAndDrawVFX(ctx, game.hitStop > 0 ? 0.1 : 1);
     }
 
@@ -2411,7 +2755,18 @@ const p1NameInput = document.getElementById('p1NameInput');
           const end2 = a2.x + dir2 * Math.abs(clashMid.x - a2.x) * game.clash.p2Reach;
           if (pw1 && game.clash.p1Reach > 0.03) drawPowerBeam(ctx, a1.x, end1, a1.y, pw1, game.time);
           if (pw2 && game.clash.p2Reach > 0.03) drawPowerBeam(ctx, a2.x, end2, a2.y, pw2, game.time);
+          // The element itself leads the attack: phoenix, crystal, cage, barrage...
+          if (pw1 && game.clash.p1Reach > 0.03) drawPowerConstruct(ctx, end1, a1.y, pw1, game.time, .9 + .25 * game.clash.p1Reach, dir1);
+          if (pw2 && game.clash.p2Reach > 0.03) drawPowerConstruct(ctx, end2, a2.y, pw2, game.time, .9 + .25 * game.clash.p2Reach, dir2);
         }
+      }
+
+      // Defensive shells: while the two powers press together each champion is
+      // wrapped in its own element, so the clash reads as wall against wall.
+      if (game.phase === 'CENTER_CLASH' || game.phase === 'SURGE_HIT') {
+        const shell = Math.max(58, Math.min(160, h * .2));
+        if (pw1) drawPowerShield(ctx, a1.x, a1.y, shell, pw1, game.time, .95);
+        if (pw2) drawPowerShield(ctx, a2.x, a2.y, shell, pw2, game.time, .95);
       }
 
       // Central collision vortex: the two forces compress, pulse, then one breaks through.
