@@ -1053,9 +1053,13 @@
         }
       }
 
-      function drawBlasts() {
+      function drawBlasts(dt) {
         for (let i = blasts.length - 1; i >= 0; i--) {
           const e = blasts[i];
+          // The fireball has to age out on its own clock, otherwise the last blast
+          // stays painted on the courtyard forever.
+          e.t += dt;
+          if (e.t >= e.dur) { blasts.splice(i, 1); continue; }
           const p = Math.min(1, e.t / e.dur);
           const grow = 1 - Math.pow(1 - p, 2.4);
           const unit = Math.min(stageW, stageH) / 420;
@@ -2295,7 +2299,7 @@
         drawHiderForeground();
         updateBombs(dt);
         drawBombs(dt);
-        drawBlasts();
+        drawBlasts(dt);
         drawBlastRings(dt);
         drawDebris(dt);
         drawBomber();
@@ -2732,6 +2736,17 @@
         BOMBER.hasBomb = true;
         shells = [];
         smokePuffs = [];
+        // Nothing from the last round may bleed into the new one: no leftover
+        // bomb, fireball, shockwave, embers or dust sitting on the courtyard.
+        bombs = [];
+        blasts = [];
+        blastRings = [];
+        debris = [];
+        sparks = [];
+        dustPuffs = [];
+        confetti = [];
+        blastFlash = 0;
+        cinematicUntil = 0;
         state.targetCoverShift = 0;
         state.hoveredBlock = null;
         state.crackedBlocks.clear();
