@@ -6,12 +6,12 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 // Every champion is a rigged GLB. Two have full combat clip sets; the four new
 // fighters ship with locomotion clips and are posed procedurally for actions.
 const CHAR_FILES = {
-  giant:     { url: '/models/animated-ogre-warrior.glb',  height: 5.15 },
-  warrior:   { url: '/models/animated-plate-knight.glb',  height: 4.95 },
-  zombie:    { url: '/models/zombie.glb',                 height: 4.85 },
-  wizard:    { url: '/models/wizard.glb',                 height: 4.95 },
-  soldier:   { url: '/models/soldier-tactical.glb',       height: 4.90 },
-  superhero: { url: '/models/superhero.glb',              height: 5.00 }
+  giant:     { url: '/models/animated-ogre-warrior.glb?v=2',  height: 5.15 },
+  warrior:   { url: '/models/animated-plate-knight.glb?v=2',  height: 4.95 },
+  zombie:    { url: '/models/zombie.glb?v=2',                 height: 4.85 },
+  wizard:    { url: '/models/wizard.glb?v=2',                 height: 4.95 },
+  soldier:   { url: '/models/soldier-tactical.glb?v=2',       height: 4.90 },
+  superhero: { url: '/models/superhero.glb?v=2',              height: 5.00 }
 };
 
 // Per-champion action flavour: how far they lunge, how high they leap, how they
@@ -458,10 +458,20 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
 
   // ---- Model cache: each champion is downloaded once, then cloned per use ----
   const assets = new Map();
+  // Boot progress: bytes actually received per GLB, so the loading chip can show
+  // a real percentage instead of an indeterminate spinner.
+  const PROGRESS = new Map();
+  function reportProgress(url, e) {
+    if (!e || !e.total) return;
+    PROGRESS.set(url, [e.loaded, e.total]);
+    let loaded = 0, total = 0;
+    PROGRESS.forEach(([l, t]) => { loaded += l; total += t; });
+    if (total > 0) window.gsh3dProgress = Math.min(.95, loaded / total);
+  }
   function loadCharacter(id) {
     const spec = CHAR_FILES[id] || CHAR_FILES.giant;
     if (!assets.has(id)) {
-      assets.set(id, loader.loadAsync(spec.url).then((gltf) => {
+      assets.set(id, loader.loadAsync(spec.url, (e) => reportProgress(spec.url, e)).then((gltf) => {
         const model = gltf.scene;
         const maxAniso = renderer.capabilities.getMaxAnisotropy();
         model.traverse((o) => {
@@ -933,6 +943,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     fighters[1] = makeFighter(1, ids[1], loaded[1]);
     resize();
     window.gsh3dReady = true;
+    window.gsh3dProgress = 1;
   }
   async function refreshAll() {
     const ids = currentIds();
@@ -1025,13 +1036,11 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       return;
     }
 
-    // A 90-144 Hz panel buys nothing visible on a full-screen skinned layer this
-    // heavy. Above ~100 Hz the arena renders at 60-80 fps while the clock keeps
-    // running, which removes up to half of the GPU work on those screens.
-    sinceArenaRender += rawDt;
-    if (sinceArenaRender < 0.010) return;
-    const dt = Math.min(sinceArenaRender, .05);
-    sinceArenaRender = 0;
+    // Draw on every animation frame. The old 10 ms throttle was a hard 100 fps
+    // ceiling that made a 120 Hz panel stutter between dropped frames; the
+    // adaptive scaler below keeps the frame budget instead.
+    const dt = Math.min(rawDt, .05);
+    sinceArenaRender = rawDt;
 
     const state = window.gsh3dFrame;
 
@@ -1040,6 +1049,9 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       // Hit-stop: the page freezes its own clocks at the moment of impact and asks
       // the rig to do the same, so the champions hang dead still for a beat while
       // the screen shakes. A tiny tremble keeps it from looking like a dropped frame.
+      const freeze = Math.max(0, Math.min(.4, state.hitStop || 0));
+      const adt = freeze > 0 ? dt * .045 : dt;
+
       // Cinematic push-in while the powers grind together, plus a slow handheld
       // drift so the arena never looks like a frozen camera.
       const wantZoom = phase === 'CENTER_CLASH' || phase === 'SURGE_HIT' ? 1 : 0;
@@ -1273,12 +1285,14 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     if (perfFrames >= 24) {
       const avg = perfAcc / perfFrames;
       perfAcc = 0; perfFrames = 0;
-      if (avg > 0.020 && scaleStep > 0) {
+      // 13.4 ms is ~75 fps: below that on a 120 Hz panel the pixel ratio comes
+      // down so the frame rate can climb back to the refresh rate.
+      if (avg > 0.0134 && scaleStep > 0) {
         // A badly blown frame budget drops two steps at once, so a weak GPU
         // reaches a smooth resolution in well under a second.
-        scaleStep = Math.max(0, scaleStep - (avg > 0.032 ? 2 : 1));
+        scaleStep = Math.max(0, scaleStep - (avg > 0.024 ? 2 : 1));
         fastWindows = 0; applyRenderScale();
-      } else if (avg < 0.0145) {
+      } else if (avg < 0.0088) {
         fastWindows += 1;
         if (fastWindows >= 4 && scaleStep < SCALE_STEPS.length - 1) {
           scaleStep += 1; fastWindows = 0; applyRenderScale();

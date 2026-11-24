@@ -26,6 +26,9 @@ const types = {
 const assetsDir = path.sep + 'assets' + path.sep;
 const revalidate = new Set(['.html', '.js', '.css', '.json']);
 const compressible = new Set(['.html', '.js', '.css', '.json', '.svg']);
+// Models and the vendored engine never change under a given URL (?v= in the
+// client), so a repeat visit boots from cache instead of re-downloading them.
+const immutableDir = /[\\/](models|vendor|assets)[\\/]/;
 
 function send(req, res, file) {
   fs.stat(file, (err, st) => {
@@ -33,20 +36,25 @@ function send(req, res, file) {
     const ext = path.extname(file).toLowerCase();
     const headers = {
       'Content-Type': types[ext] || 'application/octet-stream',
-      'Cache-Control': file.includes(assetsDir) ? 'public, max-age=31536000, immutable'
+      'Cache-Control': immutableDir.test(file) ? 'public, max-age=31536000, immutable'
         : revalidate.has(ext) ? 'no-cache' : 'public, max-age=86400',
       'X-Content-Type-Options': 'nosniff'
     };
-    const wantsGzip = compressible.has(ext) && st.size > 1024 &&
-      /\bgzip\b/.test(req.headers['accept-encoding'] || '');
-    if (wantsGzip) {
-      headers['Content-Encoding'] = 'gzip';
+    const accepts = req.headers['accept-encoding'] || '';
+    const wants = compressible.has(ext) && st.size > 1024
+      ? (/\bbr\b/.test(accepts) ? 'br' : /\bgzip\b/.test(accepts) ? 'gzip' : null)
+      : null;
+    if (wants) {
+      headers['Content-Encoding'] = wants;
       headers['Vary'] = 'Accept-Encoding';
     }
     res.writeHead(200, headers);
     if (req.method === 'HEAD') { res.end(); return; }
     const stream = fs.createReadStream(file);
-    if (wantsGzip) stream.pipe(zlib.createGzip()).pipe(res);
+    if (wants === 'br') stream.pipe(zlib.createBrotliCompress({
+      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: st.size }
+    })).pipe(res);
+    else if (wants === 'gzip') stream.pipe(zlib.createGzip({ level: 6 })).pipe(res);
     else stream.pipe(res);
     stream.on('error', () => res.destroy());
   });

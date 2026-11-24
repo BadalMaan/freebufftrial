@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Global Super Hero — Final Power Clash Arena</title>
+  <script type="importmap">
+  {"imports":{"three":"/vendor/three.module.js","three/addons/":"/vendor/addons/"}}
+  </script>
+  <!-- Start the 3D engine and its local three.js build in parallel with the page. -->
+  <link rel="modulepreload" href="/vendor/three.module.js" crossorigin />
+  <link rel="modulepreload" href="/arena-3d.js" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1908,6 +1914,10 @@ const p1NameInput = document.getElementById('p1NameInput');
     // ---- Elemental constructs --------------------------------------------
     // Each power attacks with its own body — a fire phoenix, a lightning cage,
     // an ice crystal, a rock barrage, a hex barrier — instead of a coloured line.
+    // Deterministic 0..1 noise so a construct keeps a stable silhouette while it
+    // animates instead of boiling frame to frame like Math.random would.
+    function seededNoise(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+
     function drawPowerConstruct(ctx, x, y, power, time, scale, facing) {
       if (!power) return;
       const s = Math.max(.6, scale || 1);
@@ -2830,11 +2840,13 @@ const p1NameInput = document.getElementById('p1NameInput');
     // particle budget down only if the device genuinely cannot hold a frame.
     // Tier 0 renders at the full device pixel ratio (capped at 2x so a 3x phone
     // panel never pays for a pointless supersample).
-    const QUALITY = { tier: 0, dpr: Math.min(window.devicePixelRatio || 1, 2), acc: 0, frames: 0, holdUntil: 0 };
+    // 1.5x is already retina-crisp for painted art and halves the fill cost of a
+    // 2x backing store, which is what lets a 120 Hz panel hold its refresh rate.
+    const QUALITY = { tier: 0, dpr: Math.min(window.devicePixelRatio || 1, 1.5), acc: 0, frames: 0, holdUntil: 0 };
     function applyQuality() {
-      QUALITY.dpr = QUALITY.tier === 0 ? Math.min(window.devicePixelRatio || 1, 2)
-                   : QUALITY.tier === 1 ? Math.min(window.devicePixelRatio || 1, 1.5)
-                   : Math.min(window.devicePixelRatio || 1, 1);
+      QUALITY.dpr = QUALITY.tier === 0 ? Math.min(window.devicePixelRatio || 1, 1.5)
+                   : QUALITY.tier === 1 ? Math.min(window.devicePixelRatio || 1, 1.15)
+                   : 1;
       if (typeof window.gshSetQuality === 'function') window.gshSetQuality(QUALITY.tier);
       BG_CACHE.clear();
       resizeAllCanvases();
@@ -2850,13 +2862,21 @@ const p1NameInput = document.getElementById('p1NameInput');
     // A 19 ms average counts as "not smooth enough" (about 52 fps): well below the
     // 16.6 ms budget of a 60 Hz panel, so it only fires when the device is genuinely
     // dropping. Bad frames are caught faster (20 samples) so a hitch steps down fast.
+    // The panel's refresh rate is learned from the fastest frames it produces, so
+    // a 120 Hz screen is judged against 8.3 ms and a 60 Hz one against 16.7 ms.
+    // Dropping a tier when the average falls under ~65% of that keeps the frame
+    // rate at the display's refresh instead of silently running at half of it.
+    const VSYNC = { fast: 1 / 60 };
     function trackQuality(dt) {
+      if (dt > 0 && dt < VSYNC.fast) VSYNC.fast = Math.max(1 / 165, dt);
+      const budget = Math.max(0.0069, Math.min(0.0170, VSYNC.fast * 1.06));
       if (QUALITY.tier >= 2 || dt > 0.06 || performance.now() < QUALITY.holdUntil) return;
       QUALITY.acc += dt; QUALITY.frames += 1;
-      if (QUALITY.frames < (QUALITY.acc > 0.030 ? 16 : 34)) return;
+      const target = budget * 1.55;
+      if (QUALITY.frames < (QUALITY.acc > target * 2 ? 16 : 34)) return;
       const avg = QUALITY.acc / QUALITY.frames;
       QUALITY.acc = 0; QUALITY.frames = 0;
-      if (avg > 0.019) { QUALITY.tier += 1; applyQuality(); }
+      if (avg > target) { QUALITY.tier += 1; applyQuality(); }
     }
 
     // Every canvas gets a device-pixel-resolution backing store sized by the
@@ -2970,6 +2990,7 @@ const p1NameInput = document.getElementById('p1NameInput');
       if (document.hidden) { lastFrameTime = now; requestAnimationFrame(mainLoop); return; }
       game.time += dt;
       trackQuality(dt);
+      updateBootChip();
 
       if (game.screen === 'POSTER') {
         renderPosterCanvas();
@@ -3077,6 +3098,27 @@ const p1NameInput = document.getElementById('p1NameInput');
 
     window.addEventListener('resize', resizeAllCanvases);
 
+    // ---- Boot chip: the GLB downloads are the only slow part of this page, so
+    // show real bytes received instead of an apparently frozen screen.
+    const bootChip = document.createElement('div');
+    bootChip.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:9px;padding:8px 15px;border-radius:999px;background:rgba(8,14,32,.85);border:1px solid rgba(120,190,255,.38);color:#dbeafe;font:700 11px/1 Inter,system-ui,sans-serif;letter-spacing:.09em;backdrop-filter:blur(8px);transition:opacity .35s;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.35)';
+    bootChip.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:#5eead4;box-shadow:0 0 10px #5eead4"></span><span>LOADING FIGHTERS</span>';
+    document.body.appendChild(bootChip);
+    const bootChipLabel = bootChip.lastElementChild;
+    let bootDone = false;
+    function updateBootChip() {
+      if (window.gsh3dReady) {
+        if (!bootDone) {
+          bootDone = true;
+          bootChip.style.opacity = '0';
+          setTimeout(() => bootChip.remove(), 400);
+        }
+        return;
+      }
+      const pct = Math.round(Math.min(1, window.gsh3dProgress || 0) * 100);
+      bootChipLabel.textContent = pct > 0 ? 'LOADING FIGHTERS ' + pct + '%' : 'LOADING FIGHTERS';
+    }
+
     // Initialize UI
     window.gshGetCharacters = () => [game.p1.characterId, game.p2.characterId];
     buildSuitPills();
@@ -3085,9 +3127,6 @@ const p1NameInput = document.getElementById('p1NameInput');
     requestAnimationFrame(mainLoop);
   </script>
 
-<script type="importmap">
-{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
-</script>
 <script type="module" src="/arena-3d.js"></script>
 </body>
 </html>
