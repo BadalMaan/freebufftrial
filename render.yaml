@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: arena-games
+    name: arenaglobalgames
     runtime: node
     plan: free
     buildCommand: echo "no build step needed"

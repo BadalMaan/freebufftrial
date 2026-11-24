@@ -312,7 +312,6 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   camera.lookAt(0, 3.72, 0);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x59677d, 1.9));
   const key = new THREE.DirectionalLight(0xffffff, 2.25); key.position.set(-3, 7, 6); scene.add(key);
-  const fill = new THREE.DirectionalLight(0xdceaff, 1.05); fill.position.set(4, 3, 5); scene.add(fill);
   const rim = new THREE.DirectionalLight(0xb9dcff, 1.0); rim.position.set(4, 4, -4); scene.add(rim);
 
   const loader = new GLTFLoader();
@@ -708,8 +707,10 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       const holder = canvas.parentElement;
       if (!holder) return;
       let pr;
-      try { pr = new THREE.WebGLRenderer({ alpha: true, antialias: true }); } catch (e) { return; }
-      pr.setPixelRatio(Math.min(window.devicePixelRatio || 1, 0.9));
+      // Two extra WebGL contexts on the select screen: no MSAA and a small buffer,
+      // they are portraits, not gameplay.
+      try { pr = new THREE.WebGLRenderer({ alpha: true, antialias: false, stencil: false }); } catch (e) { return; }
+      pr.setPixelRatio(Math.min(window.devicePixelRatio || 1, 0.7));
       pr.outputColorSpace = THREE.SRGBColorSpace;
       pr.toneMapping = THREE.ACESFilmicToneMapping;
       pr.toneMappingExposure = 1.08;
@@ -717,8 +718,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       holder.appendChild(pr.domElement);
       const sc = new THREE.Scene();
       sc.add(new THREE.HemisphereLight(0xffffff, 0x59677d, 2.0));
-      const k = new THREE.DirectionalLight(0xffffff, 2.2); k.position.set(-2.5, 5, 4); sc.add(k);
-      const r = new THREE.DirectionalLight(0xbfe0ff, 1.1); r.position.set(3, 3, -3); sc.add(r);
+      const k = new THREE.DirectionalLight(0xffffff, 2.6); k.position.set(-2.5, 5, 4); sc.add(k);
       const cam = new THREE.PerspectiveCamera(34, 1, .1, 40);
       previewViews.push({ pr, sc, cam, holder, side, body: null, mixer: null, w: 0, h: 0, bodyH: 4.95, charId: null });
       canvas.style.display = 'none';
@@ -805,7 +805,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   const DPR_BASE = window.devicePixelRatio || 1;
   let qualityTier = 0;
   let pageCap = 1.0;      // set by the page's own 2D quality tier
-  let scaleStep = SCALE_STEPS.length - 1;
+  let scaleStep = 2;
   const currentCap = () => Math.min(pageCap, SCALE_STEPS[scaleStep]);
   function applyRenderScale() {
     renderer.setPixelRatio(Math.min(DPR_BASE, currentCap()));
@@ -844,10 +844,10 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       if (previewViews.length) {
         const selectScreenEl = document.getElementById('selectScreen');
         if (selectScreenEl && !selectScreenEl.classList.contains('hidden')) {
-          // Idle preview loops at ~30 fps: indistinguishable for a standing pose
-          // and half the cost of the two extra WebGL contexts.
+          // Idle preview loops at ~16 fps: a standing pose reads the same and this
+          // keeps the two extra WebGL contexts nearly free.
           previewAcc += rawDt;
-          if (previewAcc >= 1 / 31) {
+          if (previewAcc >= 1 / 16) {
             const pdt = Math.min(previewAcc, .1);
             previewAcc = 0;
             for (const v of previewViews) {
