@@ -1570,21 +1570,26 @@
 
         drawTerraceBackground(dt);
 
-        // The tucked hider is painted before his block so the stone really covers
-        // him; only during his own tuck-in do his fingertips show over the top.
+        // The hider drops behind his crate and is then genuinely gone: he is only
+        // painted during the tuck-in, shrinking and fading as he sinks out of
+        // sight, so nothing of him shows beside or above the cover afterwards.
         const liveHider = state.hiddenBlock != null ? blockHitboxes[state.hiddenBlock - 1] : null;
         blockHitboxes.forEach((box) => {
-          if (liveHider === box && state.hiderMood === 'hide') {
+          if (liveHider === box && state.hiderMood === 'hide' && state.phase === 'TUCKING') {
             const s = box.scale || 1;
+            const tuck = Math.max(0, Math.min(1, state.moodT / 0.6));
+            ctx.save();
+            ctx.globalAlpha = 1 - tuck * 0.98;
             drawHiderCharacter(
               box.x + box.w / 2,
-              box.groundY + 2 * s,
-              box.h * 1.02,
+              box.groundY + 2 * s + box.h * 0.30 * tuck,
+              box.h * (1.02 - 0.26 * tuck),
               'hide',
               state.moodT,
               state.hiderId,
-              state.phase === 'TUCKING'
+              true
             );
+            ctx.restore();
           }
           drawCoverCrate(box);
         });
