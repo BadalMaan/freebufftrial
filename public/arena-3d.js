@@ -102,11 +102,17 @@ function makeJump(c) {
 
 function makeGetup(c) {
   const brace = c.brace == null ? .6 : c.brace;
-  return { dur: .86, keys: [
-    { t: 0, p: { spineB: [.4, 0, 0], spineC: [.2, 0, 0], head: [.28, 0, 0], legL: [-.68, 0, 0], legR: [-.18, 0, 0], shinL: [.95, 0, 0], shinR: [.5, 0, 0], armL: [-1.5, 0, -.35], armR: [-1.4, 0, .3], foreL: [-.4, 0, 0], foreR: [-.35, 0, 0] } },
-    { t: .42, p: { spineB: [.28, 0, 0], spineC: [.12, 0, 0], head: [.15, 0, 0], legL: [-.48 * brace, 0, 0], legR: [-.1, 0, 0], shinL: [.75 * brace, 0, 0], shinR: [.28, 0, 0], armL: [-.85, 0, -.5], armR: [-.8, 0, .45] } },
-    { t: .74, p: { spineB: [.1, 0, 0], legL: [-.16, 0, 0], legR: [-.05, 0, 0], shinL: [.28, 0, 0], shinR: [.1, 0, 0], armL: [-.3, 0, -.3], armR: [-.3, 0, .3] } },
-    { t: 1, p: { spineB: [0, 0, 0], legL: [0, 0, 0], legR: [0, 0, 0], shinL: [0, 0, 0], shinR: [0, 0, 0], armL: [0, 0, 0], armR: [0, 0, 0] } }
+  return { dur: .95, keys: [
+    // Lying: one arm tucked under the chest, the near knee already drawn up.
+    { t: 0, p: { spineB: [.44, 0, .10], spineC: [.22, 0, .06], head: [.30, 0, .06], legL: [-.95, 0, 0], legR: [-.30, 0, 0], shinL: [1.40, 0, 0], shinR: [.55, 0, 0], armL: [-1.55, 0, -.55], armR: [-1.30, 0, .45], foreL: [-.55, 0, 0], foreR: [-.45, 0, 0] } },
+    // Hands planted, chest peeling off the floor.
+    { t: .28, p: { spineB: [.60, 0, .06], spineC: [.34, 0, 0], head: [.10, 0, 0], legL: [-1.20 * brace, 0, 0], legR: [-.42, 0, 0], shinL: [1.55 * brace, 0, 0], shinR: [.80, 0, 0], armL: [-1.72, 0, -.35], armR: [-1.72, 0, .35], foreL: [-1.05, 0, 0], foreR: [-1.05, 0, 0] } },
+    // Hands and knees: hips up over the front foot.
+    { t: .54, p: { spineB: [.50, 0, 0], spineC: [.24, 0, 0], head: [.02, 0, 0], legL: [-1.32 * brace, 0, 0], legR: [-.30, 0, 0], shinL: [1.50 * brace, 0, 0], shinR: [.62, 0, 0], armL: [-1.05, 0, -.45], armR: [-1.00, 0, .42], foreL: [-.50, 0, 0], foreR: [-.46, 0, 0] } },
+    // Weight over the feet, hands leave the floor.
+    { t: .78, p: { spineB: [.32, 0, 0], spineC: [.14, 0, 0], head: [-.04, 0, 0], legL: [-.52, 0, 0], legR: [-.16, 0, 0], shinL: [.78, 0, 0], shinR: [.22, 0, 0], armL: [-.45, 0, -.40], armR: [-.40, 0, .38] } },
+    // Upright, carrying the last of the sway.
+    { t: 1, p: { spineB: [.04, 0, 0], spineC: [0, 0, 0], head: [-.02, 0, 0], legL: [-.06, 0, 0], shinL: [.10, 0, 0], armL: [-.10, 0, -.12], armR: [-.10, 0, .12] } }
   ] };
 }
 
@@ -455,23 +461,74 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   const FIGHTER_Z = 1.2;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const ease = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+  // Piecewise smooth interpolation: the get-up is a sequence of real beats, not
+  // one long ease, so the body pauses where a body would pause.
+  function knot(u, ts, vs) {
+    for (let i = 1; i < ts.length; i++) {
+      if (u <= ts[i] || i === ts.length - 1) {
+        const k = clamp((u - ts[i - 1]) / Math.max(1e-4, ts[i] - ts[i - 1]), 0, 1);
+        return vs[i - 1] + (vs[i] - vs[i - 1]) * (k * k * (3 - 2 * k));
+      }
+    }
+    return vs[vs.length - 1];
+  }
 
   // ---- Model cache: each champion is downloaded once, then cloned per use ----
   const assets = new Map();
+  const controllers = new Map();
   // Boot progress: bytes actually received per GLB, so the loading chip can show
   // a real percentage instead of an indeterminate spinner.
   const PROGRESS = new Map();
-  function reportProgress(url, e) {
-    if (!e || !e.total) return;
-    PROGRESS.set(url, [e.loaded, e.total]);
-    let loaded = 0, total = 0;
-    PROGRESS.forEach(([l, t]) => { loaded += l; total += t; });
-    if (total > 0) window.gsh3dProgress = Math.min(.95, loaded / total);
+  function reportProgress(url, loaded, total) {
+    if (!total) return;
+    PROGRESS.set(url, [loaded, total]);
+    let got = 0, sum = 0;
+    PROGRESS.forEach(([l, t]) => { got += l; sum += t; });
+    if (sum > 0) window.gsh3dProgress = Math.min(.95, got / sum);
   }
+
+  // A plain fetch keeps the download abortable: clicking through champions used
+  // to leave every previous model downloading in parallel, so on a slow link the
+  // one you actually wanted arrived last.
+  async function fetchGlb(url, signal) {
+    const res = await fetch(url, { signal, credentials: 'same-origin', priority: 'high' });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' loading ' + url);
+    const total = Number(res.headers.get('content-length') || 0);
+    const reader = res.body.getReader();
+    const chunks = [];
+    let loaded = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.length;
+      reportProgress(url, loaded, total);
+    }
+    const out = new Uint8Array(loaded);
+    let off = 0;
+    for (const c of chunks) { out.set(c, off); off += c.length; }
+    return out.buffer;
+  }
+
+  // Drop downloads for champions that are no longer selected.
+  function abortUnused(keepIds) {
+    controllers.forEach((ctrl, id) => {
+      if (keepIds.indexOf(id) === -1 && assets.has(id)) {
+        try { ctrl.abort(); } catch (_) { /* already finished */ }
+        assets.delete(id);
+        controllers.delete(id);
+      }
+    });
+  }
+
   function loadCharacter(id) {
     const spec = CHAR_FILES[id] || CHAR_FILES.giant;
-    if (!assets.has(id)) {
-      assets.set(id, loader.loadAsync(spec.url, (e) => reportProgress(spec.url, e)).then((gltf) => {
+    if (assets.has(id)) return assets.get(id);
+    const ctrl = new AbortController();
+    controllers.set(id, ctrl);
+    const job = fetchGlb(spec.url, ctrl.signal)
+      .then((buffer) => loader.parseAsync(buffer, ''))
+      .then((gltf) => {
         const model = gltf.scene;
         const maxAniso = renderer.capabilities.getMaxAnisotropy();
         model.traverse((o) => {
@@ -502,13 +559,18 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
           rawHeight: Math.max(size.y, .001),
           targetHeight: spec.height
         };
-      }).catch((e) => {
-        console.error('Character GLB load failed:', id, e);
+      })
+      .catch((e) => {
         assets.delete(id);
+        controllers.delete(id);
+        if (!e || e.name !== 'AbortError') {
+          console.error('Character GLB load failed:', id, e);
+          window.gsh3dError = (e && e.message) || String(e);
+        }
         throw e;
-      }));
-    }
-    return assets.get(id);
+      });
+    assets.set(id, job);
+    return job;
   }
 
   function instantiate(asset) {
@@ -780,9 +842,11 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     f.baseRot = f.toward * FACE_TURN;
     f.root.position.set(f.baseX, 0, FIGHTER_Z);
     f.root.rotation.set(0, f.baseRot, 0);
-    f.sX = f.baseX; f.sY = 0; f.sRz = 0; f.sRy = f.baseRot;
+    f.sX = f.baseX; f.sY = 0; f.sRz = 0; f.sRx = 0; f.sRy = f.baseRot;
   }
   // Soft contact shadow so the champions sit on the terrace instead of floating.
+  const PLANE_Q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+  const SHADOW_Q = new THREE.Quaternion();
   const SHADOW_TEX = (() => {
     const cv = document.createElement('canvas');
     cv.width = cv.height = 128;
@@ -933,10 +997,14 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   }
   let fighterToken = 0;
   async function refreshFighters(ids) {
+    abortUnused(ids);
     if (fighters[0] && fighters[1] && fighters[0].charId === ids[0] && fighters[1].charId === ids[1]) return;
     const token = ++fighterToken;
     let loaded;
-    try { loaded = await Promise.all(ids.map(loadCharacter)); } catch (e) { console.error(e); return; }
+    try { loaded = await Promise.all(ids.map(loadCharacter)); } catch (e) {
+      if (!e || e.name !== 'AbortError') console.error(e);
+      return;
+    }
     if (token !== fighterToken) return; // a newer selection already took over
     fighters.forEach((f) => { if (f) scene.remove(f.root); });
     fighters[0] = makeFighter(0, ids[0], loaded[0]);
@@ -947,6 +1015,8 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   }
   async function refreshAll() {
     const ids = currentIds();
+    abortUnused(ids);
+    window.gsh3dError = null;
     await Promise.all(previewViews.map((v) => setPreviewCharacter(v, ids[v.side]).catch(() => {})));
     await refreshFighters(currentIds());
   }
@@ -1078,7 +1148,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
         const toward = f.toward;
         const sig = STYLES[f.charId] || STYLES.giant;
         const winner = state.winnerSide === (i + 1);
-        let x = f.baseX, y = 0, rz = 0, ry = f.baseRot, pose = 'idle';
+        let x = f.baseX, y = 0, rx = 0, rz = 0, ry = f.baseRot, pose = 'idle';
 
         if (victory && winner) {
           // Champion's lap: crouch → leap → sprint at the fallen rival → air strike
@@ -1137,36 +1207,63 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
             x -= toward * (.12 + .18 * amt); y = Math.sin(elapsed * 46) * .014 * amt;
             rz = toward * .16 * amt; ry = f.baseRot - toward * .12 * amt;
           } else if (since < riseStart) {
-            // Knocked off both feet: the body is thrown back, arcs over, slams the
-            // terrace, rebounds once on the shoulder and settles flat before the
-            // slow get-up. Gravity accelerates the arc so the fall reads as weight,
-            // not as a slow tip-over.
-            const fallT = clamp((since - FT.stagger) / .62, 0, 1);
-            const e = fallT * fallT;
+            // A human collapse, in the order it happens: the knees give out, the
+            // body topples under gravity (not at a constant rate), the back slams
+            // the terrace, bounces once on the shoulders and then lies still with
+            // the chest moving. The root pitches backwards so the body lands away
+            // from the camera instead of tipping over like a plank.
+            const span = Math.max(.2, riseStart - FT.stagger);
+            const p = clamp((since - FT.stagger) / span, 0, 1);
+            const buckle = clamp(p / .20, 0, 1);
+            const topple = clamp((p - .20) / .44, 0, 1);
+            const impact = clamp((p - .64) / .18, 0, 1);
+            const rest = clamp((p - .82) / .18, 0, 1);
+            const LIE = 1.42;
             pose = 'fall';
-            y = .03 + .045 * e;
-            // Knocked AWAY from the strike, never gliding into the attacker.
-            // Kept short enough that the body stays inside the frame.
-            x -= toward * .55 * e - toward * .14 * (1 - e);
-            rz = toward * 1.08 * e;
-            ry = f.baseRot - toward * .18 * e;
-            const bt = clamp((since - FT.stagger - .62) / .62, 0, 1);
-            if (bt > 0) {
-              const bounce = Math.sin(bt * Math.PI) * (1 - bt * .45);
-              y += bounce * .08;
-              x -= toward * .10 * bounce;
-              rz += toward * .075 * bounce;
-              // Momentum keeps the limbs twitching a beat after the torso lands.
-              rz -= toward * Math.sin(elapsed * 9) * .014 * (1 - bt);
-              x += toward * Math.sin(elapsed * 6.4) * .006 * (1 - bt);
+
+            // 1. Knees buckle: a small drop and a forward lurch before any rotation.
+            const bk = ease(buckle);
+            y = -.03 * bk;
+            x -= toward * .12 * bk;
+            rz = toward * .10 * bk;
+
+            // 2. Topple: gravity squared, so the last third of the arc is fast.
+            const g = topple * topple;
+            rx = -LIE * g;
+            rz += toward * .16 * g;
+            x -= toward * (.58 * g);
+            y += .015 * g;
+            ry = f.baseRot - toward * .10 * g;
+
+            // 3. Impact and one bounce on the shoulders; the limbs keep travelling.
+            if (impact > 0) {
+              const hit = Math.sin(impact * Math.PI) * (1 - impact * .45);
+              rx = -LIE - .09 * hit;
+              y += .05 * hit;
+              x -= toward * .05 * hit;
+              rz += toward * .04 * hit;
+            }
+            // 4. Lying flat, breathing, the body settling the last few millimetres.
+            if (rest > 0) {
+              rx = -(LIE + .07) + Math.sin(elapsed * 1.55 + f.seed) * .014 * rest;
+              y = .010;
+              rz = toward * .20 + Math.sin(elapsed * 1.05 + f.seed) * .012 * rest;
+              x -= toward * .06 * rest;
             }
           } else {
-            const u = clamp((since - riseStart) / (riseEnd - riseStart), 0, 1), e = ease(u);
+            // Getting up the way people do: roll to a hip, plant the hands, push
+            // the hips over the front knee, bring the hands off the floor and only
+            // then straighten — with a pause at each beat instead of one long ease.
+            const u = clamp((since - riseStart) / Math.max(.2, riseEnd - riseStart), 0, 1);
             pose = 'getup';
-            y = -(1 - e) * .02 + Math.sin(u * Math.PI) * .045;
-            x -= toward * .55 * (1 - e);
-            rz = toward * 1.08 * (1 - e);
-            ry = f.baseRot - toward * .18 * (1 - e);
+            const LIE = 1.42;
+            const roll = knot(u, [0, .18, .44, .70, .88, 1], [LIE, 1.22, .76, .28, -.05, 0]);
+            const push = Math.sin(clamp(u / .62, 0, 1) * Math.PI);
+            rx = -roll;
+            y = push * .055 - (1 - ease(u)) * .01;
+            x -= toward * .58 * (1 - knot(u, [0, .5, 1], [1, .52, 0]));
+            rz = toward * .20 * (1 - knot(u, [0, .45, 1], [1, .48, 0]));
+            ry = f.baseRot - toward * .10 * (1 - ease(u));
           }
         } else if ((q.hurt || 0) > .02) {
           pose = 'hurt';
@@ -1236,9 +1333,22 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
         f.sX += (x - f.sX) * kRoot;
         f.sY += (y - f.sY) * kRoot;
         f.sRz += (rz - f.sRz) * kRoot;
+        f.sRx += (rx - f.sRx) * kRoot;
         f.sRy += (ry - f.sRy) * Math.min(1, kRoot * .85);
         f.root.position.set(f.sX, f.sY, FIGHTER_Z);
-        f.root.rotation.set(0, f.sRy, f.sRz);
+        f.root.rotation.set(f.sRx, f.sRy, f.sRz);
+        if (f.shadow) {
+          // The blob is a child of the root, so cancel the root's rotation and
+          // re-place it at the floor point: a fallen body needs its shadow on the
+          // terrace, not hanging in the air with it.
+          SHADOW_Q.copy(f.root.quaternion).invert();
+          f.shadow.quaternion.copy(SHADOW_Q).multiply(PLANE_Q);
+          f.shadow.position.set(0, .014 - f.sY, 0).applyQuaternion(SHADOW_Q);
+          const lie = Math.min(1, Math.abs(rx) / 1.4 + Math.abs(rz) / 1.5);
+          const sc = 1 + lie * .4;
+          f.shadow.scale.set(sc, sc * .92, sc);
+          f.shadow.material.opacity = .9 - lie * .3;
+        }
         if (freeze > 0) {
           f.root.position.x += Math.sin(elapsed * 130 + f.seed) * .022;
           f.root.position.y += Math.cos(elapsed * 105 + f.seed) * .012;

@@ -910,9 +910,10 @@ const p1NameInput = document.getElementById('p1NameInput');
     const HITSTOP_BLOW = 0.22;
     const SURGE_TIME = 0.34;
     const DRAW_TIME = 0.95;
-    const AFTERMATH_TIME = 3.25;
-    const FALL_DURATION = 3.15;
-    const FALL_TIMINGS = { stagger: .45, riseStart: 1.98, riseEnd: 2.92 };
+    const AFTERMATH_TIME = 3.5;
+    const FALL_DURATION = 3.32;
+    // stagger → topple/impact → lying still → five-beat push-up recovery.
+    const FALL_TIMINGS = { stagger: .45, riseStart: 2.05, riseEnd: 3.0 };
 
     let vfxParticles = [];
     let shockRings = [];
@@ -3113,6 +3114,11 @@ const p1NameInput = document.getElementById('p1NameInput');
           bootChip.style.opacity = '0';
           setTimeout(() => bootChip.remove(), 400);
         }
+        return;
+      }
+      if (window.gsh3dError) {
+        bootChipLabel.textContent = 'FIGHTERS FAILED TO LOAD — 2D MODE';
+        bootChip.style.borderColor = 'rgba(248,113,113,.6)';
         return;
       }
       const pct = Math.round(Math.min(1, window.gsh3dProgress || 0) * 100);
