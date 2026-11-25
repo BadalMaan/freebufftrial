@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0a0a1f" />
+<title>Punjabi Word Warriors · Global Punjabi Classes</title>
+<link rel="stylesheet" href="fonts.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<!-- ══════════════ HOME ══════════════ -->
+<section class="screen active" id="screenHome">
+  <div class="home-glow"></div>
+  <div class="home-inner">
+    <p class="kicker">GLOBAL PUNJABI CLASSES · GAME ARENA</p>
+    <h1 class="game-title">
+      <span class="title-pa">PUNJABI WORD WARRIORS</span>
+    </h1>
+    <p class="tagline">Arrange the letters. Beat your friends. Become the champion!</p>
+    <div class="home-actions">
+      <button class="btn btn-gold big" id="btnStart">▶ START GAME</button>
+      <button class="btn btn-cyan" id="btnHow">HOW TO PLAY</button>
+      <button class="btn btn-violet" id="btnBank">WORD BANK</button>
+    </div>
+    <div class="mascot-row" aria-hidden="true">
+      <span class="mascot m1">🦁</span><span class="mascot m2">🐯</span><span class="mascot m3">🦚</span><span class="mascot m4">🐼</span>
+    </div>
+    <div class="home-foot">
+      <span id="homeProgress">11 categories · 1,100+ words</span>
+      <button class="link-btn" id="btnHomeSettings">⚙ Settings</button>
+      <button class="link-btn" id="btnHomeExit" hidden>← Dashboard</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ HOW TO PLAY ══════════════ -->
+<section class="screen" id="screenHow">
+  <div class="panel wide">
+    <div class="panel-head">
+      <h2>How to play</h2>
+      <button class="icon-btn" data-back="screenHome" aria-label="Close">✕</button>
+    </div>
+    <ol class="how-list">
+      <li><b>Pick 2–8 warriors.</b> Every player gets a name, an avatar and a scoreboard spot.</li>
+      <li><b>Choose a laga matra.</b> Mukta, Kanna, Sihari … or the SUPER TEST with all of them mixed.</li>
+      <li><b>Arrange the letters.</b> Click the tiles in order — or drag them into the answer strip. Undo takes one back, Clear starts again.</li>
+      <li><b>SUBMIT.</b> First attempt correct = <b>+2</b>. Miss it and you get one more try: correct on the second = <b>+1</b>, otherwise 0.</li>
+      <li><b>Pass the device.</b> The next warrior's turn starts automatically. Scores are sorted after every round.</li>
+      <li><b>Champion.</b> After the last round the top three climb the podium — confetti included. 🏆</li>
+    </ol>
+    <div class="how-note">
+      <b>Teacher tip:</b> every letter tile keeps its vowel sign glued to its consonant (ਵਿ stays together, never ਵ + ਿ). Open <b>WORD BANK</b> to add, edit or delete words — your changes are saved on this device.
+    </div>
+    <button class="btn btn-gold" data-back="screenHome">GOT IT</button>
+  </div>
+</section>
+
+<!-- ══════════════ WORD BANK EDITOR ══════════════ -->
+<section class="screen" id="screenBank">
+  <div class="panel wide">
+    <div class="panel-head">
+      <h2>Word Bank</h2>
+      <div class="head-actions">
+        <button class="btn btn-ghost small" id="bankLock">🔒 LOCK</button>
+        <button class="icon-btn" data-back="screenHome" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="bank-toolbar">
+      <select id="bankCategory" class="select"></select>
+      <input id="bankSearch" class="input" type="search" placeholder="Search a word…" />
+      <span class="bank-count" id="bankCount">0 words</span>
+    </div>
+    <div class="bank-add">
+      <input id="bankWord" class="input grow" placeholder="Type a new word (e.g. ਕਿਤਾਬ)" lang="pa" />
+      <button class="btn btn-cyan" id="bankAddBtn">+ ADD WORD</button>
+    </div>
+    <p class="bank-msg" id="bankMsg"></p>
+    <div class="bank-list" id="bankList"></div>
+    <div class="panel-actions">
+      <button class="btn btn-ghost small" id="bankReset">↺ Restore this category</button>
+      <button class="btn btn-ghost small" id="bankResetAll">↺ Restore everything</button>
+      <button class="btn btn-gold small" data-back="screenHome">DONE</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ PLAYER SETUP ══════════════ -->
+<section class="screen" id="screenPlayers">
+  <div class="panel wide">
+    <div class="panel-head">
+      <div>
+        <p class="kicker">STEP 1</p>
+        <h2>Choose your warriors</h2>
+      </div>
+      <button class="icon-btn" data-back="screenHome" aria-label="Close">✕</button>
+    </div>
+
+    <div class="count-row">
+      <span>Players</span>
+      <div class="count-pills" id="playerCount"></div>
+    </div>
+
+    <div class="player-fields" id="playerFields"></div>
+
+    <div class="settings-grid">
+      <label class="field"><span>Rounds</span>
+        <select id="setRounds" class="select">
+          <option value="5">5 rounds</option>
+          <option value="10" selected>10 rounds</option>
+          <option value="15">15 rounds</option>
+          <option value="0">Unlimited (all words)</option>
+        </select>
+      </label>
+      <label class="field"><span>Difficulty</span>
+        <select id="setDiff" class="select">
+          <option value="easy">Easy · short words</option>
+          <option value="medium" selected>Medium · mixed</option>
+          <option value="hard">Hard · long words</option>
+        </select>
+      </label>
+      <div class="field"><span>Sound</span>
+        <button class="toggle on" id="setSound" aria-pressed="true"><i></i><b>ON</b></button>
+      </div>
+      <div class="field"><span>Timer</span>
+        <button class="toggle" id="setTimer" aria-pressed="false"><i></i><b>OFF</b></button>
+      </div>
+      <label class="field" id="timerSecondsField"><span>Seconds per turn</span>
+        <select id="setSeconds" class="select">
+          <option value="20">20 s</option>
+          <option value="30" selected>30 s</option>
+          <option value="45">45 s</option>
+          <option value="60">60 s</option>
+        </select>
+      </label>
+    </div>
+
+    <button class="btn btn-gold big block" id="toCategories">NEXT: CHOOSE CATEGORY →</button>
+  </div>
+</section>
+
+<!-- ══════════════ CATEGORY ══════════════ -->
+<section class="screen" id="screenCategories">
+  <div class="panel wide">
+    <div class="panel-head">
+      <div>
+        <p class="kicker">STEP 2</p>
+        <h2>Pick a vowel sign</h2>
+      </div>
+      <button class="btn btn-ghost small" id="catBack">← Players</button>
+    </div>
+    <div class="cat-grid" id="catGrid"></div>
+  </div>
+</section>
+
+<!-- ══════════════ GAME ══════════════ -->
+<section class="screen game-screen" id="screenGame">
+  <header class="game-bar">
+    <button class="ghost-icon" id="gameQuit" title="Quit game">✕</button>
+    <div class="round-chip">
+      <span id="roundLabel">ROUND 1 / 10</span>
+      <small id="catLabel">Kanna</small>
+    </div>
+    <div class="turn-chip">
+      <span class="turn-avatar" id="turnAvatar">🦁</span>
+      <div><b id="turnName">Player 1</b><small>your turn</small></div>
+      <div class="timer" id="turnTimer">30</div>
+    </div>
+    <button class="ghost-icon" id="gameFullscreen" title="Full screen" aria-label="Toggle full screen">⛶</button>
+  </header>
+
+  <div class="game-layout">
+    <aside class="scoreboard" id="scoreboard"></aside>
+
+    <main class="board">
+      <div class="turn-banner" id="turnBanner">P1 · Arrangement time!</div>
+      <div class="attempt-row">
+        <span class="attempt-badge" id="attemptBadge">ATTEMPT 1 · +2</span>
+        <span class="word-len" id="wordLen">3 letters</span>
+      </div>
+
+      <div class="answer-zone" id="answerZone">
+        <div class="answer-slots" id="answerSlots"></div>
+        <p class="answer-hint" id="answerHint">Tap the letters below in the right order</p>
+        <p class="answer-roman" id="answerRoman" hidden></p>
+        <div class="answer-actions">
+          <button class="btn btn-ghost small" id="btnUndo">↶ UNDO</button>
+          <button class="btn btn-ghost small" id="btnClear">✕ CLEAR</button>
+          <button class="btn btn-gold" id="btnSubmit" disabled>SUBMIT</button>
+        </div>
+      </div>
+
+      <div class="tiles" id="tiles"></div>
+      <div class="feedback-bar" id="feedbackBar"></div>
+    </main>
+  </div>
+</section>
+
+<!-- ══════════════ TURN RESULT OVERLAY ══════════════ -->
+<div class="overlay" id="overlayTurn">
+  <div class="turn-card">
+    <div class="result-emoji" id="resEmoji">🎉</div>
+    <h3 id="resTitle">Perfect!</h3>
+    <p class="res-word" id="resWord">ਕਵਿਤਾ</p>
+    <p class="res-sub" id="resSub">+2 points · Sihari</p>
+    <div class="res-tiles" id="resTiles"></div>
+    <button class="btn btn-gold block" id="resNext">NEXT WARRIOR →</button>
+  </div>
+</div>
+
+<!-- ══════════════ WINNER ══════════════ -->
+<section class="screen" id="screenWinner">
+  <div class="winner-inner">
+    <h1 class="winner-title">🏆 PUNJABI WORD CHAMPION! 🏆</h1>
+    <p class="winner-sub">GLOBAL PUNJABI CLASSES</p>
+    <div class="podium" id="podium"></div>
+    <div class="final-board panel" id="finalBoard"></div>
+    <div class="winner-actions">
+      <button class="btn btn-gold" id="btnAgain">PLAY AGAIN</button>
+      <button class="btn btn-cyan" id="btnChangeCat">CHANGE CATEGORY</button>
+      <button class="btn btn-violet" id="btnHomeFromWin">HOME</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ ADMIN LOCK ══════════════ -->
+<div class="overlay" id="overlayAdmin">
+  <div class="turn-card admin-card">
+    <div class="result-emoji">🔒</div>
+    <h3>Teacher Access</h3>
+    <p class="muted small">The Word Bank is password-protected. Only the teacher can add, edit or delete words.</p>
+    <input id="adminPass" class="input" type="password" autocomplete="current-password" placeholder="Admin password" aria-label="Admin password" />
+    <p class="bank-msg" id="adminMsg"></p>
+    <button class="btn btn-gold block" id="adminUnlock">UNLOCK</button>
+    <button class="link-btn admin-cancel" id="adminCancel">Cancel</button>
+  </div>
+</div>
+
+<!-- ══════════════ SETTINGS ══════════════ -->
+<div class="overlay" id="overlaySettings">
+  <div class="turn-card settings-card">
+    <div class="panel-head"><h3>⚙ Settings</h3><button class="icon-btn" id="closeSettings" aria-label="Close">✕</button></div>
+    <div class="field"><span>Sound effects</span>
+      <button class="toggle on" id="setSound2" aria-pressed="true"><i></i><b>ON</b></button>
+    </div>
+    <div class="field"><span>Timer</span>
+      <button class="toggle" id="setTimer2" aria-pressed="false"><i></i><b>OFF</b></button>
+    </div>
+    <p class="muted small">Settings and word-bank edits are stored on this device only.</p>
+    <button class="btn btn-gold block" id="closeSettings2">DONE</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="words.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

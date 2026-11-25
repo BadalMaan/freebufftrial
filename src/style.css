@@ -1513,3 +1513,32 @@ body{background:var(--bg);color:var(--text)}
 .hide-shoot-game-toolbar{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;color:#28618e;font-size:11px;font-weight:900;letter-spacing:1.4px}
 .hide-shoot-game-frame{display:block;width:100%;height:calc(100dvh - 190px);min-height:650px;border:1px solid #d3e3f1;border-radius:16px;background:#dbeafe;box-shadow:0 8px 28px rgba(29,66,103,.12)}
 @media(max-width:700px){.hide-shoot-feature{margin-top:-4px}.hide-shoot-poster{width:min(52vw,205px)}.hide-shoot-game-frame{height:calc(100dvh - 190px);min-height:600px;border-radius:10px}.hide-shoot-game-toolbar{font-size:9px}}
+
+/* ── Punjabi Word Warriors dashboard card ─────────────────── */
+.hide-shoot-feature{display:flex;justify-content:flex-start;gap:16px;flex-wrap:wrap;margin:-7px 0 28px}
+.word-warriors-poster{
+  position:relative;display:block;width:clamp(170px,19vw,218px);aspect-ratio:1/1;padding:0;
+  overflow:hidden;border:1px solid #7c6bd8;border-radius:18px;cursor:pointer;text-align:left;
+  background:radial-gradient(120% 100% at 20% 0%,#fff6dc 0%,#f4e9ff 55%,#e7f9ff 100%);
+  box-shadow:0 8px 24px rgba(110,70,180,.18);isolation:isolate;
+  transition:transform .22s ease,box-shadow .22s ease;
+}
+.word-warriors-poster:hover{transform:translateY(-4px);box-shadow:0 16px 34px rgba(70,40,160,.36)}
+.word-warriors-poster .ww-glow{position:absolute;inset:-30%;background:radial-gradient(circle at 70% 25%,rgba(67,232,255,.45),transparent 55%);z-index:0}
+.word-warriors-poster .ww-glyphs{
+  position:absolute;z-index:1;font-family:"Noto Sans Gurmukhi",sans-serif;font-weight:800;
+  color:#e59a00;text-shadow:0 3px 10px rgba(255,180,40,.35);line-height:1;
+}
+.word-warriors-poster .ww-glyphs{font-size:64px;top:16px;left:18px;transform:rotate(-8deg)}
+.word-warriors-poster .ww-glyphs.alt{font-size:38px;top:48px;left:96px;color:#0aa8c0;transform:rotate(10deg);text-shadow:0 3px 10px rgba(67,232,255,.35)}
+.word-warriors-poster .ww-glyphs.low{font-size:44px;top:96px;left:58px;color:#7c4dff;transform:rotate(4deg);text-shadow:0 3px 10px rgba(167,116,255,.35)}
+.word-warriors-poster .ww-copy{position:absolute;z-index:2;left:14px;right:10px;bottom:48px;color:#fff;display:flex;flex-direction:column;gap:3px}
+.word-warriors-poster .ww-copy b{font:900 15px/1.05 Manrope,sans-serif;letter-spacing:.4px;color:#2a1f57}
+.word-warriors-poster .ww-copy small{font-size:8px;font-weight:800;letter-spacing:1.25px;color:#7c4dff}
+/* Word Warriors runs full screen, like the arena */
+.app-shell.ww-mode{display:block!important;min-height:100dvh!important;height:100dvh!important;overflow:hidden!important;background:#fbf8ff!important}
+.app-shell.ww-mode>.sidebar,.app-shell.ww-mode>.main-area>.topbar,.app-shell.ww-mode>.main-area>footer{display:none!important}
+.app-shell.ww-mode>.main-area{width:100%!important;min-width:0!important;min-height:100dvh!important;height:100dvh!important;margin:0!important;padding:0!important;overflow:hidden!important}
+.app-shell.ww-mode>.main-area>.content{width:100%!important;max-width:none!important;height:100dvh!important;min-height:100dvh!important;margin:0!important;padding:0!important;overflow:hidden!important}
+.ww-frame{display:block;width:100%;height:100dvh;min-height:100dvh;border:0;background:#fbf8ff}
+@media(max-width:700px){.word-warriors-poster{width:min(52vw,205px)}}

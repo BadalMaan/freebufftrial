@@ -1,0 +1,5 @@
+/* Bundled locally so the game works with no internet connection. */
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/Baloo-2-600-latin.woff2') format('woff2')}
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/Baloo-2-700-latin.woff2') format('woff2')}
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:800;font-display:swap;src:url('fonts/Baloo-2-800-latin.woff2') format('woff2')}
+@font-face{font-family:'Noto Sans Gurmukhi';font-style:normal;font-weight:400 900;font-display:swap;src:url('fonts/Noto-Sans-Gurmukhi-400-pa.woff2') format('woff2');unicode-range:U+0A00-0A7F,U+200C-200D,U+25CC}
