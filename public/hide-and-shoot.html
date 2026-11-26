@@ -349,7 +349,7 @@
           HIDE
         </span>
         <span id="status-prompt" class="text-xs sm:text-sm font-bold text-slate-900 truncate">
-          Player 1: Pick a block
+          Player 1: Pick a house
         </span>
       </div>
 
@@ -718,9 +718,10 @@
         round: 1,
         hiderId: 1,
         shooterId: 2,
-        phase: 'HIDE', // 'HIDE' | 'TUCKING' | 'HANDOFF' | 'SHOOT' | 'ANIMATING' | 'ROUND_END'
+        phase: 'HIDE', // 'HIDE' | 'RUNNING' | 'TUCKING' | 'HANDOFF' | 'SHOOT' | 'ANIMATING' | 'ROUND_END'
         hiddenBlock: null,
         hidePeekProgress: 0, // 0 -> 1 brief tuck-in animation inside selected block
+        runT: 0,               // seconds into the sprint from home to the called house
         coverShiftProgress: 0, // 0 -> 1 deep backward shift along terrace
         targetCoverShift: 0,
         hoveredBlock: null,
@@ -781,7 +782,7 @@
       };
 
       // =========================================================================
-      // 4. GOLDEN-HOUR LIMESTONE TERRACE, TALL BLOCKS & BREAKAGE FX ENGINE
+      // 4. SUNNY COTTAGE LANE, FOUR HOUSES & BREAKAGE FX ENGINE
       // =========================================================================
       let ctx = els.arenaCanvas.getContext('2d');
       let stageW = 800;
@@ -865,31 +866,19 @@
       }
 
       function computeBlockHitboxes() {
+        const row = houseRow();
         const shift = state.coverShiftProgress;
-        const padX = Math.max(14, stageW * 0.04);
-        const gap = Math.max(10, stageW * 0.022);
-        const usableW = stageW - padX * 2 - gap * 3;
-        const baseBlockW = Math.min(195, usableW / 4);
-        const totalRowW = baseBlockW * 4 + gap * 3;
-        const startX = (stageW - totalRowW) / 2;
-
-        // Deep backward slide into perspective courtyard depth (~0.5x scale at full shift)
-        const baseGroundY = stageH * 0.86;
-        const horizonFloorY = stageH * 0.50;
-        const groundY = baseGroundY - shift * (baseGroundY - horizonFloorY);
-        const scale = 1 - shift * 0.5;
-
-        // Tall heavy architectural blocks with 2.5D depth
-        const baseBlockH = Math.min(220, Math.max(135, stageH * 0.44));
-        const blockH = baseBlockH * scale;
-        const depth3D = Math.min(38, Math.max(20, baseBlockW * 0.21)) * scale;
+        const groundY = row.baseGroundY - shift * (row.baseGroundY - stageH * .52);
+        const scale = 1 - shift * .45;
+        const blockH = row.baseBlockH * scale;
+        const depth = Math.min(34, Math.max(18, row.baseBlockW * .18)) * scale;
 
         if (blockHitboxes.length !== 4) blockHitboxes = [];
         for (let i = 0; i < 4; i++) {
           const num = i + 1;
-          const hoverLift = (state.phase === 'HIDE' && state.hoveredBlock === num && !state.shatteredBlocks.has(num)) ? 10 : 0;
-          const centerX = startX + i * (baseBlockW + gap) + baseBlockW / 2;
-          const scaledW = baseBlockW * scale;
+          const hoverLift = (state.phase === 'HIDE' && state.hoveredBlock === num && !state.shatteredBlocks.has(num)) ? 8 : 0;
+          const centerX = row.startX + i * (row.baseBlockW + row.gap) + row.baseBlockW / 2;
+          const scaledW = row.baseBlockW * scale;
           const x = centerX - scaledW / 2;
           const y = groundY - blockH - hoverLift;
 
@@ -900,7 +889,7 @@
           box.y = y;
           box.w = scaledW;
           box.h = blockH;
-          box.depth = depth3D;
+          box.depth = depth;
           box.groundY = groundY;
           box.scale = scale;
         }
@@ -1237,225 +1226,166 @@
         }
       }
 
-      // --- Open countryside: grass field, dirt track, pine forest, mountains ---
+      // --- Sunny cottage lane: open blue sky, clipped hedge, smooth lawn and
+      // four sandy paths that funnel from the cottages down to the viewer. ---
+      function houseRow() {
+        const padX = Math.max(14, stageW * 0.035);
+        const gap = Math.max(10, stageW * 0.028);
+        const usableW = stageW - padX * 2 - gap * 3;
+        const baseBlockW = Math.min(200, usableW / 4);
+        const totalRowW = baseBlockW * 4 + gap * 3;
+        const startX = (stageW - totalRowW) / 2;
+        const baseGroundY = stageH * 0.72;
+        const baseBlockH = Math.min(206, Math.max(90, Math.min(stageH * .42, baseBlockW * 1.1)));
+        return { padX, gap, baseBlockW, totalRowW, startX, baseGroundY, baseBlockH };
+      }
+
+      function drawPathRibbon(x0, y0, bend, x1, y1, w0, w1) {
+        const c1x = x0 + bend * .4, c1y = y0 + (y1 - y0) * .36;
+        const c2x = x1 - bend * .55, c2y = y1 - (y1 - y0) * .30;
+        ctx.beginPath();
+        ctx.moveTo(x0 - w0 / 2, y0);
+        ctx.bezierCurveTo(c1x - w0 * .35, c1y, c2x - w1 * .35, c2y, x1 - w1 / 2, y1);
+        ctx.lineTo(x1 + w1 / 2, y1);
+        ctx.bezierCurveTo(c2x + w1 * .35, c2y, c1x + w0 * .35, c1y, x0 + w0 / 2, y0);
+        ctx.closePath();
+        const g = ctx.createLinearGradient(0, y0, 0, y1);
+        g.addColorStop(0, '#e3c79c');
+        g.addColorStop(.5, '#d9b689');
+        g.addColorStop(1, '#cfa87a');
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(150, 118, 74, .16)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // Warm sand grain and tiny pebbles along the track.
+        ctx.save();
+        ctx.clip();
+        for (let i = 0; i < 26; i++) {
+          const n1 = seededNoise(i * 3.7 + x0), n2 = seededNoise(i * 6.1 + x0);
+          const py = y0 + (y1 - y0) * n1;
+          const hw = (w0 + (w1 - w0) * n1) * .42;
+          const px = x0 + (x1 - x0) * n1 + (n2 - .5) * hw * 2;
+          ctx.fillStyle = n2 > .5 ? 'rgba(255, 242, 212, .45)' : 'rgba(166, 132, 88, .3)';
+          ctx.beginPath();
+          ctx.ellipse(px, py, 1.3 + n2 * 2.1, .8 + n2 * 1.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
       function drawTerraceBackground() {
-        const horizonY = stageH * 0.47;
-        const sunX = stageW * 0.78;
-        const sunY = stageH * 0.13;
+        const horizonY = stageH * .525;
+        const row = houseRow();
+        const grassTop = horizonY - 1;
 
-        // ---- Sky ----
-        const sky = ctx.createLinearGradient(0, 0, 0, horizonY + stageH * .04);
-        sky.addColorStop(0, '#1f63c9');
-        sky.addColorStop(.34, '#4f96e2');
-        sky.addColorStop(.68, '#9cc7ee');
-        sky.addColorStop(1, '#d8eaf8');
+        // ---- Clear blue sky ----
+        const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
+        sky.addColorStop(0, '#2f9de6');
+        sky.addColorStop(.45, '#5cb6ee');
+        sky.addColorStop(.8, '#9ad6f5');
+        sky.addColorStop(1, '#cdeafa');
         ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, stageW, horizonY + stageH * .05);
+        ctx.fillRect(0, 0, stageW, horizonY + 2);
 
-        // Sun bloom and long afternoon rays.
-        const glow = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, Math.max(stageW, stageH) * .55);
-        glow.addColorStop(0, 'rgba(255, 252, 232, .92)');
-        glow.addColorStop(.16, 'rgba(255, 244, 200, .34)');
-        glow.addColorStop(.55, 'rgba(255, 246, 214, .10)');
-        glow.addColorStop(1, 'rgba(255, 246, 214, 0)');
-        ctx.fillStyle = glow;
-        ctx.fillRect(0, 0, stageW, horizonY);
-        ctx.save();
-        ctx.globalAlpha = .10;
-        ctx.fillStyle = '#fffdf3';
-        for (let b = 0; b < 3; b++) {
-          ctx.beginPath();
-          ctx.moveTo(sunX, sunY);
-          ctx.lineTo(stageW * (0.02 + b * 0.28), horizonY);
-          ctx.lineTo(stageW * (0.2 + b * 0.28), horizonY);
-          ctx.closePath();
-          ctx.fill();
-        }
-        ctx.restore();
+        // ---- Soft white clouds ----
+        const cloud = (cx, cy, sc) => {
+          const blobs = [[0, 0, 1], [-.62, .18, .66], [.62, .15, .6], [-1.12, .34, .4], [1.08, .34, .36], [.12, -.28, .55]];
+          ctx.save();
+          ctx.fillStyle = 'rgba(255, 255, 255, .96)';
+          blobs.forEach(([bx, by, br]) => {
+            ctx.beginPath();
+            ctx.ellipse(cx + bx * 48 * sc, cy + by * 32 * sc, 38 * br * sc, 26 * br * sc, 0, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          ctx.fillStyle = 'rgba(197, 228, 246, .5)';
+          blobs.slice(1, 4).forEach(([bx, by, br]) => {
+            ctx.beginPath();
+            ctx.ellipse(cx + bx * 48 * sc, cy + (by + .2) * 32 * sc, 30 * br * sc, 11 * br * sc, 0, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          ctx.restore();
+        };
+        const sc = Math.max(.55, Math.min(1.25, stageW / 820));
+        cloud(stageW * .17, stageH * .13, sc);
+        cloud(stageW * .49, stageH * .075, sc * .78);
+        cloud(stageW * .79, stageH * .17, sc * .9);
+        cloud(stageW * .96, stageH * .06, sc * .6);
 
-        // Soft cloud banks.
-        ctx.save();
-        ctx.globalAlpha = .55;
-        for (let i = 0; i < 5; i++) {
-          const cx = stageW * (0.08 + i * 0.21) + Math.sin(i * 2.3) * stageW * .03;
-          const cy = stageH * (0.10 + (i % 3) * 0.045);
-          const cw = stageW * (0.10 + (i % 2) * 0.05);
-          const ch = Math.max(7, stageH * 0.022);
-          ctx.fillStyle = 'rgba(255,255,255,.72)';
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, cw, ch, 0, 0, Math.PI * 2);
-          ctx.ellipse(cx + cw * .6, cy + ch * .35, cw * .7, ch * .82, 0, 0, Math.PI * 2);
-          ctx.ellipse(cx - cw * .55, cy + ch * .3, cw * .55, ch * .7, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-
-        // ---- Far mountain range with snow ----
-        const farPeaks = [
-          [0, horizonY], [.06, horizonY - stageH * .16], [.13, horizonY - stageH * .09],
-          [.22, horizonY - stageH * .22], [.30, horizonY - stageH * .12], [.39, horizonY - stageH * .26],
-          [.48, horizonY - stageH * .14], [.57, horizonY - stageH * .21], [.66, horizonY - stageH * .11],
-          [.75, horizonY - stageH * .19], [.84, horizonY - stageH * .10], [.93, horizonY - stageH * .17],
-          [1, horizonY - stageH * .08], [1, horizonY]
-        ];
-        const farGrad = ctx.createLinearGradient(0, horizonY - stageH * .28, 0, horizonY);
-        farGrad.addColorStop(0, '#7d9cc4');
-        farGrad.addColorStop(.55, '#8faecb');
-        farGrad.addColorStop(1, '#a8c3d6');
-        ctx.fillStyle = farGrad;
+        // ---- Distant clipped hedge across the horizon ----
+        const hedgeH = Math.max(16, stageH * .085);
+        const hedgeTop = horizonY - hedgeH * .55;
+        ctx.fillStyle = '#4b9847';
         ctx.beginPath();
-        ctx.moveTo(0, horizonY + 2);
-        farPeaks.forEach(([fx, fy]) => ctx.lineTo(stageW * fx, fy));
-        ctx.closePath();
+        ctx.roundRect(-12, hedgeTop, stageW + 24, hedgeH * .85, hedgeH * .42);
         ctx.fill();
-
-        // Snow caps on the two tallest peaks.
-        ctx.fillStyle = 'rgba(255, 255, 255, .82)';
-        [[.22, .22], [.39, .26], [.57, .21], [.93, .17]].forEach(([fx, fh]) => {
-          const px = stageW * fx, py = horizonY - stageH * fh;
-          const w = stageW * .036;
+        for (let i = 0; i * 22 < stageW + 44; i++) {
+          const n = seededNoise(i * 2.9);
+          const bx = i * 22 + n * 14 - 12;
+          const br = hedgeH * (.3 + n * .2);
+          ctx.fillStyle = i % 2 ? '#57a852' : '#4f9d4a';
           ctx.beginPath();
-          ctx.moveTo(px, py);
-          ctx.lineTo(px + w, py + stageH * .045);
-          ctx.lineTo(px + w * .3, py + stageH * .032);
-          ctx.lineTo(px - w * .2, py + stageH * .05);
-          ctx.lineTo(px - w, py + stageH * .045);
-          ctx.closePath();
+          ctx.arc(bx, hedgeTop + br * .55, br, Math.PI * 1.02, Math.PI * 1.98);
           ctx.fill();
-        });
-
-        // ---- Nearer rolling hills ----
-        const hillGrad = ctx.createLinearGradient(0, horizonY - stageH * .06, 0, horizonY + stageH * .05);
-        hillGrad.addColorStop(0, '#7fae72');
-        hillGrad.addColorStop(1, '#5f9a5a');
-        ctx.fillStyle = hillGrad;
-        ctx.beginPath();
-        ctx.moveTo(0, horizonY + stageH * .02);
-        ctx.quadraticCurveTo(stageW * .18, horizonY - stageH * .055, stageW * .38, horizonY - stageH * .012);
-        ctx.quadraticCurveTo(stageW * .55, horizonY + stageH * .03, stageW * .72, horizonY - stageH * .022);
-        ctx.quadraticCurveTo(stageW * .88, horizonY - stageH * .06, stageW, horizonY + stageH * .01);
-        ctx.lineTo(stageW, horizonY + stageH * .07);
-        ctx.lineTo(0, horizonY + stageH * .07);
-        ctx.closePath();
-        ctx.fill();
-
-        // ---- Pine forest band along the horizon ----
-        const treeBase = horizonY + stageH * .035;
-        for (let i = 0; i < Math.ceil(stageW / 26) + 2; i++) {
-          const n1 = seededNoise(i * 3.1);
-          const tx = i * 26 + n1 * 14 - 8;
-          const th = stageH * (.045 + n1 * .045);
-          const tw = th * .42;
-          ctx.fillStyle = i % 3 === 0 ? '#2f5b3c' : '#356844';
-          ctx.beginPath();
-          ctx.moveTo(tx, treeBase - th);
-          ctx.lineTo(tx + tw, treeBase);
-          ctx.lineTo(tx - tw, treeBase);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = 'rgba(20, 42, 26, .35)';
-          ctx.fillRect(tx - 1.2, treeBase - 2, 2.4, Math.max(3, th * .12));
         }
+        ctx.fillStyle = 'rgba(35, 84, 36, .35)';
+        ctx.fillRect(0, horizonY - 2, stageW, Math.max(2, stageH * .007));
 
-        // ---- Wooden fence behind the houses ----
-        const fenceY = horizonY + stageH * .075;
-        const railH = Math.max(2, stageH * .006);
-        ctx.fillStyle = '#8a6642';
-        ctx.fillRect(0, fenceY, stageW, railH);
-        ctx.fillRect(0, fenceY + railH * 3.4, stageW, railH);
-        for (let x = 10; x < stageW; x += Math.max(38, stageW * .055)) {
-          ctx.fillStyle = '#7a5738';
-          ctx.fillRect(x, fenceY - railH, Math.max(3, stageW * .006), railH * 5.6);
-          ctx.fillStyle = 'rgba(255, 235, 200, .25)';
-          ctx.fillRect(x, fenceY - railH, Math.max(1, stageW * .002), railH * 5.6);
-        }
-
-        // ---- Grass field ----
-        const grassTop = horizonY + stageH * .085;
-        const grassGrad = ctx.createLinearGradient(0, grassTop, 0, stageH);
-        grassGrad.addColorStop(0, '#8ec272');
-        grassGrad.addColorStop(.28, '#6fae5c');
-        grassGrad.addColorStop(.62, '#589a4a');
-        grassGrad.addColorStop(1, '#3f7f38');
-        ctx.fillStyle = grassGrad;
+        // ---- Smooth lawn ----
+        const lawn = ctx.createLinearGradient(0, grassTop, 0, stageH);
+        lawn.addColorStop(0, '#9ad96b');
+        lawn.addColorStop(.3, '#8ed162');
+        lawn.addColorStop(.62, '#7dc558');
+        lawn.addColorStop(1, '#69b74b');
+        ctx.fillStyle = lawn;
         ctx.fillRect(0, grassTop, stageW, stageH - grassTop);
 
-        // Mown stripes give the field depth without any per-frame cost.
-        ctx.save();
-        ctx.globalAlpha = .10;
-        for (let i = 0; i < 7; i++) {
-          ctx.fillStyle = i % 2 ? '#ffffff' : '#1d5b22';
-          const y0 = grassTop + (stageH - grassTop) * (i / 7);
-          const y1 = grassTop + (stageH - grassTop) * ((i + 1) / 7);
-          ctx.beginPath();
-          ctx.moveTo(0, y0);
-          ctx.lineTo(stageW, y0);
-          ctx.lineTo(stageW, y1);
-          ctx.lineTo(0, y1);
-          ctx.closePath();
-          ctx.fill();
-        }
-        ctx.restore();
+        // Gentle light pools keep the field from reading as a flat fill.
+        const pool = ctx.createRadialGradient(stageW * .3, stageH * .66, 10, stageW * .3, stageH * .66, stageW * .6);
+        pool.addColorStop(0, 'rgba(255, 255, 205, .16)');
+        pool.addColorStop(1, 'rgba(255, 255, 205, 0)');
+        ctx.fillStyle = pool;
+        ctx.fillRect(0, grassTop, stageW, stageH - grassTop);
+        const shade = ctx.createLinearGradient(0, stageH * .82, 0, stageH);
+        shade.addColorStop(0, 'rgba(28, 92, 34, 0)');
+        shade.addColorStop(1, 'rgba(28, 92, 34, .14)');
+        ctx.fillStyle = shade;
+        ctx.fillRect(0, stageH * .82, stageW, stageH * .18);
 
-        // Worn dirt track running from the foreground to the fence.
-        const pathTopW = stageW * .02;
-        const pathBotW = stageW * .19;
-        const pathGrad = ctx.createLinearGradient(0, grassTop, 0, stageH);
-        pathGrad.addColorStop(0, '#c9b184');
-        pathGrad.addColorStop(1, '#a98d5f');
-        ctx.fillStyle = pathGrad;
-        ctx.beginPath();
-        ctx.moveTo(stageW * .5 - pathTopW, grassTop);
-        ctx.lineTo(stageW * .5 + pathTopW, grassTop);
-        ctx.quadraticCurveTo(stageW * .58, stageH * .78, stageW * .5 + pathBotW, stageH);
-        ctx.lineTo(stageW * .5 - pathBotW, stageH);
-        ctx.quadraticCurveTo(stageW * .44, stageH * .78, stageW * .5 - pathTopW, grassTop);
-        ctx.closePath();
-        ctx.fill();
-        ctx.save();
-        ctx.globalAlpha = .18;
-        ctx.fillStyle = '#6f5a3a';
-        for (let i = 0; i < 26; i++) {
-          const n1 = seededNoise(i * 5.3), n2 = seededNoise(i * 9.7);
-          const py = grassTop + (stageH - grassTop) * n1;
-          const spread = pathTopW + (pathBotW - pathTopW) * ((py - grassTop) / (stageH - grassTop));
-          ctx.beginPath();
-          ctx.arc(stageW * .5 + (n2 - .5) * spread * 1.6, py, 1 + n2 * 2.4, 0, Math.PI * 2);
-          ctx.fill();
+        // ---- Sandy paths from the cottages to the viewer ----
+        for (let i = 0; i < 4; i++) {
+          const cxTop = row.startX + i * (row.baseBlockW + row.gap) + row.baseBlockW / 2;
+          const bend = (i < 2 ? -1 : 1) * row.baseBlockW * (i % 2 === 0 ? .85 : .45);
+          drawPathRibbon(
+            cxTop, row.baseGroundY + 2, bend,
+            stageW * .5 + (i - 1.5) * stageW * .045, stageH * 1.02,
+            Math.max(14, row.baseBlockW * .16), Math.max(38, stageW * .062)
+          );
         }
-        ctx.restore();
 
-        // Grass tufts and tiny flowers, scaled by depth.
-        for (let i = 0; i < 150; i++) {
-          const n1 = seededNoise(i * 1.7), n2 = seededNoise(i * 4.9), n3 = seededNoise(i * 7.3);
-          const gy = grassTop + (stageH - grassTop) * Math.pow(n1, .72);
+        // ---- Fine grass detail, kept sparse and soft ----
+        for (let i = 0; i < 90; i++) {
+          const n1 = seededNoise(i * 1.7), n2 = seededNoise(i * 4.3), n3 = seededNoise(i * 8.1);
+          const gy = grassTop + (stageH - grassTop) * Math.pow(n1, .8);
           const depth = (gy - grassTop) / (stageH - grassTop);
           const gx = n2 * stageW;
-          const hgt = (2 + depth * 11) * (.7 + n3 * .6);
-          ctx.strokeStyle = n3 > .55 ? 'rgba(38, 92, 44, .55)' : 'rgba(150, 205, 120, .45)';
-          ctx.lineWidth = Math.max(.8, depth * 1.5);
+          if (depth < .12) continue;
+          const hgt = (2 + depth * 9) * (.7 + n3 * .6);
+          ctx.strokeStyle = n3 > .5 ? 'rgba(52, 122, 48, .32)' : 'rgba(190, 233, 140, .4)';
+          ctx.lineWidth = Math.max(.8, depth * 1.3);
           ctx.beginPath();
           ctx.moveTo(gx, gy);
-          ctx.quadraticCurveTo(gx + hgt * .35, gy - hgt * .6, gx + hgt * .7, gy - hgt);
-          ctx.moveTo(gx, gy);
-          ctx.quadraticCurveTo(gx - hgt * .3, gy - hgt * .55, gx - hgt * .65, gy - hgt * .85);
+          ctx.quadraticCurveTo(gx + hgt * .3, gy - hgt * .6, gx + hgt * .6, gy - hgt);
           ctx.stroke();
-          if (n3 > .93) {
-            ctx.fillStyle = n1 > .5 ? '#fde68a' : '#f9a8d4';
+          if (n3 > .965 && depth > .35) {
+            ctx.fillStyle = n1 > .5 ? '#fde68a' : '#fbcfe8';
             ctx.beginPath();
-            ctx.arc(gx + hgt * .7, gy - hgt, Math.max(1, depth * 2.2), 0, Math.PI * 2);
+            ctx.arc(gx + hgt * .6, gy - hgt, Math.max(1.1, depth * 2), 0, Math.PI * 2);
             ctx.fill();
           }
         }
-
-        // Warm light spill from the low sun across the field.
-        const spill = ctx.createLinearGradient(stageW * .45, grassTop, stageW, stageH);
-        spill.addColorStop(0, 'rgba(255, 236, 170, 0)');
-        spill.addColorStop(1, 'rgba(255, 226, 140, .14)');
-        ctx.fillStyle = spill;
-        ctx.fillRect(0, grassTop, stageW, stageH - grassTop);
       }
-
       // The sky, peaks, balustrade and flagstones never change between frames, so
       // they are baked once per size into an offscreen canvas and blitted. Only the
       // dust motes stay live. This is the single biggest frame-time win here.
@@ -1520,7 +1450,7 @@
 
       // Drawn in a 100-unit-tall local space with the feet at 0, so any block
       // height maps cleanly onto a human figure.
-      function drawHiderCharacter(cx, feetY, heightPx, mood, t, playerId, hint) {
+      function drawHiderCharacter(cx, feetY, heightPx, mood, t, playerId, hint, backView) {
         const pal = HIDER_PALETTES[playerId] || HIDER_PALETTES[1];
         const k = heightPx / 100;
         if (k <= 0.01) return;
@@ -1532,6 +1462,25 @@
         let eye = 1, brow = 0, mouth = 'flat', tears = 0, blush = 0;
 
         switch (mood) {
+          case 'idle':
+            hipY = -44 + Math.sin(t * 2) * .6;
+            shoulderY = -74 + Math.sin(t * 2) * .8;
+            headY = -89 + Math.sin(t * 2) * .8;
+            handL = { x: -17, y: -47 };
+            handR = { x: 17, y: -47 };
+            lean = Math.sin(t * 1.3) * 1.2;
+            bob = Math.sin(t * 2) * .5;
+            break;
+          case 'run':
+            hipY = -45 + Math.abs(Math.sin(t * 11)) * 2.5;
+            shoulderY = -75 + Math.abs(Math.sin(t * 11)) * 2;
+            headY = -90 + Math.abs(Math.sin(t * 11)) * 2;
+            handL = { x: -17 - Math.sin(t * 11) * 11, y: -50 + Math.sin(t * 11) * 5 };
+            handR = { x: 17 + Math.sin(t * 11) * 11, y: -50 - Math.sin(t * 11) * 5 };
+            lean = 4;
+            bob = -Math.abs(Math.sin(t * 11)) * 2;
+            eye = .9;
+            break;
           case 'hide':
             hipY = -27; shoulderY = -52; headY = -66;
             handL = { x: -14, y: hint ? -104 : -95 };
@@ -1576,11 +1525,14 @@
         ctx.fill();
 
         // ---- Boots & legs ----
-        const feet = [[-13, -2], [13, 1]];
+        const strideP = mood === 'run' ? Math.sin(t * 11) : 0;
+        const feet = mood === 'run'
+          ? [[-13 + strideP * 10, -2 - Math.max(0, strideP) * 7], [13 - strideP * 10, 1 - Math.max(0, -strideP) * 7]]
+          : [[-13, -2], [13, 1]];
         for (let i = 0; i < 2; i++) {
           const side = i === 0 ? -1 : 1;
-          const kneeX = side * 9;
-          const kneeY = hipY * .52;
+          const kneeX = side * 9 + strideP * (i === 0 ? 5 : -5);
+          const kneeY = hipY * .52 + (mood === 'run' ? Math.max(0, strideP * side) * 4 : 0);
           paintLimb(side * 6.5, hipY, kneeX, kneeY, 12, pal.pants);
           paintLimb(kneeX, kneeY, feet[i][0], feet[i][1] - 4, 10, pal.pants);
           ctx.fillStyle = pal.boot;
@@ -1706,6 +1658,33 @@
         }
         ctx.restore();
 
+        // ---- Back of the head: hiding / running away from the camera ----
+        if (backView) {
+          ctx.save();
+          ctx.translate(0, headY);
+          ctx.fillStyle = pal.hair;
+          ctx.beginPath();
+          ctx.ellipse(0, -1.5, 12.2, 13.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          const swing = Math.sin(t * 7) * (mood === 'run' ? 3.4 : 1.2);
+          ctx.beginPath();
+          ctx.moveTo(-4.6, 9);
+          ctx.quadraticCurveTo(-3 + swing, 20, -1 + swing, 28);
+          ctx.quadraticCurveTo(2 + swing, 22, 4.4, 10);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,.14)';
+          ctx.beginPath();
+          ctx.ellipse(-3.5, -4.5, 4.6, 6.2, -.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = pal.shirt;
+          ctx.beginPath();
+          ctx.ellipse(-4, 8.5, 4.4, 3.2, -.5, 0, Math.PI * 2);
+          ctx.ellipse(4, 8.5, 4.4, 3.2, .5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
         // ---- Arms (drawn last so raised hands sit over the face) ----
         [
           { side: -1, hand: handL, col: pal.shirtDark },
@@ -1725,6 +1704,93 @@
         });
 
         ctx.restore();
+      }
+
+      // -----------------------------------------------------------------------
+      // HOME & THE SPRINT
+      // The hider waits on the lane in front of the viewer. When a house is
+      // called he sprints up the path and ducks out of sight behind it.
+      // -----------------------------------------------------------------------
+      const RUN_TIME = 1.15;
+
+      function homeSpot() {
+        return {
+          x: stageW * .5,
+          y: stageH * .968,
+          h: Math.min(stageH * .40, Math.max(88, stageW * .15))
+        };
+      }
+
+      function drawHomeSpot() {
+        if (state.phase !== 'HIDE' || state.hiddenBlock !== null) return;
+        const home = homeSpot();
+        const s = Math.max(.72, Math.min(1.35, stageH / 430));
+
+        // Soft pad + dashed ring marking the starting spot.
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 255, 255, .22)';
+        ctx.beginPath();
+        ctx.ellipse(home.x, home.y + 1 * s, 52 * s, 12 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.setLineDash([5 * s, 5 * s]);
+        ctx.strokeStyle = 'rgba(255, 255, 255, .5)';
+        ctx.lineWidth = 1.6 * s;
+        ctx.beginPath();
+        ctx.ellipse(home.x, home.y + 1 * s, 44 * s, 10 * s, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // Little wooden HOME sign beside the path.
+        const sx = home.x - 104 * s, sy = home.y - 58 * s;
+        ctx.save();
+        ctx.fillStyle = '#8a5a33';
+        ctx.fillRect(sx + 46 * s, sy + 14 * s, 5 * s, 44 * s);
+        ctx.fillStyle = '#b9834e';
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, 66 * s, 26 * s, 6 * s);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(90, 55, 28, .55)';
+        ctx.lineWidth = 1.6 * s;
+        ctx.stroke();
+        ctx.fillStyle = '#452b14';
+        ctx.font = '700 ' + Math.max(9, 13 * s) + 'px "Chakra Petch", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('HOME', sx + 33 * s, sy + 14 * s);
+        ctx.restore();
+
+        drawHiderCharacter(home.x, home.y, home.h, 'idle', performance.now() / 1000, state.hiderId, false, true);
+      }
+
+      function drawRunner() {
+        if (state.phase !== 'RUNNING' || state.hiddenBlock == null) return;
+        const box = blockHitboxes[state.hiddenBlock - 1];
+        if (!box) return;
+        const home = homeSpot();
+        const s = box.scale || 1;
+        const targetX = box.x + box.w * .5;
+        const targetY = box.groundY + 2 * s;
+        const p = Math.min(1, state.runT / RUN_TIME);
+        const ease = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        const x = home.x + (targetX - home.x) * ease;
+        const y = home.y + (targetY - home.y) * ease;
+        const h = home.h + (box.h * .96 - home.h) * ease;
+        const hop = Math.sin(p * Math.PI) * stageH * .03;
+
+        // A little kicked-up grass dust sells the sprint.
+        if (Math.random() < .3) {
+          dustPuffs.push({
+            x: x + (Math.random() - .5) * 10,
+            y: y - 2,
+            vx: (Math.random() - .5) * 22,
+            vy: -12 - Math.random() * 16,
+            radius: 1.6 + Math.random() * 2.2,
+            growth: 18 + Math.random() * 16,
+            alpha: .28,
+            decay: 2.2
+          });
+        }
+        drawHiderCharacter(x, y - hop, h, 'run', state.runT, state.hiderId, false, true);
       }
 
       // The exposed hider: thrown out from the broken block, sobbing, or safely
@@ -1752,7 +1818,7 @@
       // the house the player called.
       // -----------------------------------------------------------------------
       const BOMBER = {
-        alpha: 0, aimX: 0, aimY: 0, angle: -.3, t: 0, ready: false,
+        alpha: 0, enter: 0, aimX: 0, aimY: 0, angle: -.3, t: 0, ready: false,
         handX: 0, handY: 0, pivotX: 0, pivotY: 0,
         wind: 0, throwing: false, throwT: 0, hasBomb: true, hipX: 0
       };
@@ -1777,7 +1843,9 @@
         if (BOMBER.alpha < .004) BOMBER.alpha = 0;
 
         const lay = bomberLayout();
-        const px = lay.cx + GUN_LOCAL.pivotX * lay.k;
+        BOMBER.enter += ((visible ? 1 : 0) - BOMBER.enter) * Math.min(1, dt * 5);
+        const entryX = -(1 - BOMBER.enter) * Math.min(170, stageW * .22);
+        const px = lay.cx + entryX + GUN_LOCAL.pivotX * lay.k;
         const py = lay.feetY + GUN_LOCAL.pivotY * lay.k;
 
         const box = state.aimBlock ? blockHitboxes[state.aimBlock - 1] : null;
@@ -1831,7 +1899,7 @@
         BOMBER.handX = px + Math.cos(armAngle) * reach;
         BOMBER.handY = py + Math.sin(armAngle) * reach;
         BOMBER.armAngle = armAngle;
-        BOMBER.hipX = lay.cx - 12 * lay.k;
+        BOMBER.hipX = lay.cx + entryX - 12 * lay.k;
       }
 
       function drawBomber() {
@@ -1850,12 +1918,13 @@
         ctx.globalAlpha = BOMBER.alpha;
 
         // Grounded shadow under the stance.
+        const entryX = -(1 - BOMBER.enter) * Math.min(170, stageW * .22);
         ctx.fillStyle = 'rgba(12, 18, 28, .3)';
         ctx.beginPath();
-        ctx.ellipse(lay.cx + 4 * k, lay.feetY - 4 * k, 40 * k, 7 * k, 0, 0, Math.PI * 2);
+        ctx.ellipse(lay.cx + entryX + 4 * k, lay.feetY - 4 * k, 40 * k, 7 * k, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.translate(lay.cx, lay.feetY);
+        ctx.translate(lay.cx + entryX, lay.feetY);
         ctx.scale(k, k);
         ctx.lineJoin = 'round';
 
@@ -1935,338 +2004,265 @@
       }
 
       // -----------------------------------------------------------------------
-      // COVER: a stucco-and-timber cottage. The hider ducks in behind it, the
-      // bomber lobs a bomb onto the roof, and a wrecked house stays wrecked.
+      // COTTAGES: four pastel front-facing houses with gable roofs, flower beds
+      // and a number plaque. The hider ducks in behind the chosen one.
       // -----------------------------------------------------------------------
+      const HOUSE_SKINS = {
+        1: { wall: '#dbeafa', wallShade: '#c2d7ef', roof: '#3f6fb5', roofDark: '#2e5490', door: '#8d5a30', trim: '#ffffff' },
+        2: { wall: '#fbf0d6', wallShade: '#efdfbe', roof: '#d9534a', roofDark: '#ad3a34', door: '#8d5a30', trim: '#ffffff' },
+        3: { wall: '#cfe6f8', wallShade: '#b4d3ec', roof: '#5b93cd', roofDark: '#3e6fa6', door: '#8d5a30', trim: '#ffffff' },
+        4: { wall: '#f4e4c0', wallShade: '#e3cfa6', roof: '#97643f', roofDark: '#724a2d', door: '#7e4d29', trim: '#ffffff' }
+      };
+
       function drawHouse(box) {
         const num = box.num;
-        const x = box.x, w = box.w, h = box.h, dx = box.depth * .8, dy = box.depth * .62;
-        const y = box.y, groundY = box.groundY;
+        const x = box.x, w = box.w, h = box.h, groundY = box.groundY, y = box.y;
         const s = box.scale || 1;
+        const skin = HOUSE_SKINS[num] || HOUSE_SKINS[1];
         const isShattered = state.shatteredBlocks.has(num);
         const isCracked = state.crackedBlocks.has(num);
         const isHovered = state.phase === 'HIDE' && state.hoveredBlock === num && !isShattered;
-        const roofH = h * .37;
-        const wallTop = y + roofH;
-        const wallBot = groundY + h * .015;
-        const wallH = wallBot - wallTop;
-        const ov = Math.max(5, w * .055);
 
-        // Contact shadow pooled on the flagstones.
-        ctx.fillStyle = isShattered ? 'rgba(24, 18, 10, .2)' : 'rgba(24, 18, 10, .36)';
-        ctx.beginPath();
-        ctx.ellipse(x + w * .5 + dx * .45, groundY + 3 * s, w * .58, Math.max(5, h * .05), 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (isShattered) {
-          drawHouseRubble(x, y, w, h, dx, dy, groundY, s, num);
-          return;
-        }
-
-        // ---- Right-hand wall, in perspective ----
-        const sideGrad = ctx.createLinearGradient(x + w, wallTop, x + w + dx, wallTop + wallH);
-        sideGrad.addColorStop(0, '#cbb99b');
-        sideGrad.addColorStop(1, '#9b896c');
-        ctx.fillStyle = sideGrad;
-        ctx.beginPath();
-        ctx.moveTo(x + w, wallTop);
-        ctx.lineTo(x + w + dx, wallTop - dy);
-        ctx.lineTo(x + w + dx, wallBot - dy);
-        ctx.lineTo(x + w, wallBot);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(60, 44, 26, .3)';
-        ctx.lineWidth = Math.max(1, 1.2 * s);
-        ctx.stroke();
-        // A shuttered window on that side wall keeps it from reading as a slab.
-        ctx.fillStyle = '#3f5d78';
-        ctx.beginPath();
-        ctx.roundRect(x + w + dx * .28, wallTop + wallH * .26 - dy * .3, w * .2, wallH * .2, 2 * s);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255, 226, 170, .5)';
-        ctx.fillRect(x + w + dx * .3, wallTop + wallH * .28 - dy * .3, w * .16, wallH * .16);
-
-        // ---- Front wall ----
-        const wallGrad = ctx.createLinearGradient(x, wallTop, x, wallBot);
-        wallGrad.addColorStop(0, isHovered ? '#fbf1dc' : '#f1e6d2');
-        wallGrad.addColorStop(.62, isHovered ? '#f3e3c7' : '#e6d7bd');
-        wallGrad.addColorStop(1, '#d3c1a2');
-        ctx.fillStyle = wallGrad;
-        ctx.beginPath();
-        ctx.roundRect(x, wallTop, w, wallH, Math.max(2, 4 * s));
-        ctx.fill();
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(x, wallTop, w, wallH, Math.max(2, 4 * s));
-        ctx.clip();
-
-        // Plaster grain.
-        for (let i = 0; i < 34; i++) {
-          const n1 = seededNoise(num * 13 + i * 1.7);
-          const n2 = seededNoise(num * 29 + i * 2.3);
-          ctx.fillStyle = n1 > .5 ? 'rgba(255, 250, 238, .45)' : 'rgba(146, 124, 92, .16)';
+        // Contact shadow on the lawn.
+        if (!isShattered) {
+          ctx.fillStyle = 'rgba(37, 86, 40, .22)';
           ctx.beginPath();
-          ctx.arc(x + n1 * w, wallTop + n2 * wallH, .7 + n2 * 1.5 * s, 0, Math.PI * 2);
+          ctx.ellipse(x + w * .5, groundY + 2 * s, w * .56, Math.max(4, h * .045), 0, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        // Stone plinth along the bottom.
-        const plinthH = Math.min(wallH * .17, h * .07);
-        ctx.fillStyle = '#9c9186';
-        ctx.fillRect(x, wallBot - plinthH, w, plinthH);
-        ctx.fillStyle = 'rgba(255, 255, 255, .22)';
-        for (let i = 0; i < 7; i++) {
-          const bx = x + (w / 7) * i + 2;
-          ctx.fillRect(bx, wallBot - plinthH + 1.5, w / 7 - 4, plinthH * .34);
+        if (isShattered) {
+          drawHouseRubble(x, y, w, h, box.depth * .8, box.depth * .62, groundY, s, num);
+          return;
         }
 
-        // ---- Timber frame ----
-        const beam = Math.max(3, w * .035);
-        ctx.fillStyle = '#6b4a2b';
-        ctx.fillRect(x, wallTop, w, beam * .9);                       // eaves beam
-        ctx.fillRect(x, wallTop + wallH * .52, w, beam);              // mid rail
-        [.16, .5, .84].forEach((f) => ctx.fillRect(x + w * f - beam / 2, wallTop, beam, wallH - plinthH));
-        ctx.strokeStyle = '#6b4a2b';
-        ctx.lineWidth = beam * .8;
+        const roofH = h * .40;
+        const ridgeY = y;
+        const wallTop = y + roofH;
+        const wallBot = groundY;
+        const wallH = wallBot - wallTop;
+        const ov = Math.max(4, w * .085);
+
+        // ---- Chimney, tucked behind the roof so only the stack shows ----
+        const chimW = Math.max(8, w * .1);
+        const chimX = x + w * .68;
+        const chimTop = ridgeY + h * .05;
+        const chimBot = wallTop + h * .12;
+        ctx.fillStyle = '#b98c6b';
+        ctx.fillRect(chimX, chimTop, chimW, chimBot - chimTop);
+        ctx.fillStyle = '#9d7254';
+        ctx.fillRect(chimX - 1.5 * s, chimTop, chimW + 3 * s, Math.max(2, 3 * s));
+        const tNow = performance.now() / 1000;
+        for (let i = 0; i < 3; i++) {
+          const u = ((tNow * .3 + i / 3) % 1);
+          ctx.fillStyle = `rgba(244, 246, 248, ${(1 - u) * .42})`;
+          ctx.beginPath();
+          ctx.arc(chimX + chimW * .5 + Math.sin((tNow + i) * 1.4) * 5 * s, chimTop - u * h * .3, (2.4 + u * 8) * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // ---- Walls ----
+        const wallGrad = ctx.createLinearGradient(0, wallTop, 0, wallBot);
+        wallGrad.addColorStop(0, isHovered ? '#ffffff' : skin.wall);
+        wallGrad.addColorStop(1, skin.wallShade);
+        ctx.fillStyle = wallGrad;
         ctx.beginPath();
-        ctx.moveTo(x + w * .16, wallTop + wallH * .52);
-        ctx.lineTo(x + w * .5, wallTop + beam);
-        ctx.moveTo(x + w * .84, wallTop + wallH * .52);
-        ctx.lineTo(x + w * .5, wallTop + beam);
+        ctx.roundRect(x, wallTop, w, wallH, Math.max(2, 3 * s));
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(70, 60, 48, .16)';
+        ctx.lineWidth = Math.max(1, 1.3 * s);
         ctx.stroke();
 
+        // ---- Gable roof ----
+        const roofGrad = ctx.createLinearGradient(0, ridgeY, 0, wallTop);
+        roofGrad.addColorStop(0, skin.roof);
+        roofGrad.addColorStop(1, skin.roofDark);
+        ctx.fillStyle = roofGrad;
+        ctx.beginPath();
+        ctx.moveTo(x - ov, wallTop + 1);
+        ctx.lineTo(x + w * .5, ridgeY);
+        ctx.lineTo(x + w + ov, wallTop + 1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Shingle courses following the two slopes.
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x - ov, wallTop + 1);
+        ctx.lineTo(x + w * .5, ridgeY);
+        ctx.lineTo(x + w + ov, wallTop + 1);
+        ctx.closePath();
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(255, 255, 255, .14)';
+        ctx.lineWidth = Math.max(1, 1.2 * s);
+        for (let i = 1; i < 5; i++) {
+          const yy = ridgeY + (wallTop - ridgeY) * (i / 5);
+          const half = (w * .5 + ov) * (i / 5);
+          ctx.beginPath();
+          ctx.moveTo(x + w * .5 - half, yy);
+          ctx.lineTo(x + w * .5 + half, yy);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(20, 20, 30, .10)';
+        ctx.beginPath();
+        ctx.moveTo(x + w * .5, ridgeY);
+        ctx.lineTo(x + w * .5, wallTop);
+        ctx.stroke();
+        ctx.restore();
+
+        // Ridge cap and eave board.
+        ctx.strokeStyle = 'rgba(255, 255, 255, .5)';
+        ctx.lineWidth = Math.max(1.4, 2.4 * s);
+        ctx.beginPath();
+        ctx.moveTo(x - ov, wallTop);
+        ctx.lineTo(x + w * .5, ridgeY + 1.5);
+        ctx.lineTo(x + w + ov, wallTop);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(56, 42, 30, .22)';
+        ctx.fillRect(x - ov, wallTop - 1, w + ov * 2, Math.max(2, 3 * s));
+
         // ---- Door ----
-        const doorW = Math.min(w * .3, 54 * s);
-        const doorH = Math.min(wallH * .56, 68 * s);
+        const doorW = Math.min(w * .26, 46 * s);
+        const doorH = Math.min(wallH * .58, 62 * s);
         const doorX = x + w * .5 - doorW / 2;
-        const doorY = wallBot - plinthH - doorH;
-        ctx.fillStyle = '#5d3d24';
+        const doorY = wallBot - doorH;
+        ctx.fillStyle = skin.door;
         ctx.beginPath();
         ctx.moveTo(doorX, doorY + doorH);
-        ctx.lineTo(doorX, doorY + doorW * .42);
-        ctx.quadraticCurveTo(doorX + doorW * .5, doorY - doorW * .16, doorX + doorW, doorY + doorW * .42);
+        ctx.lineTo(doorX, doorY + doorW * .5);
+        ctx.quadraticCurveTo(doorX + doorW * .5, doorY - doorW * .22, doorX + doorW, doorY + doorW * .5);
         ctx.lineTo(doorX + doorW, doorY + doorH);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = 'rgba(255, 232, 198, .16)';
-        ctx.fillRect(doorX + doorW * .12, doorY + doorW * .5, doorW * .3, doorH - doorW * .5);
-        ctx.fillStyle = '#f0c85a';
-        ctx.beginPath();
-        ctx.arc(doorX + doorW * .78, doorY + doorH * .62, Math.max(1.4, 1.8 * s), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(40, 24, 10, .5)';
+        ctx.strokeStyle = 'rgba(58, 34, 16, .55)';
         ctx.lineWidth = Math.max(1, 1.4 * s);
-        ctx.beginPath();
-        ctx.moveTo(doorX, doorY + doorH);
-        ctx.lineTo(doorX, doorY + doorW * .42);
-        ctx.quadraticCurveTo(doorX + doorW * .5, doorY - doorW * .16 + 1, doorX + doorW, doorY + doorW * .42);
-        ctx.lineTo(doorX + doorW, doorY + doorH);
         ctx.stroke();
+        ctx.strokeStyle = 'rgba(255, 226, 182, .22)';
+        ctx.lineWidth = Math.max(1, 1.2 * s);
+        ctx.beginPath();
+        ctx.moveTo(doorX + doorW * .22, doorY + doorW * .62);
+        ctx.lineTo(doorX + doorW * .22, doorY + doorH - 4 * s);
+        ctx.moveTo(doorX + doorW * .78, doorY + doorW * .62);
+        ctx.lineTo(doorX + doorW * .78, doorY + doorH - 4 * s);
+        ctx.stroke();
+        ctx.fillStyle = '#f2c65a';
+        ctx.beginPath();
+        ctx.arc(doorX + doorW * .8, doorY + doorH * .58, Math.max(1.6, 2 * s), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c9b79b';
+        ctx.beginPath();
+        ctx.roundRect(doorX - 3 * s, wallBot - 3 * s, doorW + 6 * s, 5 * s, 2 * s);
+        ctx.fill();
 
         // ---- Windows ----
-        const winW = Math.min(w * .17, 32 * s);
-        const winH = Math.min(wallH * .3, 34 * s);
-        const winY = wallTop + wallH * .2;
-        [.26, .74].forEach((f, wi) => {
+        const winW = Math.min(w * .17, 27 * s);
+        const winH = Math.min(wallH * .3, 30 * s);
+        const winY = wallTop + wallH * .24;
+        [.24, .76].forEach((f) => {
           const wx = x + w * f - winW / 2;
-          // Shutters
-          ctx.fillStyle = wi === 0 ? '#3c6b5a' : '#3f5d78';
-          ctx.fillRect(wx - winW * .34, winY, winW * .3, winH);
-          ctx.fillRect(wx + winW + winW * .04, winY, winW * .3, winH);
-          ctx.strokeStyle = 'rgba(20, 32, 26, .35)';
-          ctx.lineWidth = 1;
-          for (let k = 1; k < 3; k++) {
-            ctx.beginPath();
-            ctx.moveTo(wx - winW * .34, winY + (winH / 3) * k);
-            ctx.lineTo(wx - winW * .04, winY + (winH / 3) * k);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(wx + winW * .04 + winW, winY + (winH / 3) * k);
-            ctx.lineTo(wx + winW * .04 + winW * 1.3, winY + (winH / 3) * k);
-            ctx.stroke();
-          }
-          // Frame + glass
-          ctx.fillStyle = '#f7efdd';
-          ctx.fillRect(wx - 2 * s, winY - 2 * s, winW + 4 * s, winH + 4 * s);
+          ctx.fillStyle = skin.trim;
+          ctx.beginPath();
+          ctx.roundRect(wx - 2.5 * s, winY - 2.5 * s, winW + 5 * s, winH + 5 * s, 2 * s);
+          ctx.fill();
           const glass = ctx.createLinearGradient(wx, winY, wx + winW, winY + winH);
-          if (isCracked && wi === 1) {
-            glass.addColorStop(0, '#243c4f');
-            glass.addColorStop(1, '#152632');
-          } else {
-            glass.addColorStop(0, 'rgba(255, 228, 160, .95)');
-            glass.addColorStop(1, 'rgba(224, 168, 88, .9)');
-          }
+          glass.addColorStop(0, '#bfe4f7');
+          glass.addColorStop(.55, '#98cdea');
+          glass.addColorStop(1, '#7fbce0');
           ctx.fillStyle = glass;
           ctx.fillRect(wx, winY, winW, winH);
-          ctx.strokeStyle = '#6b4a2b';
-          ctx.lineWidth = Math.max(1.4, 2.2 * s);
+          ctx.strokeStyle = skin.trim;
+          ctx.lineWidth = Math.max(1.2, 1.8 * s);
           ctx.beginPath();
           ctx.moveTo(wx + winW / 2, winY);
           ctx.lineTo(wx + winW / 2, winY + winH);
           ctx.moveTo(wx, winY + winH / 2);
           ctx.lineTo(wx + winW, winY + winH / 2);
           ctx.stroke();
-          if (isCracked && wi === 1) {
-            // Blown-out pane.
-            ctx.fillStyle = '#1b2b36';
+          // Window box with flowers.
+          ctx.fillStyle = '#8a5a33';
+          ctx.beginPath();
+          ctx.roundRect(wx - 3 * s, winY + winH + 3 * s, winW + 6 * s, 5 * s, 2 * s);
+          ctx.fill();
+          ctx.fillStyle = '#f472b6';
+          for (let i = 0; i < 3; i++) {
             ctx.beginPath();
-            ctx.moveTo(wx + winW * .18, winY + winH * .12);
-            ctx.lineTo(wx + winW * .82, winY + winH * .38);
-            ctx.lineTo(wx + winW * .44, winY + winH * .92);
-            ctx.closePath();
+            ctx.arc(wx + winW * (.2 + i * .3), winY + winH + 2 * s, 2 * s, 0, Math.PI * 2);
             ctx.fill();
           }
         });
 
-        // ---- House number, stencilled by the door ----
-        const plateW = Math.min(w * .2, 30 * s);
-        const plateH = Math.min(wallH * .19, 22 * s);
-        ctx.fillStyle = 'rgba(247, 241, 227, .95)';
+        // ---- Number plaque ----
+        const plateW = Math.min(w * .22, 26 * s);
+        const plateH = Math.min(wallH * .2, 20 * s);
+        const plateX = x + w * .5 - plateW / 2;
+        const plateY = wallTop + wallH * .06;
+        ctx.fillStyle = skin.trim;
         ctx.beginPath();
-        ctx.roundRect(x + w * .5 - plateW / 2, wallTop + wallH * .58, plateW, plateH, 2 * s);
+        ctx.roundRect(plateX, plateY, plateW, plateH, 4 * s);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(70, 46, 22, .45)';
+        ctx.strokeStyle = 'rgba(70, 46, 22, .35)';
         ctx.lineWidth = 1;
         ctx.stroke();
-        ctx.fillStyle = '#2b1c0c';
-        ctx.font = '700 ' + Math.max(10, Math.min(22, Math.floor(plateH * .8))) + 'px "Chakra Petch", sans-serif';
+        ctx.fillStyle = '#3b2a16';
+        ctx.font = '700 ' + Math.max(9, Math.min(18, Math.floor(plateH * .78))) + 'px "Chakra Petch", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(String(num), x + w * .5, wallTop + wallH * .58 + plateH * .54);
-        ctx.restore();
+        ctx.fillText(String(num), x + w * .5, plateY + plateH * .55);
 
-        // ---- Pitched roof ----
-        const ridgeY = y + h * .02;
-        const roofGrad = ctx.createLinearGradient(x, ridgeY, x + w, wallTop);
-        roofGrad.addColorStop(0, isHovered ? '#b8543f' : '#a44a36');
-        roofGrad.addColorStop(.55, '#8f3f2f');
-        roofGrad.addColorStop(1, '#733227');
-        // Side facet first, so the front gable overlaps it.
-        ctx.fillStyle = '#5c2a21';
-        ctx.beginPath();
-        ctx.moveTo(x + w + ov, wallTop - dy * .2);
-        ctx.lineTo(x + w * .5 + dx, ridgeY - dy);
-        ctx.lineTo(x + w * .5, ridgeY);
-        ctx.lineTo(x + w, wallTop);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = roofGrad;
-        ctx.beginPath();
-        ctx.moveTo(x - ov, wallTop);
-        ctx.lineTo(x + w * .5, ridgeY);
-        ctx.lineTo(x + w + ov, wallTop);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(x - ov, wallTop);
-        ctx.lineTo(x + w * .5, ridgeY);
-        ctx.lineTo(x + w + ov, wallTop);
-        ctx.closePath();
-        ctx.clip();
-        // Shingle courses.
-        const courses = 4;
-        for (let r = 0; r < courses; r++) {
-          const t0 = r / courses, t1 = (r + 1) / courses;
-          const yA = ridgeY + (wallTop - ridgeY) * t0;
-          const yB = ridgeY + (wallTop - ridgeY) * t1;
-          if (isCracked && r === 1) {
-            ctx.fillStyle = 'rgba(38, 24, 16, .45)';
-            ctx.fillRect(x, yA, w + ov * 2, yB - yA);
-          }
-          const count = 7 + r;
-          for (let c = 0; c < count; c++) {
-            const fx = x - ov + ((w + ov * 2) * (c + .5)) / count;
-            const gap = (yB - yA) * .5;
-            ctx.fillStyle = (r + c) % 2 ? 'rgba(255, 206, 178, .10)' : 'rgba(38, 16, 10, .14)';
+        // ---- Flower beds at the foot of the house ----
+        const bushR = Math.max(6, w * .085);
+        [[.14, 1], [.86, 1], [.04, .8], [.96, .8]].forEach(([f, mul], i) => {
+          const bx = x + w * f;
+          const by = wallBot - bushR * .2;
+          ctx.fillStyle = i % 2 ? '#4f9b46' : '#5cab50';
+          ctx.beginPath();
+          ctx.ellipse(bx, by, bushR * mul, bushR * .82 * mul, 0, 0, Math.PI * 2);
+          ctx.fill();
+          for (let j = 0; j < 4; j++) {
+            const a = (j / 4) * Math.PI * 2 + i;
+            ctx.fillStyle = j % 2 ? '#f472b6' : '#fda4d0';
             ctx.beginPath();
-            ctx.roundRect(fx - (w / count) * .5 + 1, yA + gap * .2, (w / count) - 2, (yB - yA) * .78, 2);
+            ctx.arc(bx + Math.cos(a) * bushR * .55 * mul, by - Math.abs(Math.sin(a)) * bushR * .45 * mul, bushR * .22, 0, Math.PI * 2);
             ctx.fill();
           }
-          ctx.strokeStyle = 'rgba(40, 18, 10, .35)';
-          ctx.lineWidth = Math.max(1, 1.3 * s);
-          ctx.beginPath();
-          ctx.moveTo(x - ov, yB);
-          ctx.lineTo(x + w + ov, yB);
-          ctx.stroke();
-        }
-        ctx.restore();
+        });
 
-        // Ridge capping + eave shadow.
-        ctx.strokeStyle = 'rgba(255, 214, 190, .45)';
-        ctx.lineWidth = Math.max(1.4, 2.2 * s);
-        ctx.beginPath();
-        ctx.moveTo(x - ov, wallTop - 1);
-        ctx.lineTo(x + w * .5, ridgeY + 1);
-        ctx.lineTo(x + w + ov, wallTop - 1);
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(30, 14, 8, .55)';
-        ctx.lineWidth = Math.max(1.2, 2 * s);
-        ctx.beginPath();
-        ctx.moveTo(x - ov, wallTop);
-        ctx.lineTo(x + w + ov, wallTop);
-        ctx.stroke();
-
-        // ---- Chimney with drifting smoke ----
-        const chimW = Math.max(9, w * .11);
-        const chimX = x + w * .74;
-        const chimTop = ridgeY - h * .09;
-        const chimBase = wallTop - roofH * .18;
-        ctx.fillStyle = '#8d8177';
-        ctx.fillRect(chimX, chimTop, chimW, chimBase - chimTop);
-        ctx.fillStyle = '#a89c90';
-        ctx.fillRect(chimX, chimTop, chimW, Math.max(3, 4 * s));
-        ctx.fillStyle = 'rgba(60, 44, 30, .25)';
-        for (let i = 0; i < 4; i++) {
-          ctx.fillRect(chimX + 1, chimTop + (chimBase - chimTop) * (i / 4) + 2, chimW - 2, 1.4 * s);
-        }
-        const tNow = performance.now() / 1000;
-        for (let i = 0; i < 3; i++) {
-          const u = ((tNow * .34 + i / 3) % 1);
-          const puffR = (2.6 + u * 9) * s;
-          ctx.fillStyle = `rgba(236, 233, 227, ${(1 - u) * .3})`;
-          ctx.beginPath();
-          ctx.arc(chimX + chimW * .5 + Math.sin((tNow + i) * 1.3) * 5 * s, chimTop - u * h * .32, puffR, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // ---- Damage and highlight ----
+        // ---- Damage ----
         if (isCracked) {
           ctx.save();
           ctx.beginPath();
-          ctx.roundRect(x, wallTop, w, wallH, 4 * s);
+          ctx.roundRect(x, wallTop, w, wallH, 3 * s);
           ctx.clip();
-          ctx.fillStyle = 'rgba(28, 20, 14, .34)';
+          ctx.fillStyle = 'rgba(30, 22, 14, .32)';
           ctx.beginPath();
-          ctx.ellipse(x + w * .5, wallTop + wallH * .22, w * .3, wallH * .24, .2, 0, Math.PI * 2);
+          ctx.ellipse(x + w * .48, wallTop + wallH * .3, w * .3, wallH * .22, .2, 0, Math.PI * 2);
           ctx.fill();
-          ctx.strokeStyle = 'rgba(26, 16, 8, .7)';
-          ctx.lineWidth = Math.max(1.4, 2.4 * s);
+          ctx.strokeStyle = 'rgba(26, 16, 8, .72)';
+          ctx.lineWidth = Math.max(1.4, 2.2 * s);
           ctx.beginPath();
           ctx.moveTo(x + w * .38, wallTop);
-          ctx.lineTo(x + w * .5, wallTop + wallH * .3);
-          ctx.lineTo(x + w * .42, wallTop + wallH * .58);
-          ctx.lineTo(x + w * .6, wallBot);
+          ctx.lineTo(x + w * .5, wallTop + wallH * .32);
+          ctx.lineTo(x + w * .42, wallTop + wallH * .6);
+          ctx.lineTo(x + w * .58, wallBot);
           ctx.stroke();
           ctx.restore();
         }
 
+        // ---- Hover glow ----
         if (isHovered) {
           ctx.save();
           ctx.shadowColor = 'rgba(250, 204, 21, .85)';
-          ctx.shadowBlur = 18 * s;
+          ctx.shadowBlur = 20 * s;
           ctx.strokeStyle = 'rgba(245, 158, 11, .95)';
           ctx.lineWidth = Math.max(2, 3 * s);
           ctx.beginPath();
-          ctx.roundRect(x - 1, wallTop - 1, w + 2, wallH + 2, 4 * s);
+          ctx.moveTo(x - ov, wallTop + 1);
+          ctx.lineTo(x + w * .5, ridgeY);
+          ctx.lineTo(x + w + ov, wallTop + 1);
+          ctx.closePath();
           ctx.stroke();
           ctx.beginPath();
-          ctx.moveTo(x - ov, wallTop);
-          ctx.lineTo(x + w * .5, ridgeY);
-          ctx.lineTo(x + w + ov, wallTop);
+          ctx.roundRect(x, wallTop, w, wallH, 3 * s);
           ctx.stroke();
           ctx.restore();
         }
@@ -2344,6 +2340,7 @@
 
         // Reaction clock for the hider, plus the bomber's aim and wind-up.
         state.moodT += dt;
+        if (state.phase === 'RUNNING') state.runT += dt;
         computeBlockHitboxes();
         updateBomber(dt);
         ctx.clearRect(0, 0, stageW, stageH);
@@ -2363,7 +2360,7 @@
             drawHiderCharacter(
               box.x + box.w / 2,
               box.groundY + 2 * s + box.h * 0.30 * tuck,
-              box.h * (1.02 - 0.26 * tuck),
+              box.h * (0.96 - 0.24 * tuck),
               'hide',
               state.moodT,
               state.hiderId,
@@ -2374,7 +2371,10 @@
           drawHouse(box);
         });
 
-        // Exposed hider (caught, survived, dancing) then the shooter in front.
+        // The sprint, the waiting hider at home, then the exposed hider and
+        // finally the bomber in front.
+        drawRunner();
+        drawHomeSpot();
         drawHiderForeground();
         updateBombs(dt);
         drawBombs(dt);
@@ -2556,6 +2556,8 @@
         }
 
         const stillAnimating =
+          state.phase === 'HIDE' ||
+          state.phase === 'RUNNING' ||
           state.phase === 'TUCKING' ||
           state.phase === 'SHOOT' ||
           state.phase === 'ANIMATING' ||
@@ -2655,24 +2657,32 @@
         audio.playCoverShift();
         state.hiddenBlock = blockNum;
         state.foundCharacter = false;
-        state.targetCoverShift = 1;
         state.hoveredBlock = null;
-        state.phase = 'TUCKING';
-        state.hiderMood = 'hide';
+        state.phase = 'RUNNING';
+        state.runT = 0;
         state.moodT = 0;
+        state.hiderMood = 'hide';
         state.aimBlock = null;
+        state.targetCoverShift = 0;
         state.crackedBlocks.clear();
         state.shatteredBlocks.clear();
         ensureRenderLoop();
         renderAll();
 
-        // Smooth, unhurried tuck-in into the selected block before pass-the-screen handoff
+        // He sprints up the lane, ducks behind the called house, then the
+        // screen passes to the bomber.
         setTimeout(() => {
-          if (state.phase === 'TUCKING') {
+          if (state.phase !== 'RUNNING') return;
+          state.phase = 'TUCKING';
+          state.moodT = 0;
+          ensureRenderLoop();
+          renderAll();
+          setTimeout(() => {
+            if (state.phase !== 'TUCKING') return;
             state.phase = 'HANDOFF';
             renderAll();
-          }
-        }, 1250);
+          }, 780);
+        }, RUN_TIME * 1000);
       }
 
       function startShooting() {
@@ -2887,7 +2897,7 @@
           state.hiderId === 2 ? 'bg-sky-100 text-sky-900' : 'bg-amber-200 text-amber-950'
         }`;
 
-        const activeId = state.phase === 'HIDE' || state.phase === 'TUCKING' ? state.hiderId : state.shooterId;
+        const activeId = ['HIDE', 'RUNNING', 'TUCKING'].includes(state.phase) ? state.hiderId : state.shooterId;
         els.p1Card.classList.toggle('border-amber-600', activeId === 1);
         els.p1Card.classList.toggle('border-amber-900/15', activeId !== 1);
         els.p2Card.classList.toggle('border-amber-600', activeId === 2);
@@ -2901,11 +2911,20 @@
           state.chancesLeft >= 2 ? 'bg-amber-500' : 'bg-amber-950/15'
         }`;
 
-        if (state.phase === 'HIDE' || state.phase === 'TUCKING') {
+        if (state.phase === 'HIDE') {
           els.phasePill.textContent = 'HIDE';
           els.phasePill.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold tracking-wider uppercase bg-sky-600 text-white shrink-0';
           els.statusPrompt.textContent = `${hiderName}: Pick a House 1–4`;
+        } else if (state.phase === 'RUNNING') {
+          els.phasePill.textContent = 'RUN';
+          els.phasePill.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold tracking-wider uppercase bg-sky-500 text-white shrink-0';
+          els.statusPrompt.textContent = `${hiderName} runs to house ${state.hiddenBlock}…`;
+        } else if (state.phase === 'TUCKING') {
+          els.phasePill.textContent = 'HIDE';
+          els.phasePill.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold tracking-wider uppercase bg-sky-600 text-white shrink-0';
+          els.statusPrompt.textContent = `${hiderName} is hiding…`;
         } else if (state.phase === 'HANDOFF') {
+
           els.phasePill.textContent = 'COVER';
           els.phasePill.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold tracking-wider uppercase bg-amber-600 text-white shrink-0';
           els.statusPrompt.textContent = `${shooterName}: Ready`;
