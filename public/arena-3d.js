@@ -1912,14 +1912,16 @@ function buildBrute() {
     // Keep the layer honest about its own cost, measured against the panel rather
     // than a guess: a window that overruns the refresh steps the scale down, a
     // long run of clean windows earns one step back up to the last good value.
-    if (rawDt > 0 && rawDt < .25) {
-      if (rawDt < frameFloor) frameFloor = rawDt;
-      else frameFloor += (rawDt - frameFloor) * .0002;
-    }
     perfAcc += dt; perfFrames += 1;
     if (perfFrames >= 24) {
       const avg = perfAcc / perfFrames;
-      const budget = Math.max(frameFloor, 1 / 240);
+      // Learn the refresh from the window average, not a single delta: one stray
+      // fast frame from a timer glitch would otherwise pin the floor at a few
+      // milliseconds and drag the resolution down for the rest of the match.
+      if (avg < frameFloor * .96) frameFloor += (avg - frameFloor) * .5;
+      else frameFloor += (avg - frameFloor) * .0006;
+      frameFloor = Math.max(1 / 240, Math.min(1 / 30, frameFloor));
+      const budget = frameFloor;
       perfAcc = 0; perfFrames = 0;
       if (avg > budget * 1.25 && scaleStep > 0) {
         // A badly blown budget drops two steps at once, so a weak GPU reaches a
