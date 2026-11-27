@@ -158,13 +158,27 @@ function uniqueWords(list){
 function bankWords(catId, includeCustom = true){
   const cacheKey = catId + (includeCustom ? ':custom' : ':base');
   if (bankCache.has(cacheKey)) return bankCache.get(cacheKey);
-  let words = baseWords(catId);
   const removed = includeCustom && Array.isArray(customBank[catId + ':removed']) ? customBank[catId + ':removed'] : [];
+  let words = baseWords(catId);
   if (removed.length) words = words.filter(w => !removed.includes(w));
-  if (includeCustom && Array.isArray(customBank[catId])) words = words.concat(customBank[catId]);
   words = uniqueWords(words);
   const items = words.map(word => ({ word, letters: splitAkshar(word) }))
     .filter(item => catId === 'super' || matchesCategory(item.word, catId));
+
+  // Teacher additions always stay in the category they were added to, even
+  // when they use bindi, tippi, addak or a vowel sign the built-in list avoids.
+  if (includeCustom){
+    const seen = new Set(items.map(i => i.word));
+    const extras = Array.isArray(customBank[catId]) ? customBank[catId] : [];
+    for (const raw of extras){
+      const word = String(raw || '').trim();
+      if (!word || seen.has(word) || removed.includes(word)) continue;
+      const letters = splitAkshar(word);
+      if (!letters.length) continue;
+      seen.add(word);
+      items.push({ word, letters, custom: true });
+    }
+  }
   bankCache.set(cacheKey, items);
   return items;
 }
@@ -396,9 +410,9 @@ function poolFor(categoryId){
   const diff = state.settings.difficulty;
   let filtered = items;
   if (diff === 'easy') filtered = items.filter(w => w.letters.length <= 3);
-  else if (diff === 'medium') filtered = items.filter(w => w.letters.length <= 5);
-  else if (diff === 'hard') filtered = items.filter(w => w.letters.length >= 4);
-  return filtered.length >= 12 ? filtered : items;
+  else if (diff === 'medium') filtered = items.filter(w => w.letters.length === 3);
+  else if (diff === 'hard') filtered = items.filter(w => w.letters.length === 3 || w.letters.length === 4);
+  return filtered.length ? filtered : items;
 }
 
 function startGame(){
@@ -808,7 +822,7 @@ function renderBank(){
   shown.slice(0, 400).forEach(item => {
     const row = document.createElement('div');
     row.className = 'bank-item';
-    row.innerHTML = `<span lang="pa">${escapeHTML(item.word)}<small>${item.letters.length} letters</small></span>
+    row.innerHTML = `<span lang="pa">${escapeHTML(item.word)}<small><i class="bank-roman">${escapeHTML(romanize(item.word))}</i> · ${item.letters.length} letters</small></span>
       <span class="bank-tools"><button type="button" class="bank-edit" title="Edit word" aria-label="Edit ${escapeHTML(item.word)}">✎</button>
       <button type="button" class="bank-del" title="Delete word" aria-label="Delete ${escapeHTML(item.word)}">✕</button></span>`;
     row.querySelector('.bank-del').addEventListener('click', () => deleteBankWord(catId, item.word));
@@ -828,21 +842,8 @@ function checkNewWord(word, catId){
   if (!word) return { ok:false, msg:'Type a word first.' };
   if (/\s/.test(word)) return { ok:false, msg:'Add one single word at a time (no spaces).' };
   const letters = splitAkshar(word);
-  if (/[ੰਃੱ੍]/.test(word))
-    return { ok:false, msg:'Words with bindi, tippi, addak or a conjunct are not used in this game.' };
-  if (Array.from(word).length < 3 || letters.length < 2)
-    return { ok:false, msg:'Use a real word of at least 3 Gurmukhi letters.' };
-  if (catId !== 'super'){
-    const usedSigns = Object.keys(matraCounts(word));
-    const expected = MATRA_SIGNS.find(s => MATRA_INFO[s].id === catId);
-    const ok = catId === 'mukta' ? usedSigns.length === 0 : (usedSigns.length === 1 && usedSigns[0] === expected);
-    if (!ok){
-      const where = usedSigns.length
-        ? usedSigns.map(s => MATRA_INFO[s].en).join(', ')
-        : 'no vowel sign';
-      return { ok:false, msg:`"${word}" uses ${where}. Add it to that category instead.` };
-    }
-  }
+  if (Array.from(word).length < 2 || letters.length < 1)
+    return { ok:false, msg:'Use a real Gurmukhi word of at least 2 letters.' };
   if (bankWords(catId).some(i => i.word === word))
     return { ok:false, msg:'That word is already in this category.' };
   return { ok:true, letters };
@@ -894,7 +895,7 @@ $('#bankAddBtn').addEventListener('click', () => {
   bankCache.clear();
   input.value = '';
   renderBank();
-  setBankMessage(`Added "${word}" (${check.letters.join(' · ')}).`, true);
+  setBankMessage(`Added "${word}" · ${romanize(word)} — saved on this device and used in every new game.`, true);
 });
 $('#bankWord').addEventListener('keydown', e => { if (e.key === 'Enter') $('#bankAddBtn').click(); });
 $('#bankSearch').addEventListener('input', renderBank);

@@ -1542,3 +1542,113 @@ body{background:var(--bg);color:var(--text)}
 .app-shell.ww-mode>.main-area>.content{width:100%!important;max-width:none!important;height:100dvh!important;min-height:100dvh!important;margin:0!important;padding:0!important;overflow:hidden!important}
 .ww-frame{display:block;width:100%;height:100dvh;min-height:100dvh;border:0;background:#fbf8ff}
 @media(max-width:700px){.word-warriors-poster{width:min(52vw,205px)}}
+
+/* Photo posters for Word Warriors and the new 3D maze */
+.hide-shoot-poster.ww-photo{border-color:#b8a2f2;background:#3a1f66}
+.hide-shoot-poster.maze-photo{border-color:#9ad37f;background:#1d3a17}
+.hide-shoot-play.ww-play{background:#d0b3ff;color:#2a1152;box-shadow:0 3px 0 #8a5ae0}
+.hide-shoot-play.maze-play{background:#b6ef8d;color:#14330c;box-shadow:0 3px 0 #5aa832}
+
+/* 3D Maze Escape runs full screen, like Word Warriors */
+.app-shell.maze-mode{display:block!important;min-height:100dvh!important;height:100dvh!important;overflow:hidden!important;background:#eaf8ff!important}
+.app-shell.maze-mode>.sidebar,.app-shell.maze-mode>.main-area>.topbar,.app-shell.maze-mode>.main-area>footer{display:none!important}
+.app-shell.maze-mode>.main-area{width:100%!important;min-width:0!important;min-height:100dvh!important;height:100dvh!important;margin:0!important;padding:0!important;overflow:hidden!important}
+.app-shell.maze-mode>.main-area>.content{width:100%!important;max-width:none!important;height:100dvh!important;min-height:100dvh!important;margin:0!important;padding:0!important;overflow:hidden!important}
+.maze-frame{display:block;width:100%;height:100dvh;min-height:100dvh;border:0;background:#eaf8ff}
+
+/* ---------- Say It poster + Games page ---------- */
+.hide-shoot-poster.say-photo{background:linear-gradient(155deg,#e9f7ff 0%,#ddf7ea 55%,#fff5e0 100%);border-color:#9fd0ec}
+.say-art{position:absolute;inset:0 0 86px;display:grid;place-items:center;text-align:center;font-size:clamp(28px,4.2vw,40px);line-height:1.15;letter-spacing:3px;filter:drop-shadow(0 8px 14px #8db9d24d)}
+.hide-shoot-poster.say-photo .hide-shoot-poster-shade{background:linear-gradient(180deg,rgba(255,255,255,0) 40%,rgba(6,29,52,.16) 62%,rgba(4,24,43,.92) 100%)}
+.games-title{margin:26px 0 16px}
+.games-title h1{font-size:28px;margin-bottom:4px}
+.arena-heading{font-size:15px;margin:22px 0 10px;color:#2a4864}
+.arena-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:8px}
+.arena-tile{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px;border:1px solid #dbe9f5;border-radius:14px;background:#fff;box-shadow:0 6px 18px rgba(36,73,108,.06);transition:transform .18s,border-color .18s}
+.arena-tile:hover{transform:translateY(-3px);border-color:#8bbce8}
+.arena-emoji{font-size:22px;line-height:1}
+.arena-tile b{font-size:13px;color:#203247}
+.arena-tile small{font-size:8px;font-weight:800;letter-spacing:.9px;color:#7c93a8}
+
+/* ---------- Class league / teacher points ---------- */
+.class-league{max-width:1120px}
+.award-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.award-card{display:flex;align-items:center;gap:14px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}
+.award-card.gold{background:linear-gradient(120deg,#fff8e6,#fffdf8);border-color:#f0d9a2}
+.award-card.violet{background:linear-gradient(120deg,#f4f0ff,#fdfcff);border-color:#dbd2f7}
+.award-icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#e8b54b26;color:#d59c2e;flex:none}
+.award-card.violet .award-icon{background:#8d78ff1f;color:#7d68ef}
+.award-copy{display:grid;gap:2px;min-width:0}
+.award-copy span{font-size:8px;font-weight:800;letter-spacing:1.3px;color:var(--muted)}
+.award-copy b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.award-copy small{font-size:10px;color:var(--muted)}
+.league-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.league-toolbar .kids-levels button{padding:9px 15px;font-size:11px;border-radius:10px;background:var(--panel)}
+.day-picker{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:10px;font-weight:700;color:var(--muted)}
+.day-picker input{border:0;background:none;color:var(--text);font:inherit;font-size:10px;outline:0}
+.league-classes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.league-class{margin:0}
+.league-class .leader-row:last-child{border-bottom:0}
+.class-league .empty-state{display:grid;gap:4px;justify-items:center}
+.class-league .empty-state p{margin:0}
+.teacher-modal{width:min(720px,100%);max-height:90vh;overflow:auto}
+.class-pills{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+.teacher-class{border-top:1px solid var(--line);padding-top:14px;margin-top:6px}
+.teacher-class-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.teacher-class-head .text-btn{color:#c4564f}
+.point-rows{display:grid;gap:7px}
+.point-row{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+.point-row b{flex:1;font-size:11px;font-weight:700}
+.point-row .avatar{width:26px;height:26px;font-size:9px}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:9px;background:var(--panel);overflow:hidden}
+.stepper button{border:0;background:none;width:28px;height:30px;display:grid;place-items:center;color:var(--accent)}
+.stepper button:hover{background:#eef7ff}
+.stepper input{width:50px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);background:none;color:var(--text);text-align:center;font:inherit;font-size:11px;font-weight:800;padding:7px 0;outline:0}
+@media(max-width:850px){
+  .award-grid,.league-classes{grid-template-columns:1fr}
+  .league-toolbar{align-items:flex-start}
+}
+
+/* ---- PER-CLASS LEAGUE: one board per class ---- */
+.class-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 18px}
+.class-tab{display:flex;align-items:center;gap:10px;padding:9px 16px 9px 9px;border-radius:16px;border:1.5px solid #e2eaf2;background:#fff;color:#20344c;box-shadow:0 4px 14px rgba(36,73,108,.05);transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.class-tab:hover{transform:translateY(-2px);border-color:#a9cdf0}
+.class-tab.on{border-color:#3f8fe0;background:linear-gradient(150deg,#eef7ff,#e3f1ff);box-shadow:0 10px 22px rgba(63,143,224,.18)}
+.class-tab-avatar{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:#eaf3fc;color:#3b7cb8}
+.class-tab.on .class-tab-avatar{background:linear-gradient(145deg,#6cb2ff,#3678e3);color:#fff}
+.class-tab-copy{display:flex;flex-direction:column;text-align:left;line-height:1.25}
+.class-tab-copy b{font-size:12.5px}
+.class-tab-copy small{font-size:9px;font-weight:800;letter-spacing:.6px;color:#7d95b0}
+.league-board{background:#fff;border:1px solid #e5eef8;border-radius:22px;padding:clamp(16px,2.4vw,26px);box-shadow:0 6px 24px rgba(36,73,108,.06)}
+.league-board-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.league-board-title h2{font-size:clamp(20px,2.4vw,27px);margin:10px 0 4px;letter-spacing:-.4px}
+.league-board-title p{margin:0;font-size:12px}
+.league-board-chip{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:900;letter-spacing:1.4px;color:#2f6fb7;background:#eaf4ff;border:1px solid #d3e8fb;border-radius:999px;padding:6px 12px}
+.league-total{display:flex;flex-direction:column;align-items:flex-end;background:linear-gradient(150deg,#f4faff,#eaf5ff);border:1px solid #dcebf9;border-radius:16px;padding:10px 16px}
+.league-total strong{font-size:26px;line-height:1}
+.league-total span{font-size:8.5px;font-weight:900;letter-spacing:1.4px;color:#7d95b0;margin-top:3px}
+.league-rows{display:grid;gap:8px;margin-top:16px}
+.league-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid #e8f0f9;border-radius:14px;background:#fbfdff;transition:transform .16s ease,border-color .16s ease}
+.league-row:hover{transform:translateX(3px);border-color:#c9e2f7}
+.league-row.is-top{border-color:#f2cd83;background:linear-gradient(100deg,#fffdf4,#fff);box-shadow:0 6px 18px rgba(224,160,40,.12)}
+.league-rank{width:34px;height:34px;flex:0 0 34px;border-radius:11px;display:grid;place-items:center;font-weight:900;font-size:12px;color:#6b83a0;background:#eef5fc}
+.league-rank.rank-1{background:linear-gradient(145deg,#ffe7a3,#f5bd48);color:#6b4300}
+.league-rank.rank-2{background:linear-gradient(145deg,#eef2f7,#cdd8e4);color:#4b5f75}
+.league-rank.rank-3{background:linear-gradient(145deg,#ffe2c7,#e6a978);color:#6b3a12}
+.league-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.league-name b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.league-bar{display:block;height:6px;border-radius:4px;background:#e9f2fb;overflow:hidden}
+.league-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#6cb2ff,#3678e3);transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.league-row.is-top .league-bar i{background:linear-gradient(90deg,#ffd166,#f0a02e)}
+.league-row>strong{font-size:17px;color:#25476f;min-width:56px;text-align:right}
+.league-row>strong small{font-size:9px;color:#8298b2;font-weight:800}
+.league-empty{display:flex;align-items:center;gap:12px;margin-top:16px;padding:18px;border:1px dashed #d8e7f6;border-radius:16px;background:#f9fcff;color:#6d87a3}
+.league-empty p{margin:0;font-size:12.5px}
+@media(max-width:640px){
+  .class-tab{padding:7px 12px 7px 7px;border-radius:13px}
+  .class-tab-avatar{width:28px;height:28px;border-radius:9px}
+  .league-total{padding:8px 12px}
+  .league-total strong{font-size:22px}
+  .league-row{padding:9px 10px;gap:9px}
+  .league-row>strong{min-width:44px;font-size:15px}
+}

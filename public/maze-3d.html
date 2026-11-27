@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>3D Maze Escape — Global Punjabi Classes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; overflow: hidden; color: #172033;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(180deg, #dff3ff 0%, #eefbdf 100%);
+  }
+  .font-display { font-family: 'Chakra Petch', sans-serif; letter-spacing: .5px; }
+  #app { height: 100dvh; display: flex; flex-direction: column; }
+  .screen { display: none; flex: 1; min-height: 0; }
+  .screen.active { display: flex; }
+
+  /* ── Home ─────────────────────────────────────────────── */
+  #home { overflow-y: auto; justify-content: center; padding: 22px 16px 30px; }
+  .home-card {
+    width: min(920px, 100%); margin: auto;
+    background: rgba(255, 253, 247, .92);
+    border: 1px solid rgba(59, 90, 120, .16);
+    border-radius: 22px; padding: 22px 22px 20px;
+    box-shadow: 0 22px 50px rgba(30, 75, 110, .16);
+  }
+  .home-hero {
+    display: block; width: 100%; height: clamp(120px, 24vh, 220px);
+    object-fit: cover; border-radius: 16px; border: 1px solid rgba(59, 90, 120, .16);
+    margin-bottom: 14px;
+  }
+  .kicker { margin: 0 0 2px; font-size: 10px; font-weight: 900; letter-spacing: 2.4px; color: #2a86a8; }
+  h1 { margin: 0; font-size: clamp(24px, 4vw, 38px); line-height: 1.05; color: #12384f; }
+  .sub { margin: 5px 0 16px; font-size: 12.5px; color: #5a7183; font-weight: 600; }
+  .home-msg { margin: 8px 0 0; font-size: 11px; font-weight: 700; color: #c07a08; min-height: 14px; }
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0 12px; }
+  .mode-btn {
+    border: 2px solid #cfe3ee; background: #fff; border-radius: 16px; padding: 16px 10px;
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font: 900 16px 'Chakra Petch', sans-serif; letter-spacing: 1.2px; color: #12384f;
+    transition: .16s ease;
+  }
+  .mode-btn em { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: 0; color: #1a9bc0; }
+  .mode-btn:hover { border-color: #8fd0e6; transform: translateY(-1px); }
+  .mode-btn.selected { border-color: #f0a52c; background: #fff8e7; box-shadow: 0 6px 16px rgba(240, 165, 44, .22); }
+  .editor-card { text-align: left; }
+  .editor-tabs { display: flex; gap: 8px; margin: 8px 0 12px; }
+  .editor-tab {
+    flex: 1; border: 2px solid #cfe3ee; background: #fff; border-radius: 10px; padding: 8px;
+    font: 800 11px 'Chakra Petch', sans-serif; letter-spacing: .8px; color: #12384f; cursor: pointer;
+  }
+  .editor-tab.active { border-color: #f0a52c; background: #fff8e7; }
+  .editor-list { display: grid; gap: 6px; max-height: 38dvh; overflow-y: auto; padding-right: 4px; }
+  .editor-row { display: flex; align-items: flex-start; gap: 8px; background: #fff; border: 1px solid #e3eef4; border-radius: 10px; padding: 7px 9px; }
+  .editor-row div { min-width: 0; flex: 1; }
+  .editor-row b { display: block; font-size: 12px; color: #17384b; }
+  .editor-row small { font-size: 10.5px; color: #7a94a6; font-weight: 700; }
+  .editor-row button { border: 0; background: #ffe6ea; color: #c02b42; border-radius: 8px; width: 26px; height: 26px; font-weight: 900; cursor: pointer; flex: none; }
+  .editor-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; margin-top: 12px; }
+  .editor-add input { border: 1px solid #d2e4ee; border-radius: 9px; padding: 9px 10px; font: 600 11.5px Inter, sans-serif; color: #12384f; outline: 0; min-width: 0; }
+  .editor-add input:focus { border-color: #8fd0e6; }
+  #btnAddSentence { padding: 9px 14px; font-size: 11px; }
+  .editor-empty { margin: 4px 0; font-size: 11.5px; color: #7a94a6; font-weight: 600; }
+  #btnCloseEditor { width: 100%; margin-top: 12px; }
+  .pw-input {
+    width: 100%; margin: 8px 0 2px; padding: 13px 14px; border-radius: 11px;
+    border: 2px solid #d2e4ee; background: #fff; text-align: center;
+    font: 900 16px Inter, sans-serif; color: #12384f; letter-spacing: 3px; outline: 0;
+  }
+  .pw-input:focus { border-color: #f0a52c; }
+  .pw-hint { margin: 6px 0 0; font-size: 11.5px; font-weight: 600; color: #6b8494; }
+  .names { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .name-field { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #d2e4ee; border-radius: 12px; padding: 7px 10px; }
+  .name-field i { width: 11px; height: 11px; border-radius: 99px; flex: none; }
+  .name-field input { border: 0; outline: 0; width: 100%; font: 700 13px Inter, sans-serif; color: #12384f; background: transparent; }
+  .start-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .btn {
+    border: 0; cursor: pointer; font: 800 13px 'Chakra Petch', sans-serif; letter-spacing: .7px;
+    padding: 12px 20px; border-radius: 12px; transition: .16s ease;
+  }
+  .btn-gold { color: #fff; background: linear-gradient(180deg, #ffbe45, #ef9c16); box-shadow: 0 4px 0 #c07a08, 0 10px 20px rgba(200, 128, 12, .25); }
+  .btn-gold:hover { filter: brightness(1.05); transform: translateY(-1px); }
+  .btn-ghost { background: #fff; color: #2a6383; border: 1px solid #cfe3ee; }
+  .btn-ghost:hover { background: #f3fbff; }
+  .btn-blue { color: #fff; background: linear-gradient(180deg, #5cc9f0, #1a9bc0); box-shadow: 0 4px 0 #0c6c88; }
+  .btn-gray { background: #eef5f9; color: #43657a; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+  /* ── Game shell ───────────────────────────────────────── */
+  #play { flex-direction: column; }
+  #gamebar {
+    flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; background: rgba(255, 253, 247, .94);
+    border-bottom: 1px solid rgba(59, 90, 120, .16);
+    box-shadow: 0 4px 14px rgba(30, 75, 110, .08); z-index: 5;
+  }
+  .icon-btn {
+    flex: none; width: 32px; height: 32px; display: grid; place-items: center;
+    border: 1px solid #d2e4ee; background: #fff; border-radius: 9px;
+    color: #2a6383; cursor: pointer; font-size: 13px; font-weight: 800;
+  }
+  .icon-btn:hover { background: #f2fbff; }
+  .players-mini { flex: 1; display: grid; grid-template-columns: 1fr; gap: 7px; min-width: 0; }
+  .pmini {
+    display: flex; align-items: center; gap: 7px; min-width: 0;
+    border: 2px solid transparent; border-radius: 10px; padding: 4px 8px; background: #f5fafd;
+  }
+  .pmini i { width: 12px; height: 12px; border-radius: 99px; flex: none; box-shadow: 0 0 0 2px #fff; }
+  .pmini .pm-name { font-size: 11px; font-weight: 800; color: #214559; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pmini .pm-meta { font-size: 9.5px; font-weight: 700; color: #7a94a6; }
+  .pmini .pm-score { margin-left: auto; font: 700 14px 'Chakra Petch', sans-serif; color: #17384b; }
+  .pmini.active { border-color: #f0a52c; background: #fff7e6; }
+  .pmini.out { opacity: .45; text-decoration: line-through; }
+  .hearts { letter-spacing: -1px; font-size: 9px; color: #ef5b7b; }
+
+  #stage { position: relative; flex: 1; min-height: 0; background: linear-gradient(180deg, #cdeeff, #e8f8d6); }
+  #view { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+  #hintbar {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    display: block; text-align: center; max-width: calc(100% - 24px);
+    padding: 6px 12px; border-radius: 99px; background: rgba(255, 253, 247, .92);
+    border: 1px solid rgba(59, 90, 120, .18); box-shadow: 0 6px 16px rgba(30, 75, 110, .14);
+    font-size: 11.5px; font-weight: 700; color: #1d4a61; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+  }
+  #hintbar b { color: #d07d00; }
+  #minimap {
+    position: absolute; left: 10px; bottom: 10px; padding: 5px; border-radius: 10px;
+    background: rgba(255, 253, 247, .88); border: 1px solid rgba(59, 90, 120, .2);
+    box-shadow: 0 6px 16px rgba(30, 75, 110, .14);
+  }
+  #minimap canvas { display: block; border-radius: 5px; width: 150px; height: 150px; }
+  @media (max-height: 640px) { #minimap canvas { width: 112px; height: 112px; } }
+  .toast {
+    position: absolute; left: 50%; bottom: 18%; transform: translateX(-50%);
+    padding: 8px 16px; border-radius: 99px; background: rgba(20, 52, 69, .9); color: #fff;
+    font: 800 12px 'Chakra Petch', sans-serif; letter-spacing: .5px; opacity: 0; transition: .2s ease;
+    pointer-events: none; z-index: 4;
+  }
+  .toast.show { opacity: 1; bottom: 22%; }
+
+  #controls {
+    flex: none; padding: 7px 10px 9px;
+    background: rgba(255, 253, 247, .96); border-top: 1px solid rgba(59, 90, 120, .16);
+    z-index: 5;
+  }
+  .dpad {
+    display: grid; gap: 6px; width: min(430px, 100%); margin: 0 auto;
+    grid-template-columns: 1fr 1.25fr 1fr;
+    grid-template-areas: ". fwd ." "left back right";
+  }
+  .dpad button {
+    border: 0; border-radius: 11px; padding: 9px 8px; cursor: pointer;
+    font: 800 11.5px 'Chakra Petch', sans-serif; letter-spacing: .6px;
+    color: #12384f; background: linear-gradient(180deg, #ffffff, #e2f3fb);
+    box-shadow: 0 3px 0 #a9c9d9, 0 6px 12px rgba(30, 75, 110, .13);
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    transition: .12s ease; touch-action: manipulation;
+  }
+  .dpad button:hover:not(:disabled) { background: linear-gradient(180deg, #ffffff, #d4edfa); }
+  .dpad button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #a9c9d9; }
+  .dpad button:disabled { opacity: .42; cursor: not-allowed; }
+  .dpad .fwd { grid-area: fwd; background: linear-gradient(180deg, #d9f7d2, #b8ecac); box-shadow: 0 3px 0 #7fb872, 0 6px 12px rgba(60, 120, 50, .16); }
+  .dpad .back { grid-area: back; }
+  .dpad .left { grid-area: left; }
+  .dpad .right { grid-area: right; }
+  .dpad .fwd, .dpad .back { font-size: 12.5px; }
+
+  /* ── Overlays ─────────────────────────────────────────── */
+  .overlay {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    align-items: center; justify-content: center; padding: 16px;
+    background: rgba(12, 38, 53, .42); backdrop-filter: blur(4px);
+  }
+  .overlay.show { display: flex; }
+  .card {
+    width: min(520px, 100%); max-height: 92dvh; overflow-y: auto;
+    background: linear-gradient(180deg, #fffdf7, #fff7e6);
+    border: 2px solid #f0b54b; border-radius: 20px; padding: 20px;
+    box-shadow: 0 28px 60px rgba(20, 60, 80, .34); text-align: center;
+    animation: pop .22s cubic-bezier(.16, 1, .3, 1);
+  }
+  @keyframes pop { from { opacity: 0; transform: scale(.94) translateY(8px); } to { opacity: 1; transform: none; } }
+  .qkicker { margin: 0 0 5px; font-size: 9.5px; font-weight: 900; letter-spacing: 2px; color: #c07a08; }
+  #qSentence { margin: 0 0 4px; font-size: clamp(19px, 3.5vw, 27px); line-height: 1.25; color: #12384f; }
+  .qhelp { margin: 0 0 12px; font-size: 11.5px; font-weight: 600; color: #6b8494; }
+  .qanswer {
+    margin: 0 0 12px; padding: 9px 12px; border-radius: 10px;
+    background: #eafaff; border: 1px dashed #8fd0e6;
+    font-size: 13px; font-weight: 800; color: #1a6f8c;
+  }
+  .qanswer small { display: block; font-weight: 700; font-size: 9px; letter-spacing: 1.4px; color: #7a94a6; margin-bottom: 2px; }
+  .qactions { display: flex; gap: 8px; }
+  .qactions button { flex: 1; }
+  .mark { display: flex; gap: 10px; margin-top: 10px; }
+  .mark button { flex: 1; padding: 14px 10px; font-size: 14px; }
+  .btn-right { color: #fff; background: linear-gradient(180deg, #4fd18b, #1fae67); box-shadow: 0 4px 0 #12824b; }
+  .btn-wrong { color: #fff; background: linear-gradient(180deg, #ff8a9b, #ec4f68); box-shadow: 0 4px 0 #b32b40; }
+  .btn-right:hover, .btn-wrong:hover { filter: brightness(1.05); }
+
+  .result-title { margin: 4px 0 2px; font-size: clamp(22px, 4vw, 32px); color: #12384f; }
+  .result-sub { margin: 0 0 14px; font-size: 12px; font-weight: 700; color: #6b8494; }
+  .result-rows { display: grid; gap: 7px; margin-bottom: 16px; text-align: left; }
+  .result-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: #fff; border: 1px solid #e3eef4; }
+  .result-row i { width: 11px; height: 11px; border-radius: 99px; }
+  .result-row b { font-size: 12.5px; color: #17384b; }
+  .result-row small { font-size: 10px; color: #7a94a6; font-weight: 700; }
+  .result-row span { margin-left: auto; font: 700 16px 'Chakra Petch', sans-serif; color: #17384b; }
+  .result-actions { display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }
+  .strikes { display: inline-flex; gap: 3px; margin-left: 4px; }
+  .strikes b { width: 8px; height: 8px; border-radius: 99px; background: #f2c1cb; }
+  .strikes b.used { background: #ec4f68; }
+  @media (max-width: 560px) {
+    .mode-grid, .names { grid-template-columns: 1fr; }
+    .home-card { padding: 16px; }
+    .players-mini { gap: 5px; }
+    .pmini .pm-meta { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═════════════ HOME ═════════════ -->
+  <section class="screen active" id="home">
+    <div class="home-card">
+      <img class="home-hero" src="/images/maze-escape-poster.jpg" alt="Two explorers at the entrance of a bright hedge maze" />
+      <p class="kicker">GLOBAL PUNJABI CLASSES · GAME ARENA</p>
+      <h1 class="font-display">3D MAZE ESCAPE</h1>
+      <p class="sub">One explorer, one big maze. Say each sentence in Punjabi and you walk until the next wall.</p>
+      <p class="sub" style="margin-top:-10px;">15 different maze maps with several routes — a brand-new map every game.</p>
+
+      <div class="mode-grid">
+        <button class="mode-btn selected" data-mode="words">SENTENCES<em id="countWords"></em></button>
+        <button class="mode-btn" data-mode="tenses">TENSES<em id="countTenses"></em></button>
+      </div>
+
+      <div class="names">
+        <label class="name-field"><i style="background:#e0495f"></i><input id="p1name" maxlength="14" value="Player 1" aria-label="Your name" /></label>
+      </div>
+      <p class="home-msg" id="homeMsg"></p>
+
+      <div class="start-row">
+        <button class="btn btn-gold" id="btnStart">START THE MAZE →</button>
+        <button class="btn btn-ghost" id="btnEdit">EDIT · TEACHER</button>
+        <button class="btn btn-ghost" id="btnExit">← Dashboard</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ GAME ═════════════ -->
+  <section class="screen" id="play">
+    <header id="gamebar">
+      <button class="icon-btn" id="btnQuit" title="Leave game">✕</button>
+      <div class="players-mini">
+        <div class="pmini active" id="pm0">
+          <i style="background:#e0495f"></i>
+          <div style="min-width:0">
+            <div class="pm-name" id="pm0name">Player 1</div>
+            <div class="pm-meta"><span class="strikes" id="pm0hearts"><b></b><b></b><b></b></span> <span id="pm0mode"></span></div>
+          </div>
+          <span class="pm-score" id="pm0score">0</span>
+        </div>
+      </div>
+      <button class="icon-btn" id="btnFull" title="Full screen">⛶</button>
+    </header>
+
+    <div id="stage">
+      <canvas id="view"></canvas>
+      <div id="hintbar">Walk to the <b>golden star</b>. Forward keeps going until the next wall.</div>
+      <div id="minimap"><canvas id="mm" width="132" height="132"></canvas></div>
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <div id="controls">
+      <div class="dpad">
+        <button class="fwd" data-act="forward">▲ FORWARD</button>
+        <button class="left" data-act="left">⟲ LEFT</button>
+        <button class="back" data-act="back">▼ BACK</button>
+        <button class="right" data-act="right">RIGHT ⟳</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═════════════ SENTENCE GATE ═════════════ -->
+<div class="overlay" id="qmodal">
+  <div class="card">
+    <p class="qkicker" id="qWho">PLAYER 1 · SAY IT IN PUNJABI</p>
+    <h2 class="font-display" id="qSentence">This is a car</h2>
+    <p class="qhelp" id="qHelp">Read the English sentence aloud. The student answers face to face in Punjabi.</p>
+    <p class="qanswer" id="qAnswer" hidden><small>ROMAN PUNJABI ANSWER</small><span id="qAnswerText"></span></p>
+    <div class="qactions">
+      <button class="btn btn-gray" id="btnReveal">SHOW ANSWER</button>
+      <button class="btn btn-gray" id="btnCancel">CANCEL</button>
+    </div>
+    <div class="mark">
+      <button class="btn btn-wrong" id="btnWrong">✗ WRONG</button>
+      <button class="btn btn-right" id="btnRight">✓ RIGHT · +10</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ RESULT ═════════════ -->
+<div class="overlay" id="result">
+  <div class="card">
+    <p class="qkicker" id="resultKicker">MAZE CLEARED</p>
+    <h2 class="result-title font-display" id="resultTitle">Player 1 wins!</h2>
+    <p class="result-sub" id="resultSub">New maze, new sentences, same rules.</p>
+    <div class="result-rows" id="resultRows"></div>
+    <div class="result-actions">
+      <button class="btn btn-gold" id="btnAgain">NEW MAZE →</button>
+      <button class="btn btn-ghost" id="btnHome">HOME</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ SENTENCE EDITOR ═════════════ -->
+<div class="overlay" id="editor">
+      <div class="card editor-card">
+    <p class="qkicker">TEACHER · SENTENCE BANK</p>
+    <div class="editor-tabs">
+      <button class="editor-tab active" data-bank="words">SENTENCES</button>
+      <button class="editor-tab" data-bank="tenses">TENSES</button>
+    </div>
+    <div class="editor-list" id="editorList"></div>
+    <div class="editor-add">
+      <input id="newEn" placeholder="English sentence" maxlength="90" />
+      <input id="newPa" placeholder="Punjabi answer (Roman)" maxlength="90" />
+      <button class="btn btn-gold" id="btnAddSentence">ADD</button>
+    </div>
+    <p class="home-msg" id="editorMsg"></p>
+    <button class="btn btn-ghost" id="btnCloseEditor">DONE</button>
+  </div>
+</div>
+
+<!-- ═════════════ TEACHER PASSWORD ═════════════ -->
+<div class="overlay" id="pwgate">
+  <div class="card">
+    <p class="qkicker">TEACHER ONLY</p>
+    <h2 class="font-display" style="margin:0;font-size:22px;color:#12384f;">Enter password</h2>
+    <p class="pw-hint">Only the teacher can add or remove sentences and tenses.</p>
+    <input class="pw-input" id="pwInput" type="password" maxlength="24" autocomplete="off" placeholder="••••••••" aria-label="Teacher password" />
+    <p class="home-msg" id="pwMsg"></p>
+    <div class="qactions">
+      <button class="btn btn-gray" id="btnPwCancel">CANCEL</button>
+      <button class="btn btn-gold" id="btnPwOk">OPEN →</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from '/vendor/three.module.js';
+
+/* ══════════════════════════════════════════════════════════════
+   SENTENCE BANK
+   Each item: English sentence + Roman Punjabi answer (teacher key).
+   ══════════════════════════════════════════════════════════════ */
+const SENTENCES = {
+  words: [
+    { en: 'This is a car.', pa: 'Eh ik gaadi hai.' },
+    { en: 'This is a table.', pa: 'Eh ik mez hai.' },
+    { en: 'This is a chair.', pa: 'Eh ik kursi hai.' },
+    { en: 'This is a door.', pa: 'Eh ik darwaza hai.' },
+    { en: 'This is a window.', pa: 'Eh ik khidki hai.' },
+    { en: 'That is a car.', pa: 'Oh ik gaadi hai.' },
+    { en: 'That is a table.', pa: 'Oh ik mez hai.' },
+    { en: 'That is a chair.', pa: 'Oh ik kursi hai.' },
+    { en: 'That is a door.', pa: 'Oh ik darwaza hai.' },
+    { en: 'That is a window.', pa: 'Oh ik khidki hai.' },
+    { en: 'Give me a pen.', pa: 'Mainu ik kalam deo.' },
+    { en: 'Give me a book.', pa: 'Mainu ik kitab deo.' },
+    { en: 'Give me water.', pa: 'Mainu paani deo.' },
+    { en: 'Give me food.', pa: 'Mainu khaana deo.' },
+    { en: 'Give me chocolate.', pa: 'Mainu chocolate deo.' },
+    { en: 'Yes, I like milk.', pa: 'Haan, mainu doodh pasand hai.' },
+    { en: 'Yes, I like apples.', pa: 'Haan, mainu seb pasand han.' },
+    { en: 'Yes, I like bananas.', pa: 'Haan, mainu kele pasand han.' },
+    { en: "No, I don't like tea.", pa: 'Nahi, mainu chah pasand nahi.' },
+    { en: "No, I don't like pizza.", pa: 'Nahi, mainu pizza pasand nahi.' },
+    { en: "No, I don't like burgers.", pa: 'Nahi, mainu burger pasand nahi.' },
+    { en: 'Close the door.', pa: 'Darwaza band karo.' },
+    { en: 'Close the window.', pa: 'Khidki band karo.' },
+    { en: 'Close the bag.', pa: 'Bag band karo.' },
+    { en: 'Close the book.', pa: 'Kitab band karo.' },
+    { en: 'Open the door.', pa: 'Darwaza kholo.' },
+    { en: 'Open the window.', pa: 'Khidki kholo.' },
+    { en: 'Open the bag.', pa: 'Bag kholo.' },
+    { en: 'Open the book.', pa: 'Kitab kholo.' },
+    { en: 'These are my books.', pa: 'Eh meri kitaban han.' },
+    { en: 'These are my shoes.', pa: 'Eh mere joote han.' },
+    { en: 'These are apples.', pa: 'Eh seb han.' },
+    { en: 'Those are my books.', pa: 'Oh meri kitaban han.' },
+    { en: 'Those are my shoes.', pa: 'Oh mere joote han.' },
+    { en: 'Those are birds.', pa: 'Oh panchi han.' },
+    { en: 'Can I drink water?', pa: 'Ki main paani pee sakda haan?' },
+    { en: 'Can I go outside?', pa: 'Ki main bahar ja sakda haan?' },
+    { en: 'Can I eat food?', pa: 'Ki main khaana kha sakda haan?' },
+    { en: 'Can I go to the washroom?', pa: 'Ki main washroom ja sakda haan?' },
+    { en: 'Can I go to school?', pa: 'Ki main school ja sakda haan?' },
+    { en: 'I am playing.', pa: 'Main khed reha haan.' },
+    { en: 'I am watching TV.', pa: 'Main TV dekh reha haan.' },
+    { en: 'I am reading a book.', pa: 'Main kitab padh reha haan.' },
+    { en: 'I am eating food.', pa: 'Main khaana kha reha haan.' },
+    { en: 'I am drinking water.', pa: 'Main paani pee reha haan.' },
+    { en: 'I am going to school.', pa: 'Main school ja reha haan.' },
+    { en: 'I want food.', pa: 'Mainu khaana chahida hai.' },
+    { en: 'I want water.', pa: 'Mainu paani chahida hai.' },
+    { en: 'I want a book.', pa: 'Mainu kitab chahidi hai.' },
+    { en: 'I want milk.', pa: 'Mainu doodh chahida hai.' },
+    { en: 'Today is Monday.', pa: 'Aj somvar hai.' },
+    { en: 'Today I am happy.', pa: 'Aj main khush haan.' },
+    { en: 'Today is a holiday.', pa: 'Aj chhutti hai.' },
+    { en: 'Tomorrow I will go to school.', pa: 'Kal main school javanga.' },
+    { en: 'Tomorrow is Tuesday.', pa: 'Kal mangalvar hai.' },
+    { en: 'Yesterday was Sunday.', pa: 'Kal aitvar si.' },
+    { en: 'Yesterday I was at home.', pa: 'Kal main ghar si.' },
+    { en: 'Now I am at home.', pa: 'Hun main ghar haan.' },
+    { en: 'Now I am playing.', pa: 'Hun main khed reha haan.' },
+    { en: 'He is tall.', pa: 'Oh lamba hai.' },
+    { en: 'The tree is tall.', pa: 'Rukh lamba hai.' },
+    { en: 'She is short.', pa: 'Oh chhoti hai.' },
+    { en: 'The pencil is short.', pa: 'Pencil chhoti hai.' }
+  ],
+  tenses: [
+    { en: 'I was happy.', pa: 'Main khush si.' },
+    { en: 'She was happy.', pa: 'Oh khush si.' },
+    { en: 'She was at home.', pa: 'Oh ghar si.' },
+    { en: 'I was at home.', pa: 'Main ghar si.' },
+    { en: 'He was at school.', pa: 'Oh school si.' },
+    { en: 'There was a car.', pa: 'Ik gaadi si.' },
+    { en: 'There was a table.', pa: 'Ik mez si.' },
+    { en: 'There was a chair.', pa: 'Ik kursi si.' },
+    { en: 'We were playing.', pa: 'Asi khed rahe san.' },
+    { en: 'They were playing.', pa: 'Oh khed rahe san.' },
+    { en: 'We were happy.', pa: 'Asi khush san.' },
+    { en: 'Yesterday was Monday.', pa: 'Kal somvar si.' },
+    { en: 'I am happy.', pa: 'Main khush haan.' },
+    { en: 'We are happy.', pa: 'Asi khush haan.' },
+    { en: 'This is an apple.', pa: 'Eh ik seb hai.' },
+    { en: 'They are happy.', pa: 'Oh khush han.' },
+    { en: 'She is at home.', pa: 'Oh ghar hai.' },
+    { en: 'He is my friend.', pa: 'Oh mera dost hai.' },
+    { en: 'We are students.', pa: 'Asi vidyarthi haan.' },
+    { en: 'They are playing.', pa: 'Oh khed rahe han.' },
+    { en: 'He is eating food.', pa: 'Oh khaana kha reha hai.' },
+    { en: 'She is reading a book.', pa: 'Oh kitab padh rahi hai.' },
+    { en: 'I am at school.', pa: 'Main school haan.' },
+    { en: 'He will play.', pa: 'Oh khedega.' },
+    { en: 'They will play.', pa: 'Oh khedange.' },
+    { en: 'She will sing.', pa: 'Oh gaavegi.' },
+    { en: 'I will go home.', pa: 'Main ghar javanga.' },
+    { en: 'We will eat food.', pa: 'Asi khaana khavange.' },
+    { en: 'He will come tomorrow.', pa: 'Oh kal aavega.' },
+    { en: 'I will read a book.', pa: 'Main kitab padhanga.' },
+    { en: 'They will go to school.', pa: 'Oh school javange.' },
+    { en: 'She will cook food.', pa: 'Oh khaana banaavegi.' },
+    { en: 'We will play tomorrow.', pa: 'Asi kal khedange.' },
+    { en: 'It was raining.', pa: 'Meenh pai rehi si.' },
+    { en: 'I was eating food.', pa: 'Main khaana kha reha si.' },
+    { en: 'He was reading a book.', pa: 'Oh kitab padh reha si.' },
+    { en: 'They were at home.', pa: 'Oh ghar san.' },
+    { en: 'I will drink milk.', pa: 'Main doodh peevanga.' },
+    { en: 'We were at school.', pa: 'Asi school san.' }
+  ]
+};
+
+/* ══════════════════════════════════════════════════════════════
+   DOM
+   ══════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const screens = { home: $('home'), play: $('play') };
+function showScreen(id){
+  state.screen = id;
+  Object.entries(screens).forEach(([key, el]) => el.classList.toggle('active', key === id));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAZE
+   ══════════════════════════════════════════════════════════════ */
+const N = 8;                 // cells per side (8 → a 17×17 maze)
+const SIZE = N * 2 + 1;      // grid size (walls included)
+const CELL = 2.7;
+const WALL_H = 1.6;
+const WALK_SPEED = 3.4;      // maze cells per second while walking
+
+/* Deterministic PRNG so each seed always builds the same map. */
+function mulberry32(a){
+  return function(){
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* 15 seeds = 15 different maze maps. They are shuffled into a bag so a map
+   is never repeated until every map has been played. */
+const MAP_SEEDS = [3187, 9271, 4513, 8029, 1663, 5701, 2749, 6311, 9857, 4093, 7433, 2219, 8821, 5039, 6673];
+let mapBag = [];
+let mapRound = 0;
+
+function refillBag(){
+  mapBag = MAP_SEEDS.map((_, i) => i);
+  for (let i = mapBag.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [mapBag[i], mapBag[j]] = [mapBag[j], mapBag[i]];
+  }
+  mapRound += 1;
+}
+function nextMaze(){
+  if (!mapBag.length) refillBag();
+  // After the first 15, each round shifts the seeds so the bank keeps growing.
+  return buildMaze(MAP_SEEDS[mapBag.pop()] + mapRound * 7919);
+}
+
+function buildMaze(seed){
+  const rnd = mulberry32(seed);
+  const grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(1));
+  const stack = [{ c: 1, r: 1 }];
+  grid[1][1] = 0;
+  while (stack.length){
+    const cur = stack[stack.length - 1];
+    const options = [];
+    for (const [dc, dr] of [[0, -2], [2, 0], [0, 2], [-2, 0]]){
+      const nc = cur.c + dc, nr = cur.r + dr;
+      if (nc > 0 && nc < SIZE - 1 && nr > 0 && nr < SIZE - 1 && grid[nr][nc] === 1){
+        options.push({ nc, nr, wc: cur.c + dc / 2, wr: cur.r + dr / 2 });
+      }
+    }
+    if (!options.length){ stack.pop(); continue; }
+    const pick = options[Math.floor(rnd() * options.length)];
+    grid[pick.wr][pick.wc] = 0;
+    grid[pick.nr][pick.nc] = 0;
+    stack.push({ c: pick.nc, r: pick.nr });
+  }
+
+  // Open many dead ends so the map has loops — more than one way to the star.
+  for (let r = 1; r < SIZE - 1; r += 2){
+    for (let c = 1; c < SIZE - 1; c += 2){
+      if (grid[r][c] !== 0) continue;
+      const exits = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+        .filter(([dc, dr]) => grid[r + dr] && grid[r + dr][c + dc] === 0);
+      if (exits.length !== 1 || rnd() < 0.55) continue;
+      const walls = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+        .map(([dc, dr]) => ({ c: c + dc, r: r + dr, nc: c + dc * 2, nr: r + dr * 2 }))
+        .filter(w => w.nc > 0 && w.nc < SIZE - 1 && w.nr > 0 && w.nr < SIZE - 1 && grid[w.r][w.c] === 1);
+      if (!walls.length) continue;
+      const wall = walls[Math.floor(rnd() * walls.length)];
+      grid[wall.r][wall.c] = 0;
+    }
+  }
+
+  // A few extra cross-links make long, open corridors.
+  const extra = 8 + Math.floor(rnd() * 6);
+  for (let i = 0; i < extra; i++){
+    const c = 1 + Math.floor(rnd() * (SIZE - 2));
+    const r = 1 + Math.floor(rnd() * (SIZE - 2));
+    if (grid[r][c] === 1 && ((c % 2 === 1) !== (r % 2 === 1))) grid[r][c] = 0;
+  }
+  return grid;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SCENE
+   ══════════════════════════════════════════════════════════════ */
+const canvas = $('view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+if ('outputColorSpace' in renderer && THREE.SRGBColorSpace) renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#bfe9ff');
+scene.fog = new THREE.Fog('#cdeeff', 32, 68);
+
+const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 140);
+camera.position.set(0, 12, 14);
+
+scene.add(new THREE.HemisphereLight('#ffffff', '#a8d98b', 1.05));
+const sun = new THREE.DirectionalLight('#fff6e0', 1.45);
+sun.position.set(10, 18, 8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -26; sun.shadow.camera.right = 26;
+sun.shadow.camera.top = 26; sun.shadow.camera.bottom = -26;
+sun.shadow.camera.far = 70;
+sun.shadow.bias = -0.0006;
+scene.add(sun);
+
+// Ground outside the maze.
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(90, 90),
+  new THREE.MeshLambertMaterial({ color: '#a8dc7f' })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+ground.receiveShadow = true;
+scene.add(ground);
+
+let mazeGroup = new THREE.Group();
+scene.add(mazeGroup);
+
+function cellPos(c, r){
+  return { x: (c - (SIZE - 1) / 2) * CELL, z: (r - (SIZE - 1) / 2) * CELL };
+}
+function cellFromPos(x, z){
+  return { c: Math.round(x / CELL + (SIZE - 1) / 2), r: Math.round(z / CELL + (SIZE - 1) / 2) };
+}
+function isOpen(c, r){
+  return state.maze[r] !== undefined && state.maze[r][c] === 0;
+}
+
+const FLOOR_COLORS = ['#e6f8cf', '#d8f3bd'];
+const WALL_COLORS = ['#fff1d6', '#eaf7ff', '#ffe9ef', '#f2fbe1'];
+const CAP_COLORS = ['#ffd9a0', '#bfe9ff', '#ffc9d6', '#cdeeb0'];
+
+let goalStar = null;
+function buildMazeMeshes(){
+  // clear old maze
+  mazeGroup.traverse(obj => {
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material){
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+    }
+  });
+  scene.remove(mazeGroup);
+  mazeGroup = new THREE.Group();
+  scene.add(mazeGroup);
+  goalStar = null;
+
+  const wallGeo = new THREE.BoxGeometry(CELL * 0.99, WALL_H, CELL * 0.99);
+  const capGeo = new THREE.BoxGeometry(CELL * 1.01, 0.1, CELL * 1.01);
+  const floorGeo = new THREE.PlaneGeometry(CELL * 0.985, CELL * 0.985);
+
+  for (let r = 0; r < SIZE; r++){
+    for (let c = 0; c < SIZE; c++){
+      const { x, z } = cellPos(c, r);
+      if (state.maze[r][c] === 1){
+        const tint = (r + c) % WALL_COLORS.length;
+        const wall = new THREE.Mesh(wallGeo, new THREE.MeshLambertMaterial({ color: WALL_COLORS[tint] }));
+        wall.position.set(x, WALL_H / 2, z);
+        wall.castShadow = true; wall.receiveShadow = true;
+        mazeGroup.add(wall);
+
+        const cap = new THREE.Mesh(capGeo, new THREE.MeshLambertMaterial({ color: CAP_COLORS[tint] }));
+        cap.position.set(x, WALL_H + 0.04, z);
+        cap.castShadow = true;
+        mazeGroup.add(cap);
+      } else {
+        const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({ color: FLOOR_COLORS[(r + c) % 2] }));
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(x, 0.01, z);
+        floor.receiveShadow = true;
+        mazeGroup.add(floor);
+      }
+    }
+  }
+
+  // Goal: golden pad + floating star.
+  const goal = cellPos(state.goal.c, state.goal.r);
+  const pad = new THREE.Mesh(
+    new THREE.CylinderGeometry(CELL * 0.38, CELL * 0.42, 0.18, 28),
+    new THREE.MeshLambertMaterial({ color: '#ffcf5c', emissive: '#ffb300', emissiveIntensity: 0.35 })
+  );
+  pad.position.set(goal.x, 0.09, goal.z);
+  pad.receiveShadow = true;
+  mazeGroup.add(pad);
+
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(CELL * 0.3, CELL * 0.38, 32),
+    new THREE.MeshBasicMaterial({ color: '#fff3c4', side: THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(goal.x, 0.19, goal.z);
+  mazeGroup.add(ring);
+
+  goalStar = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.42),
+    new THREE.MeshLambertMaterial({ color: '#ffd24a', emissive: '#ff9f1c', emissiveIntensity: 0.6 })
+  );
+  goalStar.position.set(goal.x, 1.35, goal.z);
+  goalStar.castShadow = true;
+  mazeGroup.add(goalStar);
+
+  const goalLight = new THREE.PointLight('#ffd77a', 2.4, 9);
+  goalLight.position.set(goal.x, 2.2, goal.z);
+  mazeGroup.add(goalLight);
+}
+
+/* ── players ───────────────────────────────────────────────── */
+function makeExplorer(color){
+  const group = new THREE.Group();
+  const skin = '#f6c9a0';
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.26, 0.32, 0.62, 14),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  body.position.y = 0.55;
+  body.castShadow = true;
+  group.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.26, 20, 16),
+    new THREE.MeshLambertMaterial({ color: skin })
+  );
+  head.position.y = 1.03;
+  head.castShadow = true;
+  group.add(head);
+
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.3, 0.08, 18),
+    new THREE.MeshLambertMaterial({ color: '#ffffff' })
+  );
+  cap.position.y = 1.22;
+  group.add(cap);
+
+  const knob = new THREE.Mesh(
+    new THREE.SphereGeometry(0.07, 10, 8),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  knob.position.y = 1.29;
+  group.add(knob);
+
+  // Eyes on the +z side; the group is yawed to face travel direction.
+  [[-0.09, 1.06, 0.24], [0.09, 1.06, 0.24]].forEach(([x, y, z]) => {
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.045, 8, 8),
+      new THREE.MeshBasicMaterial({ color: '#22303c' })
+    );
+    eye.position.set(x, y, z);
+    group.add(eye);
+  });
+
+  const feet = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.34, 0.34, 0.06, 18),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3 })
+  );
+  feet.position.y = 0.04;
+  group.add(feet);
+
+  return group;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════════════ */
+const DIRS = [{ dc: 0, dr: -1 }, { dc: 1, dr: 0 }, { dc: 0, dr: 1 }, { dc: -1, dr: 0 }];
+
+const state = {
+  screen: 'home',
+  mode: 'words',
+  maze: [],
+  goal: { c: SIZE - 2, r: SIZE - 2 },
+  players: [],
+  busy: false,
+  over: false,
+  walk: null,
+  deck: [],
+  lastSentence: '',
+  pending: null
+};
+
+/* ══════════════════════════════════════════════════════════════
+   EDITABLE SENTENCE BANK (saved on this device)
+   ══════════════════════════════════════════════════════════════ */
+const BANK_KEY = 'gpa_maze_sentences_v1';
+const bank = { words: SENTENCES.words.slice(), tenses: SENTENCES.tenses.slice() };
+let bankMode = 'words';
+try {
+  const saved = JSON.parse(localStorage.getItem(BANK_KEY) || 'null');
+  ['words', 'tenses'].forEach(k => {
+    if (saved && Array.isArray(saved[k])) bank[k] = saved[k].filter(x => x && x.en && x.pa);
+  });
+} catch {}
+function saveBank(){
+  try { localStorage.setItem(BANK_KEY, JSON.stringify(bank)); } catch {}
+}
+function updateCounts(){
+  $('countWords').textContent = `${bank.words.length} sentences`;
+  $('countTenses').textContent = `${bank.tenses.length} sentences`;
+}
+function renderEditor(){
+  document.querySelectorAll('.editor-tab').forEach(t => t.classList.toggle('active', t.dataset.bank === bankMode));
+  const list = $('editorList');
+  list.innerHTML = '';
+  const items = bank[bankMode];
+  if (!items.length){
+    list.innerHTML = '<p class="editor-empty">Nothing here yet. Add one below.</p>';
+    return;
+  }
+  items.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'editor-row';
+    const box = document.createElement('div');
+    const en = document.createElement('b');
+    en.textContent = item.en;
+    const pa = document.createElement('small');
+    pa.textContent = item.pa;
+    box.append(en, pa);
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.title = 'Remove';
+    del.textContent = '✕';
+    del.addEventListener('click', () => {
+      bank[bankMode].splice(idx, 1);
+      saveBank();
+      updateCounts();
+      renderEditor();
+      $('editorMsg').textContent = 'Removed.';
+    });
+    row.append(box, del);
+    list.append(row);
+  });
+}
+
+function makePlayers(){
+  const name = ($('p1name').value || '').trim() || 'Player 1';
+  const mesh = makeExplorer('#e0495f');
+  scene.add(mesh);
+  const start = cellPos(1, 1);
+  mesh.position.set(start.x, 0, start.z);
+
+  // Face the first open direction from the entrance.
+  let dir = 2;
+  for (let i = 0; i < 4; i++){
+    if (isOpen(1 + DIRS[i].dc, 1 + DIRS[i].dr)){ dir = i; break; }
+  }
+  const yaw = Math.atan2(DIRS[dir].dc, DIRS[dir].dr);
+  mesh.rotation.y = yaw;
+
+  state.players = [{
+    name, color: '#e0495f', mesh,
+    c: 1, r: 1, dir,
+    score: 0, correct: 0, strikes: 0, out: false,
+    yaw, targetYaw: yaw, offset: 0
+  }];
+}
+
+function disposePlayers(){
+  state.players.forEach(p => {
+    scene.remove(p.mesh);
+    p.mesh.traverse(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    });
+  });
+  state.players = [];
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GAME FLOW
+   ══════════════════════════════════════════════════════════════ */
+function shuffle(list){
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function toast(msg){
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 1900);
+}
+
+function startGame(){
+  if (!bank[state.mode].length){
+    $('homeMsg').textContent = `Add at least one ${state.mode === 'tenses' ? 'tense' : 'sentence'} first — tap EDIT SENTENCES.`;
+    return;
+  }
+  $('homeMsg').textContent = '';
+  disposePlayers();
+  state.maze = nextMaze();
+  state.goal = { c: SIZE - 2, r: SIZE - 2 };
+  state.over = false;
+  state.busy = false;
+  state.walk = null;
+  state.deck = [];
+  state.lastSentence = '';
+  state.pending = null;
+  makePlayers();
+  buildMazeMeshes();
+  showScreen('play');
+  updateHUD();
+  updateMinimap();
+  const start = cellPos(1, 1);
+  camera.position.set(start.x, 6.5, start.z + 6.5);
+  lookTarget.set(start.x, 0.85, start.z + 2);
+  camera.lookAt(lookTarget);
+  setHint(`${state.players[0].name} starts. Turn, then press <b>Forward</b> — you walk to the next wall.`);
+  resizeRenderer();
+}
+
+function activePlayer(){ return state.players[0]; }
+
+function syncControls(){
+  document.querySelectorAll('.dpad button').forEach(b => { b.disabled = state.busy || state.over; });
+}
+
+function updateHUD(){
+  state.players.forEach((p, i) => {
+    $('pm' + i).classList.toggle('out', p.out);
+    $('pm' + i + 'name').textContent = p.name;
+    $('pm' + i + 'score').textContent = p.score;
+    $('pm' + i + 'mode').textContent = p.out ? 'OUT' : `${p.strikes} / 3 wrong`;
+    const hearts = $('pm' + i + 'hearts').children;
+    for (let k = 0; k < hearts.length; k++) hearts[k].classList.toggle('used', k < p.strikes);
+  });
+  syncControls();
+}
+
+function setHint(html){ $('hintbar').innerHTML = html; }
+
+/* ── questions ─────────────────────────────────────────────── */
+function nextSentence(){
+  if (!state.deck.length){
+    state.deck = shuffle(bank[state.mode]);
+    if (state.deck.length > 1 && state.deck[state.deck.length - 1].en === state.lastSentence){
+      const tmp = state.deck.pop();
+      state.deck.unshift(tmp);
+    }
+  }
+  const item = state.deck.pop();
+  state.lastSentence = item.en;
+  return item;
+}
+
+function askQuestion(action){
+  if (state.busy || state.over) return;
+  const p = activePlayer();
+  if (p.out) return;
+
+  // Turning is free.
+  if (action === 'left' || action === 'right'){
+    p.dir = (p.dir + (action === 'left' ? 3 : 1)) % 4;
+    p.targetYaw = Math.atan2(DIRS[p.dir].dc, DIRS[p.dir].dr);
+    setHint(`${p.name} turned ${action}. Now try <b>Forward</b>.`);
+    updateMinimap();
+    return;
+  }
+
+  const step = action === 'forward' ? DIRS[p.dir] : DIRS[(p.dir + 2) % 4];
+  const tc = p.c + step.dc, tr = p.r + step.dr;
+  if (!isOpen(tc, tr)){
+    setHint(`Wall ahead, ${p.name}. Turn with <b>Left</b> or <b>Right</b>.`);
+    toast('That way is blocked');
+    return;
+  }
+
+  state.busy = true;
+  syncControls();
+  state.pending = { action };
+  const item = nextSentence();
+  $('qWho').textContent = `${p.name.toUpperCase()} · SAY IT IN PUNJABI`;
+  $('qSentence').textContent = item.en;
+  $('qAnswerText').textContent = item.pa;
+  $('qAnswer').hidden = true;
+  $('btnReveal').textContent = 'SHOW ANSWER';
+  $('qmodal').classList.add('show');
+}
+
+function resolveQuestion(ok){
+  if (!state.busy || !state.pending) return;
+  const p = activePlayer();
+  const pending = state.pending;
+  state.pending = null;
+  state.busy = false;
+  $('qmodal').classList.remove('show');
+
+  if (!ok){
+    p.strikes += 1;
+    updateHUD();
+    if (p.strikes >= 3){
+      p.out = true;
+      toast(`${p.name} is out!`);
+      finish(null);
+      return;
+    }
+    toast(`Wrong · ${p.strikes}/3`);
+    setHint(`Wrong answer. ${3 - p.strikes} ${3 - p.strikes === 1 ? 'chance' : 'chances'} left. Turn, then press <b>Forward</b>.`);
+    return;
+  }
+
+  p.correct += 1;
+  p.score += 10;
+  updateHUD();
+  toast('Correct! +10');
+  beginWalk(p, pending.action);
+}
+
+/* Forward / Back keep walking the corridor until the next wall. */
+function beginWalk(p, action){
+  const step = action === 'forward' ? DIRS[p.dir] : DIRS[(p.dir + 2) % 4];
+  const path = [];
+  let c = p.c, r = p.r;
+  while (path.length < SIZE * SIZE && isOpen(c + step.dc, r + step.dr)){
+    c += step.dc;
+    r += step.dr;
+    path.push({ c, r });
+    if (c === state.goal.c && r === state.goal.r) break;
+  }
+  if (!path.length){ endRun(p); return; }
+  state.walk = { p, path, i: 0, acc: 0 };
+  state.busy = true;
+  syncControls();
+  setHint(`${p.name} is walking…`);
+}
+
+function endRun(p){
+  state.walk = null;
+  state.busy = false;
+  syncControls();
+  updateMinimap();
+  if (p.c === state.goal.c && p.r === state.goal.r){
+    p.score += 50;
+    updateHUD();
+    finish(p);
+    return;
+  }
+  setHint('Wall ahead. Turn with <b>Left</b> / <b>Right</b>, then press <b>Forward</b>.');
+}
+
+function finish(winner){
+  state.over = true;
+  state.busy = false;
+  state.walk = null;
+  $('qmodal').classList.remove('show');
+  updateHUD();
+  $('resultKicker').textContent = winner ? 'MAZE CLEARED' : 'OUT OF MOVES';
+  $('resultTitle').textContent = winner ? `${winner.name} escaped!` : `${state.players[0] ? state.players[0].name : 'Player'} is out`;
+  $('resultSub').textContent = winner
+    ? 'A new maze and a fresh set of sentences are waiting.'
+    : 'Three wrong answers. Try a new maze with new sentences.';
+  const rows = $('resultRows');
+  rows.innerHTML = '';
+  state.players.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'result-row';
+    row.innerHTML = `<i style="background:${p.color}"></i>
+      <div><b>${escapeHTML(p.name)}</b><br><small>${p.correct} correct · ${p.strikes} wrong${p.out ? ' · out' : ''}</small></div>
+      <span>${p.score}</span>`;
+    rows.appendChild(row);
+  });
+  $('result').classList.add('show');
+}
+
+function escapeHTML(str){
+  return String(str).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER LOOP
+   ══════════════════════════════════════════════════════════════ */
+function resizeRenderer(){
+  const stage = $('stage');
+  const w = Math.max(1, stage.clientWidth);
+  const h = Math.max(1, stage.clientHeight);
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+const camTarget = new THREE.Vector3();
+const lookTarget = new THREE.Vector3();
+let last = performance.now();
+
+function tick(now){
+  requestAnimationFrame(tick);
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  if (state.players.length){
+    if (state.walk){
+      const w = state.walk;
+      w.acc += dt * WALK_SPEED;
+      let reachedGoal = false;
+      while (w.acc >= 1 && w.i < w.path.length){
+        w.acc -= 1;
+        const cell = w.path[w.i++];
+        w.p.c = cell.c;
+        w.p.r = cell.r;
+        updateMinimap();
+        if (w.p.c === state.goal.c && w.p.r === state.goal.r){
+          reachedGoal = true;
+          break;
+        }
+      }
+      if (reachedGoal || w.i >= w.path.length) endRun(w.p);
+    }
+    const p = activePlayer() || state.players[0];
+    const target = cellPos(p.c, p.r);
+    state.players.forEach(other => {
+      const t = cellPos(other.c, other.r);
+      const tx = t.x + other.offset;
+      other.mesh.position.x += (tx - other.mesh.position.x) * Math.min(1, dt * 11);
+      other.mesh.position.z += (t.z - other.mesh.position.z) * Math.min(1, dt * 11);
+      let diff = other.targetYaw - other.yaw;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      other.yaw += diff * Math.min(1, dt * 9);
+      other.mesh.rotation.y = other.yaw;
+    });
+
+    if (state.screen === 'play'){
+      const heading = DIRS[p.dir];
+      camTarget.set(
+        target.x - heading.dc * 6.2,
+        5.4,
+        target.z - heading.dr * 6.2
+      );
+      camera.position.lerp(camTarget, 1 - Math.pow(0.0015, dt));
+      lookTarget.lerp(new THREE.Vector3(target.x + heading.dc * 1.4, 0.85, target.z + heading.dr * 1.4), 1 - Math.pow(0.0015, dt));
+      camera.lookAt(lookTarget);
+    }
+  }
+
+  if (goalStar){
+    goalStar.rotation.y += dt * 1.6;
+    goalStar.position.y = 1.35 + Math.sin(now / 420) * 0.12;
+  }
+  renderer.render(scene, camera);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MINIMAP
+   ══════════════════════════════════════════════════════════════ */
+const mm = $('mm');
+const mmx = mm.getContext('2d');
+function updateMinimap(){
+  if (!state.maze.length || !state.players.length) return;
+  const S = mm.width / SIZE;
+  mmx.clearRect(0, 0, mm.width, mm.height);
+  mmx.fillStyle = '#f4fbef';
+  mmx.fillRect(0, 0, mm.width, mm.height);
+  for (let r = 0; r < SIZE; r++){
+    for (let c = 0; c < SIZE; c++){
+      if (state.maze[r][c] === 1){
+        mmx.fillStyle = '#cfe3ee';
+        mmx.fillRect(c * S, r * S, S + 0.5, S + 0.5);
+      }
+    }
+  }
+  const gx = state.goal.c * S + S / 2, gy = state.goal.r * S + S / 2;
+  mmx.fillStyle = '#ffb300';
+  mmx.beginPath();
+  mmx.arc(gx, gy, S * 0.5, 0, Math.PI * 2);
+  mmx.fill();
+  state.players.forEach(p => {
+    const x = p.c * S + S / 2, y = p.r * S + S / 2;
+    mmx.beginPath();
+    mmx.arc(x, y, S * 0.42, 0, Math.PI * 2);
+    mmx.fillStyle = p.out ? '#9fb3c0' : p.color;
+    mmx.fill();
+    mmx.lineWidth = 1.4;
+    mmx.strokeStyle = '#ffffff';
+    mmx.stroke();
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UI WIRING
+   ══════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('selected', b === btn));
+    state.mode = btn.dataset.mode;
+    $('homeMsg').textContent = '';
+  });
+});
+updateCounts();
+
+$('btnStart').addEventListener('click', startGame);
+
+/* ── teacher gate ───────────────────────────────────────────── */
+const ADMIN_PASSWORD = 'Arena001';
+function openEditor(){
+  bankMode = state.mode;
+  $('editorMsg').textContent = '';
+  updateCounts();
+  renderEditor();
+  $('editor').classList.add('show');
+}
+function checkPassword(){
+  if ($('pwInput').value.trim() !== ADMIN_PASSWORD){
+    $('pwMsg').textContent = 'Wrong password. Ask the teacher.';
+    $('pwInput').select();
+    return;
+  }
+  $('pwgate').classList.remove('show');
+  openEditor();
+}
+$('btnEdit').addEventListener('click', () => {
+  $('pwInput').value = '';
+  $('pwMsg').textContent = '';
+  $('pwgate').classList.add('show');
+  setTimeout(() => $('pwInput').focus(), 60);
+});
+$('btnPwOk').addEventListener('click', checkPassword);
+$('btnPwCancel').addEventListener('click', () => $('pwgate').classList.remove('show'));
+$('pwInput').addEventListener('keydown', e => { if (e.key === 'Enter') checkPassword(); });
+$('btnCloseEditor').addEventListener('click', () => $('editor').classList.remove('show'));
+document.querySelectorAll('.editor-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    bankMode = tab.dataset.bank;
+    $('editorMsg').textContent = '';
+    renderEditor();
+  });
+});
+function addSentence(){
+  const en = $('newEn').value.trim();
+  const pa = $('newPa').value.trim();
+  if (!en || !pa){
+    $('editorMsg').textContent = 'Write the English sentence and the Punjabi answer.';
+    return;
+  }
+  bank[bankMode].push({ en, pa });
+  saveBank();
+  updateCounts();
+  renderEditor();
+  $('newEn').value = '';
+  $('newPa').value = '';
+  $('editorMsg').textContent = 'Added.';
+  $('newEn').focus();
+}
+$('btnAddSentence').addEventListener('click', addSentence);
+[$('newEn'), $('newPa')].forEach(input => {
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') addSentence(); });
+});
+
+$('btnExit').addEventListener('click', () => {
+  if (window.parent !== window){
+    window.parent.postMessage({ type: 'GPA_EXIT_MAZE' }, window.location.origin);
+  } else {
+    showScreen('home');
+  }
+});
+$('btnQuit').addEventListener('click', () => {
+  state.over = true;
+  state.walk = null;
+  $('qmodal').classList.remove('show');
+  $('result').classList.remove('show');
+  disposePlayers();
+  showScreen('home');
+});
+
+$('btnAgain').addEventListener('click', () => {
+  $('result').classList.remove('show');
+  startGame();
+});
+$('btnHome').addEventListener('click', () => {
+  $('result').classList.remove('show');
+  state.walk = null;
+  disposePlayers();
+  showScreen('home');
+});
+
+document.querySelectorAll('.dpad button').forEach(btn => {
+  btn.addEventListener('click', () => askQuestion(btn.dataset.act));
+});
+
+$('btnReveal').addEventListener('click', () => {
+  const ans = $('qAnswer');
+  ans.hidden = !ans.hidden;
+  $('btnReveal').textContent = ans.hidden ? 'SHOW ANSWER' : 'HIDE ANSWER';
+});
+$('btnCancel').addEventListener('click', () => {
+  if (!state.busy) return;
+  state.busy = false;
+  state.pending = null;
+  $('qmodal').classList.remove('show');
+  syncControls();
+  setHint('Question skipped. Turn with <b>Left</b> or <b>Right</b>, then move.');
+});
+$('btnRight').addEventListener('click', () => resolveQuestion(true));
+$('btnWrong').addEventListener('click', () => resolveQuestion(false));
+
+// Keyboard: arrows turn/move, R reveals, Y correct, N wrong.
+document.addEventListener('keydown', e => {
+  if (state.screen === 'play'){
+    if ($('result').classList.contains('show')) return;
+    if ($('qmodal').classList.contains('show')){
+      if (e.key.toLowerCase() === 'r') $('btnReveal').click();
+      if (e.key.toLowerCase() === 'y') resolveQuestion(true);
+      if (e.key.toLowerCase() === 'n') resolveQuestion(false);
+      if (e.key === 'Escape') $('btnCancel').click();
+      return;
+    }
+    if (e.key === 'ArrowLeft') askQuestion('left');
+    if (e.key === 'ArrowRight') askQuestion('right');
+    if (e.key === 'ArrowUp') askQuestion('forward');
+    if (e.key === 'ArrowDown') askQuestion('back');
+  }
+});
+
+$('btnFull').addEventListener('click', async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch {}
+});
+
+window.addEventListener('resize', () => { resizeRenderer(); updateMinimap(); });
+
+/* ══════════════════════════════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════════════════════════════ */
+state.maze = buildMaze(MAP_SEEDS[0]);
+buildMazeMeshes();
+updateMinimap();
+resizeRenderer();
+requestAnimationFrame(tick);
+
+try {
+  if (window.parent !== window) window.parent.postMessage({ type: 'GPA_MAZE_READY' }, window.location.origin);
+} catch {}
+</script>
+</body>
+</html>

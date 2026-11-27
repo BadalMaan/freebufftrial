@@ -216,6 +216,12 @@
 #warrior3DLayer canvas{display:block;width:100%;height:100%}
 #battleCanvas{position:relative;z-index:1}
 #posterCanvas,#p1PreviewCanvas,#p2PreviewCanvas,#battleCanvas{image-rendering:auto}
+#bgPicker{display:flex;flex-wrap:nowrap;justify-content:flex-start;gap:6px;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:1px 2px;scrollbar-width:thin}
+.bg-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-family:inherit;font-size:9.5px;font-weight:800;letter-spacing:.05em;line-height:1;white-space:nowrap;cursor:pointer;transition:border-color .15s,background .15s,color .15s,box-shadow .15s}
+.bg-chip:hover{border-color:#60a5fa;color:#1d4ed8}
+.bg-chip.active{border-color:#2563eb;background:#dbeafe;color:#1e40af;box-shadow:0 0 0 2px rgba(37,99,235,.18)}
+.bg-dot{width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+  .p-preview{flex:0 0 auto!important;height:clamp(180px,36vh,360px)!important;min-height:0!important}
 
 /* ---- Cinematic victory reveal (shown after the champion's lap) ---- */
 #victoryBanner.victory-overlay{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:14px;text-align:center;background:radial-gradient(ellipse at 50% 40%,rgba(14,44,80,.42) 0%,rgba(4,16,32,.86) 58%,rgba(2,10,22,.95) 100%);opacity:0;transition:opacity .5s ease}
@@ -437,7 +443,7 @@
         </div>
 
         <!-- Live P1 Preview Canvas -->
-        <div class="relative flex-1 min-h-[110px] my-1.5 rounded-2xl bg-gradient-to-b from-sky-100/70 to-white border border-sky-100 overflow-hidden">
+        <div class="p-preview relative my-1.5 rounded-2xl bg-gradient-to-b from-sky-100/70 to-white border border-sky-100 overflow-hidden">
           <canvas id="p1PreviewCanvas"></canvas>
         </div>
 
@@ -457,11 +463,11 @@
       <div class="rounded-3xl bg-gradient-to-b from-orange-50/90 to-white border-2 border-orange-200 shadow-md p-3 sm:p-4 flex flex-col justify-between min-h-0">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-extrabold tracking-widest text-orange-700 uppercase">PLAYER 2</span>
-          <span id="p2SuitBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800">WARRIOR</span>
+          <span id="p2SuitBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800">WIZARD</span>
         </div>
 
         <!-- Live P2 Preview Canvas -->
-        <div class="relative flex-1 min-h-[110px] my-1.5 rounded-2xl bg-gradient-to-b from-orange-100/70 to-white border border-orange-100 overflow-hidden">
+        <div class="p-preview relative my-1.5 rounded-2xl bg-gradient-to-b from-orange-100/70 to-white border border-orange-100 overflow-hidden">
           <canvas id="p2PreviewCanvas"></canvas>
         </div>
 
@@ -471,12 +477,18 @@
             <label for="p2NameInput" class="block text-[10px] font-bold tracking-wider text-slate-500 uppercase mb-1">
               PLAYER 2 NAME
             </label>
-            <input id="p2NameInput" type="text" maxlength="16" value="WARRIOR" placeholder="Enter Player 2 name..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-300 focus:border-orange-600 focus:ring-2 focus:ring-orange-200 outline-none font-display font-extrabold text-sm text-orange-900 uppercase transition" />
+            <input id="p2NameInput" type="text" maxlength="16" value="WIZARD" placeholder="Enter Player 2 name..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-300 focus:border-orange-600 focus:ring-2 focus:ring-orange-200 outline-none font-display font-extrabold text-sm text-orange-900 uppercase transition" />
           </div>
           <div id="p2SuitPills" class="char-pick"></div>
         </div>
       </div>
     </main>
+
+    <!-- Arena background picker -->
+    <div class="w-full max-w-6xl mx-auto flex flex-wrap items-center justify-center gap-1.5 shrink-0 mb-1.5">
+      <span class="text-[10px] font-black tracking-widest text-slate-400 uppercase mr-1">ARENA</span>
+      <div id="bgPicker"></div>
+    </div>
 
     <!-- Bottom Enter Arena Action -->
     <footer class="w-full max-w-6xl mx-auto flex items-center justify-center shrink-0 pb-0.5">
@@ -510,6 +522,7 @@
         <span class="text-[9px] font-extrabold tracking-widest text-slate-400 uppercase">ROUND</span>
         <span id="hudRoundNum" class="font-display text-base sm:text-lg font-black text-slate-900 leading-none">01</span>
         <div class="mt-1 flex items-center gap-1.5">
+          <button id="arenaThemeBtn" type="button" class="text-[10px] font-black tracking-wide text-indigo-800 bg-indigo-100 hover:bg-indigo-200 border border-indigo-300 rounded px-1.5 py-0.5 cursor-pointer" title="Change the arena background">&#127912; ARENA</button>
           <button id="fullscreenBtn" type="button" class="text-[10px] font-black tracking-wide text-sky-800 bg-sky-100 hover:bg-sky-200 border border-sky-300 rounded px-1.5 py-0.5 cursor-pointer" title="Play in full screen">&#9974; FULLSCREEN</button>
           <button id="exitArenaBtn" type="button" class="text-[10px] font-bold text-slate-500 hover:text-slate-900 underline cursor-pointer">
             EXIT
@@ -521,7 +534,7 @@
       <div class="min-w-0">
         <div class="flex items-center justify-between text-[11px] sm:text-xs font-extrabold mb-1">
           <span id="hudP2PowerText" class="font-display text-orange-700 tabular-nums">100%</span>
-          <span id="hudP2Name" class="font-display text-orange-900 truncate uppercase">WARRIOR</span>
+          <span id="hudP2Name" class="font-display text-orange-900 truncate uppercase">WIZARD</span>
         </div>
         <div class="w-full h-2.5 sm:h-3 rounded-full bg-slate-200 overflow-hidden border border-slate-300/80 flex justify-end">
           <div id="hudP2PowerBar" class="h-full bg-gradient-to-l from-orange-500 to-rose-600 transition-all duration-300" style="width: 100%;"></div>
@@ -603,27 +616,27 @@
     const HERO_SUITS = [
       {
         id: 'nova',
-        label: 'NOVA',
-        archetype: 'LIGHTNING VANGUARD',
-        capeColor: '#1d4ed8',
-        suitPrimary: '#2563eb',
-        suitSecondary: '#0ea5e9',
-        armorPlate: '#e2e8f0',
-        skinTone: '#f1c29b',
-        hairColor: '#3b2314',
-        visorColor: '#38bdf8'
+        label: 'SPIDER',
+        archetype: 'ACROBAT DUELIST',
+        capeColor: '#1e3a8a',
+        suitPrimary: '#dc2626',
+        suitSecondary: '#1d4ed8',
+        armorPlate: '#e5e7eb',
+        skinTone: '#dc2626',
+        hairColor: '#111827',
+        visorColor: '#f8fafc'
       },
       {
         id: 'volt',
-        label: 'VOLT',
-        archetype: 'STORM STRIKER',
-        capeColor: '#0284c7',
-        suitPrimary: '#0369a1',
-        suitSecondary: '#38bdf8',
-        armorPlate: '#f8fafc',
-        skinTone: '#e8b38a',
-        hairColor: '#1e293b',
-        visorColor: '#7dd3fc'
+        label: 'KRATOS',
+        archetype: 'GOD OF WAR',
+        capeColor: '#0b0b12',
+        suitPrimary: '#7f1d1d',
+        suitSecondary: '#450a0a',
+        armorPlate: '#d4af6a',
+        skinTone: '#8b2e2e',
+        hairColor: '#111827',
+        visorColor: '#f87171'
       },
       {
         id: 'frost',
@@ -663,15 +676,15 @@
       },
       {
         id: 'solis',
-        label: 'SOLIS',
-        archetype: 'SOLAR TITAN',
-        capeColor: '#d97706',
-        suitPrimary: '#ea580c',
-        suitSecondary: '#facc15',
-        armorPlate: '#fef3c7',
-        skinTone: '#d99b6c',
-        hairColor: '#292524',
-        visorColor: '#fde047'
+        label: 'SUPERHERO',
+        archetype: 'METAHUMAN',
+        capeColor: '#14532d',
+        suitPrimary: '#4d7c3a',
+        suitSecondary: '#2f4a24',
+        armorPlate: '#9ca3af',
+        skinTone: '#86a96b',
+        hairColor: '#1c2a16',
+        visorColor: '#fca5a5'
       }
     ];
 
@@ -725,46 +738,43 @@
     };
     POWER_ARSENAL.forEach((power) => { power.art = POWER_ART[power.id] || null; });
 
-    // Six selectable champions. Every champion is fully rigged and animated, has
-    // its own fighting flavour and its own five-power arsenal. MEGAPOWER is the
-    // fixed finisher; VENOM is the shared wildcard and obeys the same clash rules
-    // as every other power, so it can win or lose like the rest.
+    // Six selectable warriors — six different bodies: the ogre GIANT, the WIZARD,
+    // the plate-knight WARRIOR, the knight CAPTAIN, the SPARTAN, and the REAPER,
+    // who is modelled and rigged in code (arena-3d.js) like the rest of the cast.
+    // Ids match the 3D layer's character keys one to one.
+    // Every fighter carries five powers: four elemental techs plus the fixed
+    // MEGAPOWER finisher. VENOM is the shared wildcard and obeys the same clash
+    // rules as every other power, so it can win or lose like the rest.
     const CHARACTERS = [
       {
-        id: 'giant', name: 'GIANT', tag: 'BRUTE', emoji: '\u{1F5FF}', suitId: 'nova', accent: '#22c55e',
-        model: '/models/animated-ogre-warrior.glb', height: 5.15,
+        id: 'giant', name: 'GIANT', tag: 'BRUTE', emoji: '\u{1FA93}', suitId: 'frost', accent: '#22c55e',
         powers: ['earth', 'fire', 'thunder', 'megapower', 'venom'],
         style: { lean: 1.20, lunge: 1.22, jump: 1.10, lap: 1.10, recoil: 1.25, taunt: 'roar' }
       },
       {
-        id: 'warrior', name: 'WARRIOR', tag: 'KNIGHT', emoji: '\u{2694}\u{FE0F}', suitId: 'ember', accent: '#38bdf8',
-        model: '/models/animated-plate-knight.glb', height: 4.95,
-        powers: ['frost', 'wind', 'phoenix', 'megapower', 'venom'],
-        style: { lean: 0.95, lunge: 1.05, jump: 0.95, lap: 1.0, recoil: 1.0, taunt: 'salute' }
-      },
-      {
-        id: 'zombie', name: 'ZOMBIE', tag: 'UNDEAD', emoji: '\u{1F9DF}', suitId: 'frost', accent: '#84cc16',
-        model: '/models/zombie.glb', height: 4.85,
-        powers: ['shadow', 'earth', 'water', 'megapower', 'venom'],
-        style: { lean: 1.45, lunge: 0.72, jump: 0.55, lap: 0.62, recoil: 1.30, taunt: 'lurch' }
-      },
-      {
-        id: 'wizard', name: 'WIZARD', tag: 'ARCANE', emoji: '\u{1F9D9}', suitId: 'hex', accent: '#a855f7',
-        model: '/models/wizard.glb', height: 4.95,
+        id: 'wizard', name: 'WIZARD', tag: 'ARCANE', emoji: '\u{1F52E}', suitId: 'hex', accent: '#a855f7',
         powers: ['plasma', 'frost', 'solar', 'megapower', 'venom'],
         style: { lean: 0.82, lunge: 0.68, jump: 0.80, lap: 0.72, recoil: 0.90, taunt: 'spin' }
       },
       {
-        id: 'soldier', name: 'SOLDIER', tag: 'TACTICAL', emoji: '\u{1F52B}', suitId: 'volt', accent: '#22d3ee',
-        model: '/models/soldier-tactical.glb', height: 4.90,
-        powers: ['thunder', 'fire', 'shadow', 'megapower', 'venom'],
-        style: { lean: 1.00, lunge: 0.92, jump: 1.05, lap: 0.95, recoil: 1.15, taunt: 'march' }
+        id: 'warrior', name: 'WARRIOR', tag: 'KNIGHT', emoji: '\u{2694}\u{FE0F}', suitId: 'ember', accent: '#38bdf8',
+        powers: ['frost', 'wind', 'phoenix', 'megapower', 'venom'],
+        style: { lean: 0.95, lunge: 1.05, jump: 0.95, lap: 1.00, recoil: 1.00, taunt: 'salute' }
       },
       {
-        id: 'superhero', name: 'SUPERHERO', tag: 'COSMIC', emoji: '\u{1F9B8}', suitId: 'solis', accent: '#ef4444',
-        model: '/models/superhero.glb', height: 5.00,
-        powers: ['solar', 'wind', 'water', 'megapower', 'venom'],
-        style: { lean: 0.90, lunge: 1.35, jump: 1.45, lap: 1.25, recoil: 0.85, taunt: 'fly' }
+        id: 'captain', name: 'SPIDER', tag: 'ACROBAT', emoji: '\u{1F577}\u{FE0F}', suitId: 'nova', accent: '#ef4444',
+        powers: ['thunder', 'shadow', 'water', 'megapower', 'venom'],
+        style: { lean: 0.86, lunge: 1.24, jump: 1.26, lap: 1.16, recoil: 0.92, taunt: 'fly' }
+      },
+      {
+        id: 'spartan', name: 'SUPERHERO', tag: 'METAHUMAN', emoji: '\u{1F9B8}', suitId: 'solis', accent: '#84cc16',
+        powers: ['wind', 'earth', 'water', 'megapower', 'venom'],
+        style: { lean: 1.02, lunge: 1.18, jump: 1.20, lap: 1.12, recoil: 0.94, taunt: 'fly' }
+      },
+      {
+        id: 'reaper', name: 'KRATOS', tag: 'GOD OF WAR', emoji: '\u{1FA93}', suitId: 'volt', accent: '#dc2626',
+        powers: ['shadow', 'venom', 'fire', 'megapower', 'phoenix'],
+        style: { lean: 0.96, lunge: 1.14, jump: 0.94, lap: 1.02, recoil: 0.90, taunt: 'roar' }
       }
     ];
     const CHARACTER_MAP = new Map(CHARACTERS.map(c => [c.id, c]));
@@ -855,8 +865,8 @@ const p1NameInput = document.getElementById('p1NameInput');
       p1: {
         name: 'GIANT',
         characterId: 'giant',
-        suitId: 'nova',
-        hero: HERO_SUITS[0],
+        suitId: 'frost',
+        hero: HERO_SUITS[1],
         power: 100,
         slots: [],
         pickedIndex: null,
@@ -867,9 +877,9 @@ const p1NameInput = document.getElementById('p1NameInput');
         recoilX: 0
       },
       p2: {
-        name: 'WARRIOR',
-        characterId: 'warrior',
-        suitId: 'ember',
+        name: 'WIZARD',
+        characterId: 'wizard',
+        suitId: 'hex',
         hero: HERO_SUITS[3],
         power: 100,
         slots: [],
@@ -1362,80 +1372,180 @@ const p1NameInput = document.getElementById('p1NameInput');
     }
 
     // =========================================================================
-    // 6. REALISTIC 2D HERO RENDERER (ATHLETIC PROPORTIONS, ARMOR & CAPE)
+    // 6. REALISTIC 2D HERO RENDERER (ARTICULATED FALL, SIT, STAND)
     // =========================================================================
+    // Per-fighter motion signature: cast strength, resting lean, how far the body
+    // rolls while it is down, and how this fighter climbs back to its feet.
+    // Six fighters, six different knockdowns and six different recoveries.
+    const HERO_MOTION = {
+      frost: { cast: 1.08, lift: -.03, twist: .20, getup: 'sit' },
+      hex:   { cast: .84, lift: .05, twist: -.24, getup: 'roll' },
+      ember: { cast: 1.00, lift: 0, twist: .07, getup: 'push' },
+      nova:  { cast: .94, lift: -.02, twist: -.10, getup: 'sit' },
+      solis: { cast: 1.16, lift: .03, twist: .22, getup: 'push' },
+      volt:  { cast: .90, lift: .01, twist: -.16, getup: 'roll' }
+    };
+    // Floor poses, keyed in seconds from the moment the hit lands:
+    // [time, hip height, torso angle, L thigh, L knee, R thigh, R knee]
+    // Thigh 0 = straight down, +1.57 = flat forward. Knee = fold of the shin.
+    // The torso angle goes negative because a body falls backwards, not forwards.
+    const FALL_KEYS = {
+      sit: [
+        [0.00, 56, 0.00, 0.00, 0.05, 0.00, 0.05],
+        [0.24, 55, -0.16, -0.12, 0.20, 0.10, 0.26],
+        [0.52, 47, -0.34, 0.55, 1.15, 0.62, 1.20],
+        [1.02, 14, -1.42, 2.18, 1.95, 1.92, 1.80],
+        [1.18, 12, -1.50, 2.24, 2.05, 1.98, 1.88],
+        [2.00, 12, -1.48, 2.20, 2.00, 1.94, 1.84],
+        [2.42, 16, -1.05, 2.05, 2.05, 1.90, 1.95],
+        [2.78, 30, -0.40, 1.25, 2.05, 1.10, 2.00],
+        [3.12, 54, -0.06, 0.25, 0.45, 0.18, 0.40],
+        [3.32, 56, 0.00, 0.00, 0.05, 0.00, 0.05]
+      ],
+      push: [
+        [0.00, 56, 0.00, 0.00, 0.05, 0.00, 0.05],
+        [0.22, 55, -0.14, -0.10, 0.18, 0.08, 0.24],
+        [0.50, 46, -0.30, 0.60, 1.20, 0.66, 1.25],
+        [1.00, 14, -1.40, 2.16, 1.95, 1.90, 1.80],
+        [1.16, 12, -1.48, 2.22, 2.05, 1.96, 1.88],
+        [1.95, 12, -1.46, 2.18, 2.00, 1.92, 1.84],
+        [2.32, 24, -0.85, 1.55, 1.55, 1.55, 2.05],
+        [2.66, 34, -0.50, 1.10, 1.90, 1.00, 1.95],
+        [3.00, 52, -0.14, 0.40, 0.80, 0.30, 0.75],
+        [3.32, 56, 0.00, 0.00, 0.05, 0.00, 0.05]
+      ],
+      roll: [
+        [0.00, 56, 0.00, 0.00, 0.05, 0.00, 0.05],
+        [0.22, 55, -0.12, -0.06, 0.16, 0.06, 0.22],
+        [0.48, 47, -0.26, 0.50, 1.30, 0.30, 0.80],
+        [1.00, 13, -1.30, 2.10, 1.85, 1.55, 0.32],
+        [1.18, 11, -1.38, 2.16, 1.90, 1.60, 0.36],
+        [1.95, 11, -1.34, 2.12, 1.86, 1.58, 0.34],
+        [2.35, 20, -0.75, 1.70, 1.95, 1.57, 0.15],
+        [2.70, 32, -0.42, 1.35, 2.10, 0.55, 1.95],
+        [3.05, 52, -0.12, 0.45, 1.15, 0.25, 0.65],
+        [3.32, 56, 0.00, 0.00, 0.05, 0.00, 0.05]
+      ]
+    };
+    function sampleFall(keys, e) {
+      if (e <= keys[0][0]) return { hip: keys[0][1], tor: keys[0][2], thL: keys[0][3], knL: keys[0][4], thR: keys[0][5], knR: keys[0][6], tw: 0 };
+      for (let i = 1; i < keys.length; i++) {
+        if (e <= keys[i][0] || i === keys.length - 1) {
+          const a = keys[i - 1], b = keys[i];
+          const span = Math.max(1e-4, b[0] - a[0]);
+          const k = Math.min(1, Math.max(0, (e - a[0]) / span));
+          const s = k * k * (3 - 2 * k);
+          return {
+            hip: a[1] + (b[1] - a[1]) * s,
+            tor: a[2] + (b[2] - a[2]) * s,
+            thL: a[3] + (b[3] - a[3]) * s,
+            knL: a[4] + (b[4] - a[4]) * s,
+            thR: a[5] + (b[5] - a[5]) * s,
+            knR: a[6] + (b[6] - a[6]) * s,
+            tw: 0
+          };
+        }
+      }
+      return { hip: 56, tor: 0, thL: 0, knL: .05, thR: 0, knR: .05, tw: 0 };
+    }
+
     function drawRealisticHero(ctx, cx, groundY, scale, facing, hero, animState, time, hurtTimer, recoilX, fallTimer = 0) {
-      ctx.save();
+      const mot = HERO_MOTION[hero.id] || HERO_MOTION.ember;
       const sway = Math.sin(time * 3.4) * 2.2;
       const breath = Math.cos(time * 3.4) * 1.8;
       const shakeOffset = hurtTimer > 0 ? Math.sin(time * 55) * 6 : 0;
 
+      // ---- Knockdown, posed limb by limb --------------------------------
+      // stagger → knees buckle → the body topples backwards → back hits the
+      // terrace → it lies there → sits up → rises through a crouch. Each
+      // fighter uses its own recovery table, so no two falls look the same.
+      let pose = { hip: 56, tor: mot.lift || 0, thL: 0, knL: .05, thR: 0, knR: .05, tw: 0 };
+      if (fallTimer > 0) {
+        const e = Math.max(0, FALL_DURATION - fallTimer);
+        pose = sampleFall(FALL_KEYS[mot.getup] || FALL_KEYS.sit, e);
+        const down = Math.min(1, Math.max(0, (e - .55) / .5)) *
+                     (1 - Math.min(1, Math.max(0, (e - 2.50) / .70)));
+        pose.tw = mot.twist * down;
+      }
+      const downed = Math.min(1, Math.max(0, -pose.tor / 1.5));
+
+      ctx.save();
       ctx.translate(cx + recoilX + shakeOffset, groundY);
-      // fallTimer counts DOWN, so the fall has to be driven by the elapsed part of
-      // it — otherwise the body snaps straight into a full lean on the hit frame.
-      const fallElapsed = fallTimer > 0 ? Math.max(0, FALL_DURATION - fallTimer) : 0;
-      const fallProgress = fallTimer > 0 ? Math.min(1, fallElapsed / 0.55) : 0;
-      const getUp = fallTimer > 0 ? Math.max(0, Math.min(1, (fallElapsed - FALL_TIMINGS.riseStart) / Math.max(.01, FALL_TIMINGS.riseEnd - FALL_TIMINGS.riseStart))) : 0;
-      const fallAmount = Math.sin(fallProgress * Math.PI / 2) * (1 - getUp);
-      // A hit knocks the complete body sideways; the cape and limbs follow the fall.
-      ctx.rotate(-facing * fallAmount * 1.12);
-      ctx.translate(0, fallAmount * 10);
+
+      // The shadow stays on the terrace and stretches along the fallen body.
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.26)';
+      ctx.beginPath();
+      ctx.ellipse(-downed * 52 * scale, 5, (48 + downed * 56) * scale, (11 + downed * 3) * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.scale(facing * scale, scale);
 
-      // Ground contact shadow
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
-      ctx.beginPath();
-      ctx.ellipse(0, 4, 48, 11, 0, 0, Math.PI * 2);
-      ctx.fill();
+      const hipY = -pose.hip;
+      const hipX = -downed * 12;   // the hips travel back with the body
+      const THIGH = 30, SHIN = 26;
+      const drawLeg = (thigh, knee, front) => {
+        const kx = hipX + Math.sin(thigh) * THIGH;
+        const ky = hipY + Math.cos(thigh) * THIGH;
+        const shinA = thigh - knee;
+        const ax = kx + Math.sin(shinA) * SHIN;
+        const ay = ky + Math.cos(shinA) * SHIN;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = front ? hero.suitPrimary : '#1e293b';
+        ctx.lineWidth = 17;
+        ctx.beginPath(); ctx.moveTo(hipX, hipY); ctx.lineTo(kx, ky); ctx.stroke();
+        ctx.strokeStyle = front ? hero.suitSecondary : '#0f172a';
+        ctx.lineWidth = 14;
+        ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(ax, ay); ctx.stroke();
+        ctx.fillStyle = hero.armorPlate;
+        ctx.beginPath(); ctx.arc(kx, ky, 6.5, 0, Math.PI * 2); ctx.fill();
+        ctx.save();
+        ctx.translate(ax, ay);
+        ctx.rotate(shinA);
+        ctx.fillStyle = front ? hero.suitPrimary : '#1e293b';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(-9, -12, 26, 13, 5); else ctx.rect(-9, -12, 26, 13);
+        ctx.fill();
+        ctx.fillStyle = hero.armorPlate;
+        ctx.globalAlpha = .8;
+        ctx.fillRect(-2, -12, 8, 3);
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      };
+      drawLeg(pose.thL, pose.knL, false);
+      drawLeg(pose.thR, pose.knR, true);
 
-      // Flowing Cloth Cape behind back
-      const capeWave = Math.sin(time * 5.2) * 8 + (animState === 'cast' ? -10 : 0);
-      const capeGrad = ctx.createLinearGradient(-12, -118, -56, -12);
-      capeGrad.addColorStop(0, hero.capeColor);
-      capeGrad.addColorStop(1, '#0f172a');
-      ctx.fillStyle = capeGrad;
-      ctx.beginPath();
-      ctx.moveTo(-10, -116 + breath);
-      ctx.quadraticCurveTo(-48 + capeWave * 0.5, -72, -58 + capeWave, -14);
-      ctx.lineTo(-22 + capeWave * 0.6, -24);
-      ctx.lineTo(-4, -102 + breath);
-      ctx.closePath();
-      ctx.fill();
+      // Torso, head and arms swing around the hips as one piece.
+      ctx.save();
+      ctx.translate(hipX, hipY);
+      if (pose.tw) ctx.rotate(pose.tw * .55);
+      ctx.rotate(pose.tor);
+      ctx.translate(0, 56);
 
-      // Back Leg & Boot
-      ctx.fillStyle = '#1e293b';
-      ctx.beginPath();
-      ctx.moveTo(-14, -56);
-      ctx.lineTo(-28, -8);
-      ctx.lineTo(-10, -8);
-      ctx.lineTo(2, -56);
-      ctx.closePath();
-      ctx.fill();
+      // Cast and celebration poses differ per fighter: reach, lift and whether
+      // the off arm is thrown wide, high or tucked in guard.
+      const castFlavor = hero.id.charCodeAt(0) % 4;
+      const reachScale = (mot.cast || 1) * (1 + castFlavor * .05);
+      const armReach = (animState === 'cast' ? (24 + castFlavor * 6) * reachScale : (animState === 'win' ? 14 : 4)) + downed * 16;
+      const armLift = (animState === 'cast' ? (-6 - castFlavor * 5) : (animState === 'win' ? -24 : sway * 0.4)) - downed * 18;
+      const guardHigh = castFlavor === 1 || castFlavor === 3;
 
-      ctx.fillStyle = hero.suitPrimary;
-      ctx.fillRect(-30, -16, 22, 16);
-
-      // Front Leg & Sculpted Greave
-      ctx.fillStyle = '#0f172a';
+      // Back arm first so it reads behind the chest plate.
+      ctx.strokeStyle = hero.suitSecondary;
+      ctx.lineWidth = 15;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(4, -56);
-      ctx.lineTo(22, -8);
-      ctx.lineTo(40, -8);
-      ctx.lineTo(22, -56);
-      ctx.closePath();
-      ctx.fill();
-
-      const legGrad = ctx.createLinearGradient(6, -54, 34, -10);
-      legGrad.addColorStop(0, hero.suitPrimary);
-      legGrad.addColorStop(1, hero.suitSecondary);
-      ctx.fillStyle = legGrad;
-      ctx.beginPath();
-      ctx.moveTo(6, -52);
-      ctx.lineTo(18, -14);
-      ctx.lineTo(34, -14);
-      ctx.lineTo(22, -52);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(-14, -106 + breath);
+      if (animState === 'win') {
+        ctx.lineTo(-28, -122 - castFlavor * 3);
+        ctx.lineTo(-34, -138 - castFlavor * 4);
+      } else if (guardHigh) {
+        ctx.lineTo(-28, -112 + breath);
+        ctx.lineTo(-18, -96 + breath);
+      } else {
+        ctx.lineTo(-30 - armReach * .2, -86 + armLift * .3);
+        ctx.lineTo(-36 - armReach * .3, -70 + armLift * .5);
+      }
+      ctx.stroke();
 
       // Athletic Torso & Chest Armor
       const torsoGrad = ctx.createLinearGradient(-22, -116, 24, -54);
@@ -1462,8 +1572,6 @@ const p1NameInput = document.getElementById('p1NameInput');
       ctx.fill();
 
       // Front Arm & Power Gauntlet (extends forward when casting)
-      const armReach = animState === 'cast' ? 28 : (animState === 'win' ? 14 : 4);
-      const armLift = animState === 'cast' ? -10 : (animState === 'win' ? -24 : sway * 0.4);
       ctx.strokeStyle = hero.suitPrimary;
       ctx.lineWidth = 17;
       ctx.lineCap = 'round';
@@ -1479,25 +1587,31 @@ const p1NameInput = document.getElementById('p1NameInput');
       ctx.arc(38 + armReach, -68 + armLift, 12, 0, Math.PI * 2);
       ctx.fill();
 
-      // Broad shoulder armour gives the champions a stronger superhero silhouette.
-      const shoulderGrad=ctx.createLinearGradient(-36,-112,36,-88);
-      shoulderGrad.addColorStop(0,hero.armorPlate); shoulderGrad.addColorStop(.45,hero.suitSecondary); shoulderGrad.addColorStop(1,hero.suitPrimary);
-      ctx.fillStyle=shoulderGrad;
-      ctx.beginPath();ctx.moveTo(-27,-113);ctx.lineTo(-42,-103);ctx.lineTo(-34,-86);ctx.lineTo(-17,-91);ctx.lineTo(-15,-108);ctx.closePath();ctx.fill();
-      ctx.beginPath();ctx.moveTo(22,-113);ctx.lineTo(39,-103);ctx.lineTo(31,-86);ctx.lineTo(15,-91);ctx.lineTo(14,-108);ctx.closePath();ctx.fill();
+      // Broad shoulder armour gives the champions a stronger silhouette.
+      const shoulderGrad = ctx.createLinearGradient(-36, -112, 36, -88);
+      shoulderGrad.addColorStop(0, hero.armorPlate);
+      shoulderGrad.addColorStop(.45, hero.suitSecondary);
+      shoulderGrad.addColorStop(1, hero.suitPrimary);
+      ctx.fillStyle = shoulderGrad;
+      ctx.beginPath(); ctx.moveTo(-27, -113); ctx.lineTo(-42, -103); ctx.lineTo(-34, -86); ctx.lineTo(-17, -91); ctx.lineTo(-15, -108); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(22, -113); ctx.lineTo(39, -103); ctx.lineTo(31, -86); ctx.lineTo(15, -91); ctx.lineTo(14, -108); ctx.closePath(); ctx.fill();
 
       // Head & Sculpted Hair / Visor
       const headY = -132 + breath;
       ctx.fillStyle = hero.skinTone;
+      ctx.fillRect(0, headY + 9, 9, 10);
       ctx.beginPath();
       ctx.arc(4, headY, 13.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Glowing Visor / Mask
+      // Headband and eyes — an athlete, not a masked superhero.
       ctx.fillStyle = hero.visorColor;
       ctx.beginPath();
-      ctx.roundRect(4, headY - 4, 14, 6.5, 3);
+      ctx.roundRect(-8, headY - 9, 26, 5.5, 2.5);
       ctx.fill();
+      ctx.fillStyle = '#24303f';
+      ctx.beginPath(); ctx.arc(9, headY + .5, 1.9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(15.5, headY + .5, 1.4, 0, Math.PI * 2); ctx.fill();
 
       // Styled Hair Crest
       ctx.fillStyle = hero.hairColor;
@@ -1510,38 +1624,37 @@ const p1NameInput = document.getElementById('p1NameInput');
       ctx.closePath();
       ctx.fill();
 
-      // Layered specular armour details: bevels, panel seams and metallic hardware.
+      // Layered specular armour details: bevels, panel seams and hardware.
       ctx.save();
       ctx.lineJoin = 'round';
       ctx.shadowColor = 'rgba(2,12,28,.48)'; ctx.shadowBlur = 9; ctx.shadowOffsetY = 3;
-      const chestPlate = ctx.createLinearGradient(-17,-111,18,-78);
-      chestPlate.addColorStop(0,'rgba(255,255,255,.58)');
-      chestPlate.addColorStop(.22,hero.armorPlate);
-      chestPlate.addColorStop(.72,hero.suitSecondary);
-      chestPlate.addColorStop(1,'rgba(4,18,35,.78)');
-      ctx.fillStyle=chestPlate;
-      ctx.beginPath();ctx.moveTo(-16,-108+breath);ctx.lineTo(17,-108+breath);ctx.lineTo(12,-79+breath);ctx.lineTo(0,-73+breath);ctx.lineTo(-12,-79+breath);ctx.closePath();ctx.fill();
-      ctx.shadowBlur=0;ctx.shadowOffsetY=0;
-      ctx.strokeStyle='rgba(255,255,255,.48)';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(-12,-103+breath);ctx.lineTo(-8,-84+breath);ctx.moveTo(12,-103+breath);ctx.lineTo(8,-84+breath);ctx.stroke();
-      // Segmented abdominal armour and illuminated energy seams.
-      ctx.strokeStyle='rgba(3,18,37,.58)';ctx.lineWidth=2;
-      [-72,-82].forEach(y=>{ctx.beginPath();ctx.moveTo(-12,y+breath);ctx.quadraticCurveTo(0,y+4+breath,12,y+breath);ctx.stroke();});
-      ctx.strokeStyle=hero.visorColor;ctx.globalAlpha=.82;ctx.lineWidth=1.4;
-      ctx.beginPath();ctx.moveTo(-8,-77+breath);ctx.lineTo(8,-77+breath);ctx.stroke();ctx.globalAlpha=1;
-      // Metallic belt and centre core.
-      const belt=ctx.createLinearGradient(0,-62,0,-53);belt.addColorStop(0,'#f8fafc');belt.addColorStop(.5,hero.armorPlate);belt.addColorStop(1,'#64748b');
-      ctx.fillStyle=belt;ctx.fillRect(-19,-63,38,7);
-      ctx.fillStyle=hero.visorColor;ctx.beginPath();ctx.roundRect(-4,-64,9,9,2);ctx.fill();
-      // Armour edge highlights on greaves and boots add depth at full-body scale.
-      ctx.strokeStyle='rgba(255,255,255,.48)';ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(18,-48);ctx.lineTo(29,-16);ctx.moveTo(-17,-49);ctx.lineTo(-25,-16);ctx.stroke();
-      ctx.fillStyle=hero.armorPlate;ctx.globalAlpha=.8;
-      ctx.beginPath();ctx.roundRect(20,-20,12,4,2);ctx.fill();
-      ctx.beginPath();ctx.roundRect(-27,-20,12,4,2);ctx.fill();ctx.globalAlpha=1;
-      // Gauntlet rings and visor reflection.
-      ctx.strokeStyle=hero.visorColor;ctx.lineWidth=2;ctx.beginPath();ctx.arc(38+armReach,-68+armLift,8,-.9,.9);ctx.stroke();
-      ctx.fillStyle='rgba(255,255,255,.75)';ctx.beginPath();ctx.ellipse(8,headY-7,4,1.4,-.35,0,Math.PI*2);ctx.fill();
+      const chestPlate = ctx.createLinearGradient(-17, -111, 18, -78);
+      chestPlate.addColorStop(0, 'rgba(255,255,255,.58)');
+      chestPlate.addColorStop(.22, hero.armorPlate);
+      chestPlate.addColorStop(.72, hero.suitSecondary);
+      chestPlate.addColorStop(1, 'rgba(4,18,35,.78)');
+      ctx.fillStyle = chestPlate;
+      ctx.beginPath(); ctx.moveTo(-16, -108 + breath); ctx.lineTo(17, -108 + breath); ctx.lineTo(12, -79 + breath); ctx.lineTo(0, -73 + breath); ctx.lineTo(-12, -79 + breath); ctx.closePath(); ctx.fill();
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = 'rgba(255,255,255,.48)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(-12, -103 + breath); ctx.lineTo(-8, -84 + breath); ctx.moveTo(12, -103 + breath); ctx.lineTo(8, -84 + breath); ctx.stroke();
+      ctx.strokeStyle = 'rgba(3,18,37,.58)'; ctx.lineWidth = 2;
+      [-72, -82].forEach(y => { ctx.beginPath(); ctx.moveTo(-12, y + breath); ctx.quadraticCurveTo(0, y + 4 + breath, 12, y + breath); ctx.stroke(); });
+      ctx.strokeStyle = hero.visorColor; ctx.globalAlpha = .82; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(-8, -77 + breath); ctx.lineTo(8, -77 + breath); ctx.stroke(); ctx.globalAlpha = 1;
+      const belt = ctx.createLinearGradient(0, -62, 0, -53);
+      belt.addColorStop(0, '#f8fafc'); belt.addColorStop(.5, hero.armorPlate); belt.addColorStop(1, '#64748b');
+      ctx.fillStyle = belt; ctx.fillRect(-19, -63, 38, 7);
+      ctx.fillStyle = hero.visorColor; ctx.beginPath(); ctx.roundRect(-4, -64, 9, 9, 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.48)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(18, -48); ctx.lineTo(29, -16); ctx.moveTo(-17, -49); ctx.lineTo(-25, -16); ctx.stroke();
+      ctx.fillStyle = hero.armorPlate; ctx.globalAlpha = .8;
+      ctx.beginPath(); ctx.roundRect(20, -20, 12, 4, 2); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(-27, -20, 12, 4, 2); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = hero.visorColor; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(38 + armReach, -68 + armLift, 8, -.9, .9); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      ctx.beginPath(); ctx.ellipse(8, headY - 7, 4, 1.4, -.35, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
 
       // Hurt flash overlay
@@ -1553,6 +1666,7 @@ const p1NameInput = document.getElementById('p1NameInput');
       }
 
       ctx.restore();
+      ctx.restore();
     }
 
     // =========================================================================
@@ -1561,52 +1675,191 @@ const p1NameInput = document.getElementById('p1NameInput');
     // The backdrop never changes, so it is painted once at full device resolution
     // and then blitted every frame: 4K-sharp detail with a tiny per-frame cost.
     const BG_CACHE = new Map();
+
+    // ---- Arena backgrounds ---------------------------------------------
+    // Seven painted arenas. Each theme is a complete palette for the cached
+    // backdrop (sky, sun, haze, three tower layers, terrace, ring) plus the
+    // 3D light tint, so the champions always sit in the same light as the city
+    // behind them. Chips on the select screen and the ARENA button in the fight
+    // header both switch it live, and the choice is remembered per browser.
+    const ARENA_THEMES = [
+      {
+        id: 'city', name: 'CITY TERRACE', scene: 'city', swatch: 'linear-gradient(120deg,#8fd4ff,#eaf8ff)',
+        sky: ['#3fb2f2', '#9fdfff', '#d9f2ff', '#effaff'],
+        sun: ['rgba(255,255,226,.92)', 'rgba(255,255,255,.42)'], cloud: 'rgba(255,255,255,.32)',
+        ridge: ['#a3c9de', '#c3e0ee'],
+        far: ['#c2dfee', '#a9cbdd', '#97bdd2'], mid: ['#a8cddf', '#8fbacf', '#7caac2'], near: ['#8fb7cb', '#6f99b3', '#5b88a5'],
+        win: [['rgba(255,232,150,.96)', 'rgba(255,244,200,.6)'], ['rgba(206,238,255,.98)', 'rgba(228,245,255,.66)'], ['rgba(118,170,204,.96)', 'rgba(170,205,229,.6)']],
+        ant: 'rgba(96,132,158,.85)', beacon: '#ef5f52',
+        haze: ['rgba(232,247,255,0)', 'rgba(228,245,254,.40)'], rake: ['rgba(255,238,205,0)', 'rgba(255,224,170,.20)'],
+        floor: ['#eaf8ff', '#d2ebf7', '#aacfe2'], edge: ['rgba(255,255,255,.95)', 'rgba(152,216,246,.9)', 'rgba(90,160,195,0)'],
+        grid: 'rgba(66,136,172,.20)', ring1: 'rgba(31,145,194,.42)', ring2: 'rgba(255,255,255,.75)',
+        three: { hemiSky: '#ffffff', hemiGround: '#59677d', key: '#fff4e2', rim: '#b9dcff', exposure: 1.16 }
+      },
+      {
+        id: 'jungle', name: 'JUNGLE RIVER', scene: 'jungle', swatch: 'linear-gradient(120deg,#0d3b2c,#a8d8a0)',
+        floor: ['#33563c', '#25402d', '#16291d'], edge: ['rgba(190,255,205,.55)', 'rgba(96,200,140,.45)', 'rgba(10,40,25,0)'],
+        grid: 'rgba(150,225,175,.16)', ring1: 'rgba(120,235,165,.45)', ring2: 'rgba(225,255,230,.6)',
+        three: { hemiSky: '#bfe8c4', hemiGround: '#1c3324', key: '#ffe9b0', rim: '#7fe0a0', exposure: 1.08 }
+      },
+      {
+        id: 'desert', name: 'DESERT RUINS', scene: 'desert', swatch: 'linear-gradient(120deg,#c98a4a,#f7dcb0)',
+        floor: ['#e0b073', '#c48f55', '#9c6a3c'], edge: ['rgba(255,240,210,.8)', 'rgba(226,168,104,.7)', 'rgba(120,70,30,0)'],
+        grid: 'rgba(120,70,30,.20)', ring1: 'rgba(210,150,80,.5)', ring2: 'rgba(255,245,220,.55)',
+        three: { hemiSky: '#ffe6bd', hemiGround: '#7a5230', key: '#ffd79a', rim: '#ffb066', exposure: 1.1 }
+      },
+      {
+        id: 'snow', name: 'FROZEN PEAK', scene: 'snow', swatch: 'linear-gradient(120deg,#7fb2d8,#ffffff)',
+        floor: ['#f7fdff', '#dceffa', '#b3d3e6'], edge: ['rgba(255,255,255,.95)', 'rgba(190,235,255,.9)', 'rgba(120,180,215,0)'],
+        grid: 'rgba(90,150,190,.18)', ring1: 'rgba(70,150,200,.4)', ring2: 'rgba(255,255,255,.8)',
+        three: { hemiSky: '#ffffff', hemiGround: '#9fb8cc', key: '#ffffff', rim: '#bfe6ff', exposure: 1.12 }
+      },
+      {
+        id: 'volcano', name: 'VOLCANIC PIT', scene: 'volcano', swatch: 'linear-gradient(120deg,#2a0906,#ff8a3d)',
+        floor: ['#2e100a', '#1e0905', '#100403'], edge: ['rgba(255,150,70,.7)', 'rgba(255,90,20,.5)', 'rgba(20,5,2,0)'],
+        grid: 'rgba(255,120,50,.18)', ring1: 'rgba(255,110,40,.5)', ring2: 'rgba(255,200,140,.5)',
+        three: { hemiSky: '#ff9450', hemiGround: '#1a0703', key: '#ffbe7a', rim: '#ff5f2e', exposure: 1.05 }
+      },
+      {
+        id: 'temple', name: 'SUNKEN TEMPLE', scene: 'temple', swatch: 'linear-gradient(120deg,#123c3c,#8fe3d0)',
+        floor: ['#254a4a', '#1a3434', '#0d1f1f'], edge: ['rgba(180,255,240,.45)', 'rgba(90,200,190,.4)', 'rgba(6,24,24,0)'],
+        grid: 'rgba(150,235,225,.16)', ring1: 'rgba(110,230,215,.42)', ring2: 'rgba(230,255,250,.55)',
+        three: { hemiSky: '#9fe6d8', hemiGround: '#123030', key: '#f3ffe6', rim: '#6fd8c8', exposure: 1.06 }
+      },
+      {
+        id: 'space', name: 'ORBITAL DECK', scene: 'space', swatch: 'linear-gradient(120deg,#0b1020,#7c5cff)',
+        floor: ['#1d2536', '#141a28', '#090d15'], edge: ['rgba(150,190,255,.45)', 'rgba(90,120,220,.35)', 'rgba(4,6,14,0)'],
+        grid: 'rgba(120,160,255,.18)', ring1: 'rgba(130,120,255,.45)', ring2: 'rgba(220,225,255,.5)',
+        three: { hemiSky: '#8e9bd6', hemiGround: '#0b0f1a', key: '#cfd8ff', rim: '#8f7cff', exposure: 1.02 }
+      }
+    ];
+    const THEME_KEY = 'gpa_arena_theme_v1';
+    const savedTheme = (() => { try { return localStorage.getItem(THEME_KEY); } catch (_) { return null; } })();
+    let arenaTheme = ARENA_THEMES.find((t) => t.id === savedTheme) || ARENA_THEMES[0];
+
+    function applyArenaTheme(id, remember = true) {
+      const next = ARENA_THEMES.find((t) => t.id === id);
+      if (!next) return;
+      arenaTheme = next;
+      window.gshArenaTheme = next;
+      BG_CACHE.clear();
+      if (remember) { try { localStorage.setItem(THEME_KEY, next.id); } catch (_) { /* private mode */ } }
+      document.querySelectorAll('[data-theme-chip]').forEach((el) => {
+        const on = el.dataset.themeChip === next.id;
+        el.classList.toggle('active', on);
+        el.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      const cycle = document.getElementById('arenaThemeBtn');
+      if (cycle) cycle.textContent = '\u{1F3A8} ' + next.name;
+      // The 3D layer relights itself with the same palette as the city.
+      window.dispatchEvent(new CustomEvent('gsh:theme', { detail: next.three }));
+    }
+    window.gshSetArenaTheme = applyArenaTheme;
+    window.gshArenaTheme = arenaTheme;
+
+    function buildThemeChips() {
+      const host = document.getElementById('bgPicker');
+      if (host) {
+        ARENA_THEMES.forEach((t) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'bg-chip';
+          b.dataset.themeChip = t.id;
+          b.title = t.name;
+          b.innerHTML = `<span class="bg-dot" style="background:${t.swatch}"></span><span>${t.name}</span>`;
+          b.addEventListener('click', () => applyArenaTheme(t.id));
+          host.appendChild(b);
+        });
+      }
+      const cycle = document.getElementById('arenaThemeBtn');
+      if (cycle) {
+        cycle.addEventListener('click', () => {
+          const i = ARENA_THEMES.findIndex((t) => t.id === arenaTheme.id);
+          const next = ARENA_THEMES[(i + 1) % ARENA_THEMES.length];
+          applyArenaTheme(next.id);
+          cycle.textContent = '\u{1F3A8} ' + next.name;
+        });
+      }
+      applyArenaTheme(arenaTheme.id, false);
+      if (cycle) cycle.textContent = '\u{1F3A8} ' + arenaTheme.name;
+    }
+    buildThemeChips();
+
     function renderSkyTerraceArena(ctx, w, h) {
       const sx = ctx.getTransform().a || 1;
-      const key = `${Math.round(w)}x${Math.round(h)}@${sx.toFixed(2)}`;
+      const key = `${arenaTheme.id}:${Math.round(w)}x${Math.round(h)}@${sx.toFixed(2)}`;
       let bg = BG_CACHE.get(key);
       if (!bg) {
+        // The arena sits behind the fighters, so it is painted in soft focus: a
+        // shallow depth of field puts the place behind them like a broadcast
+        // camera. Painted at a capped backing scale (the blur hides the softness)
+        // and composited in two passes — the far field fully soft, the terrace
+        // under the feet only a whisper, so the ring keeps its painted detail.
+        const px = Math.min(sx, 2, 3000 / Math.max(1, w));
+        const W = Math.max(1, Math.round(w * px)), H = Math.max(1, Math.round(h * px));
+        const sharp = document.createElement('canvas');
+        sharp.width = W; sharp.height = H;
+        const shx = sharp.getContext('2d');
+        shx.setTransform(px, 0, 0, px, 0, 0);
+        paintArenaScene(shx, w, h);
+        const blurPx = px / Math.max(1e-3, sx);
+        const pass = (radius) => {
+          const cv = document.createElement('canvas');
+          cv.width = W; cv.height = H;
+          const cx = cv.getContext('2d');
+          cx.filter = `blur(${(radius * blurPx).toFixed(2)}px)`;
+          cx.drawImage(sharp, 0, 0);
+          return cv;
+        };
+        // A whisper of defocus, scaled to the picture: enough to sit the place
+        // behind the fighters, light enough that every arena keeps its own shape.
+        const farPass = pass(Math.max(1.2, w * .0025));
+        const nearPass = pass(Math.max(.5, w * .0010));
         bg = document.createElement('canvas');
-        bg.width = Math.max(1, Math.round(w * sx));
-        bg.height = Math.max(1, Math.round(h * sx));
+        bg.width = W; bg.height = H;
         const bx = bg.getContext('2d');
-        bx.setTransform(sx, 0, 0, sx, 0, 0);
-        paintSkyCityArena(bx, w, h);
+        bx.drawImage(farPass, 0, 0);
+        const floorY = Math.round(H * .80);
+        bx.save();
+        bx.beginPath(); bx.rect(0, floorY, W, H - floorY); bx.clip();
+        bx.drawImage(nearPass, 0, 0);
+        bx.restore();
         BG_CACHE.set(key, bg);
         if (BG_CACHE.size > 4) BG_CACHE.delete(BG_CACHE.keys().next().value);
       }
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(bg, 0, 0);
+      ctx.drawImage(bg, 0, 0, bg.width, bg.height, 0, 0, w * sx, h * sx);
       ctx.restore();
     }
 
     function paintSkyCityArena(ctx, w, h) {
-      // Bright daytime city arena: same sunny sky as before, but the washed-out
-      // lower half is now a full multi-layer skyline of towers and rooftops.
+      // One city, seven palettes: every colour comes from the active theme, so a
+      // new arena is a data change and not a second painting routine.
+      const T = arenaTheme;
       const horizon = h * .56, floorY = h * .80;
 
       const sky = ctx.createLinearGradient(0, 0, 0, floorY);
-      sky.addColorStop(0, '#3fb2f2');
-      sky.addColorStop(.31, '#9fdfff');
-      sky.addColorStop(.62, '#d9f2ff');
-      sky.addColorStop(1, '#effaff');
+      sky.addColorStop(0, T.sky[0]);
+      sky.addColorStop(.31, T.sky[1]);
+      sky.addColorStop(.62, T.sky[2]);
+      sky.addColorStop(1, T.sky[3]);
       ctx.fillStyle = sky; ctx.fillRect(0, 0, w, floorY + 1);
 
       // Soft sun glow and broad translucent clouds.
       const sun = ctx.createRadialGradient(w*.78, h*.14, 3, w*.78, h*.14, w*.26);
-      sun.addColorStop(0, 'rgba(255,255,226,.92)');
-      sun.addColorStop(.34, 'rgba(255,255,255,.42)');
+      sun.addColorStop(0, T.sun[0]);
+      sun.addColorStop(.34, T.sun[1]);
       sun.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = sun; ctx.fillRect(0, 0, w, horizon + h*.1);
-      ctx.fillStyle = 'rgba(255,255,255,.32)';
+      ctx.fillStyle = T.cloud;
       [[.16,.16,.11],[.40,.10,.085],[.63,.23,.12],[.88,.28,.09],[.29,.29,.07]].forEach(([x,y,r])=>{
         ctx.beginPath(); ctx.ellipse(w*x,h*y,w*r,h*.023,0,0,Math.PI*2); ctx.fill();
       });
 
       // Hazy mountain ridge behind the skyline.
       const ridge = ctx.createLinearGradient(0, horizon - h*.22, 0, horizon);
-      ridge.addColorStop(0, '#a3c9de'); ridge.addColorStop(1, '#c3e0ee');
+      ridge.addColorStop(0, T.ridge[0]); ridge.addColorStop(1, T.ridge[1]);
       ctx.fillStyle = ridge;
       ctx.beginPath(); ctx.moveTo(0, horizon + 1);
       ctx.lineTo(0, horizon - h*.10);
@@ -1642,10 +1895,10 @@ const p1NameInput = document.getElementById('p1NameInput');
             const ax = x + bw*(.2 + rnd(n + 4.4)*.55);
             const ah = h*(.016 + rnd(n + 5.5)*.034);
             const aw = Math.max(1.3, bw*.018);
-            ctx.fillStyle = 'rgba(96,132,158,.85)';
+            ctx.fillStyle = T.ant;
             ctx.fillRect(ax, top - capH - ah, aw, ah);
             if (rnd(n + 6.6) > .58) {
-              ctx.fillStyle = '#ef5f52';
+              ctx.fillStyle = T.beacon;
               ctx.beginPath(); ctx.arc(ax + aw/2, top - capH - ah, Math.max(1.6, bw*.028), 0, Math.PI*2); ctx.fill();
             }
           }
@@ -1659,9 +1912,8 @@ const p1NameInput = document.getElementById('p1NameInput');
                 const q = rnd(n + r * 13.7 + c * 5.9);
                 const wx = x + padX*.5 + c*gw + gw*.18;
                 const wy = top + padY*.5 + r*gh + gh*.20;
-                if (q > .86) ctx.fillStyle = lit ? 'rgba(255,232,150,.96)' : 'rgba(255,244,200,.6)';
-                else if (q > .55) ctx.fillStyle = lit ? 'rgba(206,238,255,.98)' : 'rgba(228,245,255,.66)';
-                else ctx.fillStyle = lit ? 'rgba(118,170,204,.96)' : 'rgba(170,205,229,.6)';
+                const wc = q > .86 ? T.win[0] : q > .55 ? T.win[1] : T.win[2];
+                ctx.fillStyle = lit ? wc[0] : wc[1];
                 ctx.fillRect(wx, wy, gw*.62, gh*.5);
               }
             }
@@ -1672,30 +1924,30 @@ const p1NameInput = document.getElementById('p1NameInput');
       }
 
       // Far skyline (tall, pale, soft) → haze → mid blocks → detailed near towers.
-      towerLayer(11.3, .20, .345, .028, .052, ['#c2dfee', '#a9cbdd', '#97bdd2'], false, null);
+      towerLayer(11.3, .20, .345, .028, .052, T.far, false, null);
       const haze = ctx.createLinearGradient(0, floorY - h*.30, 0, floorY);
-      haze.addColorStop(0, 'rgba(232,247,255,0)');
-      haze.addColorStop(1, 'rgba(228,245,254,.40)');
+      haze.addColorStop(0, T.haze[0]);
+      haze.addColorStop(1, T.haze[1]);
       ctx.fillStyle = haze; ctx.fillRect(0, floorY - h*.30, w, h*.30);
-      towerLayer(47.7, .13, .25, .040, .055, ['#a8cddf', '#8fbacf', '#7caac2'], false, {colGap:.019, rowGap:.032});
-      towerLayer(83.1, .075, .185, .052, .062, ['#8fb7cb', '#6f99b3', '#5b88a5'], true, {colGap:.017, rowGap:.027});
+      towerLayer(47.7, .13, .25, .040, .055, T.mid, false, {colGap:.019, rowGap:.032});
+      towerLayer(83.1, .075, .185, .052, .062, T.near, true, {colGap:.017, rowGap:.027});
 
       // Warm afternoon light raking across the near towers.
       const rake = ctx.createLinearGradient(0, floorY - h*.2, 0, floorY);
-      rake.addColorStop(0, 'rgba(255,238,205,0)');
-      rake.addColorStop(1, 'rgba(255,224,170,.20)');
+      rake.addColorStop(0, T.rake[0]);
+      rake.addColorStop(1, T.rake[1]);
       ctx.fillStyle = rake; ctx.fillRect(0, floorY - h*.2, w, h*.2);
 
       // Sunlit pale-stone terrace the fighters actually stand on.
       const floor = ctx.createLinearGradient(0, floorY, 0, h);
-      floor.addColorStop(0, '#eaf8ff'); floor.addColorStop(.38, '#d2ebf7'); floor.addColorStop(1, '#aacfe2');
+      floor.addColorStop(0, T.floor[0]); floor.addColorStop(.38, T.floor[1]); floor.addColorStop(1, T.floor[2]);
       ctx.fillStyle = floor; ctx.fillRect(0, floorY, w, h - floorY + 1);
       const edge = ctx.createLinearGradient(0, floorY - h*.012, 0, floorY + h*.02);
-      edge.addColorStop(0, 'rgba(255,255,255,.95)');
-      edge.addColorStop(.45, 'rgba(152,216,246,.9)');
-      edge.addColorStop(1, 'rgba(90,160,195,0)');
+      edge.addColorStop(0, T.edge[0]);
+      edge.addColorStop(.45, T.edge[1]);
+      edge.addColorStop(1, T.edge[2]);
       ctx.fillStyle = edge; ctx.fillRect(0, floorY - h*.012, w, h*.032);
-      ctx.strokeStyle = 'rgba(66,136,172,.20)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
       for (let i = 1; i <= 6; i++) {
         const yy = floorY + (h - floorY) * i / 6;
         ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(w, yy); ctx.stroke();
@@ -1706,13 +1958,426 @@ const p1NameInput = document.getElementById('p1NameInput');
       }
       const cx = w*.5, cy = floorY + (h - floorY) * .54;
       ctx.save();
-      ctx.strokeStyle = 'rgba(31,145,194,.42)'; ctx.lineWidth = 3;
+      ctx.strokeStyle = T.ring1; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.ellipse(cx, cy, w*.34, (h - floorY)*.38, 0, 0, Math.PI*2); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
+      ctx.strokeStyle = T.ring2; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(cx, cy, w*.25, (h - floorY)*.27, 0, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
 
+
+    // =========================================================================
+    // 7b. SIX MORE ARENAS — each one its own place, not a recolour
+    // =========================================================================
+    function paintArenaScene(ctx, w, h) {
+      const scene = (arenaTheme && arenaTheme.scene) || 'city';
+      if (scene === 'jungle') return paintJungle(ctx, w, h);
+      if (scene === 'desert') return paintDesert(ctx, w, h);
+      if (scene === 'snow') return paintSnow(ctx, w, h);
+      if (scene === 'volcano') return paintVolcano(ctx, w, h);
+      if (scene === 'temple') return paintTemple(ctx, w, h);
+      if (scene === 'space') return paintSpace(ctx, w, h);
+      return paintSkyCityArena(ctx, w, h);
+    }
+
+    // Shared deck: the stone floor, its perspective lines and the painted ring.
+    function paintTerrace(ctx, w, h, T) {
+      const floorY = h * .80;
+      const floor = ctx.createLinearGradient(0, floorY, 0, h);
+      floor.addColorStop(0, T.floor[0]); floor.addColorStop(.38, T.floor[1]); floor.addColorStop(1, T.floor[2]);
+      ctx.fillStyle = floor; ctx.fillRect(0, floorY, w, h - floorY + 1);
+      const edge = ctx.createLinearGradient(0, floorY - h*.012, 0, floorY + h*.02);
+      edge.addColorStop(0, T.edge[0]); edge.addColorStop(.45, T.edge[1]); edge.addColorStop(1, T.edge[2]);
+      ctx.fillStyle = edge; ctx.fillRect(0, floorY - h*.012, w, h*.032);
+      ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+      for (let i = 1; i <= 6; i++) {
+        const yy = floorY + (h - floorY) * i / 6;
+        ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(w, yy); ctx.stroke();
+      }
+      for (let i = 0; i <= 16; i++) {
+        const xx = w * (.5 + (i - 8) * .085);
+        ctx.beginPath(); ctx.moveTo(w*.5, floorY); ctx.lineTo(xx, h); ctx.stroke();
+      }
+      const cx = w*.5, cy = floorY + (h - floorY) * .54;
+      ctx.save();
+      ctx.strokeStyle = T.ring1; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(cx, cy, w*.34, (h - floorY)*.38, 0, 0, Math.PI*2); ctx.stroke();
+      ctx.strokeStyle = T.ring2; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(cx, cy, w*.25, (h - floorY)*.27, 0, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+
+    function paintJungle(ctx, w, h) {
+      const floorY = h * .80;
+      const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+      sky.addColorStop(0, '#0b3227'); sky.addColorStop(.42, '#2b6e49');
+      sky.addColorStop(.76, '#78b073'); sky.addColorStop(1, '#d6ecb8');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, floorY + 1);
+
+      // Shafts of hot light through the canopy.
+      for (let i = 0; i < 5; i++) {
+        const x = w * (.16 + i * .17);
+        const g = ctx.createLinearGradient(x, 0, x - 70, floorY);
+        g.addColorStop(0, 'rgba(255,244,190,.22)');
+        g.addColorStop(1, 'rgba(255,244,190,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(x - 16, 0); ctx.lineTo(x + 16, 0);
+        ctx.lineTo(x - 70, floorY); ctx.lineTo(x - 130, floorY);
+        ctx.closePath(); ctx.fill();
+      }
+
+      // Layered canopy silhouettes.
+      const canopy = (col, base, amp, phase, step) => {
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.moveTo(-10, floorY);
+        for (let x = -10; x <= w + 30; x += 22) {
+          const y = base - Math.sin(x * step + phase) * amp - Math.sin(x * step * .37 + phase * 2) * amp * .45;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(w + 30, floorY); ctx.closePath(); ctx.fill();
+      };
+      canopy('rgba(20,66,48,.9)', floorY * .80, 52, 1.2, .010);
+      canopy('rgba(12,45,33,.95)', floorY * .89, 38, 2.6, .016);
+
+      // River behind the ring.
+      const river = ctx.createLinearGradient(0, floorY * .90, 0, floorY);
+      river.addColorStop(0, 'rgba(150,215,200,.55)');
+      river.addColorStop(.5, 'rgba(60,150,150,.7)');
+      river.addColorStop(1, 'rgba(20,80,80,.85)');
+      ctx.fillStyle = river; ctx.fillRect(0, floorY * .90, w, floorY * .10 + 2);
+      ctx.strokeStyle = 'rgba(220,255,245,.35)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 9; i++) {
+        const y = floorY * (.905 + i * .009);
+        const x = w * ((i * .37) % .8) + w * .05;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w * .12, y); ctx.stroke();
+      }
+
+      // Palms.
+      const palm = (x, hh, lean) => {
+        const topX = x + lean * hh * .18, topY = floorY - hh;
+        ctx.strokeStyle = '#22331c'; ctx.lineWidth = Math.max(4, hh * .04); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, floorY); ctx.quadraticCurveTo(x + lean * hh * .32, floorY - hh * .62, topX, topY); ctx.stroke();
+        ctx.strokeStyle = '#2e7d4f'; ctx.lineWidth = Math.max(3, hh * .026);
+        for (let i = 0; i < 7; i++) {
+          const a = -Math.PI / 2 + (i - 3) * .40;
+          const L = hh * .36 * (1 - Math.abs(i - 3) * .07);
+          ctx.beginPath();
+          ctx.moveTo(topX, topY);
+          ctx.quadraticCurveTo(topX + Math.cos(a) * L * .55, topY + Math.sin(a) * L * .55,
+            topX + Math.cos(a) * L, topY + Math.sin(a) * L + hh * .05);
+          ctx.stroke();
+        }
+      };
+      palm(w * .09, h * .40, .55); palm(w * .90, h * .44, -.55); palm(w * .23, h * .26, .30);
+
+      // Fireflies.
+      for (let i = 0; i < 28; i++) {
+        const fx = ((Math.sin(i * 12.9) * .5 + .5) * .92 + .04) * w;
+        const fy = floorY * (.42 + Math.sin(i * 7.3) * .22) + Math.sin(i) * 4;
+        ctx.fillStyle = 'rgba(226,255,150,.8)';
+        ctx.beginPath(); ctx.arc(fx, fy, 1.4 + (i % 3) * .5, 0, Math.PI * 2); ctx.fill();
+      }
+      paintTerrace(ctx, w, h, arenaTheme);
+    }
+
+    function paintDesert(ctx, w, h) {
+      const floorY = h * .80, horizon = h * .56;
+      const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+      sky.addColorStop(0, '#e8894a'); sky.addColorStop(.40, '#f6c483');
+      sky.addColorStop(.72, '#fbe2bb'); sky.addColorStop(1, '#f8d9a2');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, floorY + 1);
+
+      const sun = ctx.createRadialGradient(w * .68, h * .18, 4, w * .68, h * .18, w * .24);
+      sun.addColorStop(0, 'rgba(255,252,236,.96)');
+      sun.addColorStop(.36, 'rgba(255,226,168,.5)');
+      sun.addColorStop(1, 'rgba(255,226,168,0)');
+      ctx.fillStyle = sun; ctx.fillRect(0, 0, w, horizon + h * .1);
+
+      // Ruined towers and one step pyramid.
+      ctx.fillStyle = 'rgba(186,124,74,.55)';
+      [[.10, .30, .10], [.29, .22, .07], [.84, .27, .10], [.63, .18, .06]].forEach(([x, hh, ww]) => {
+        const bx = w * x, by = floorY - hh * h;
+        ctx.beginPath();
+        ctx.moveTo(bx, floorY); ctx.lineTo(bx, by);
+        ctx.lineTo(bx + w * ww * .35, by - h * .03);
+        ctx.lineTo(bx + w * ww, by);
+        ctx.lineTo(bx + w * ww, floorY);
+        ctx.closePath(); ctx.fill();
+      });
+      ctx.fillStyle = 'rgba(166,106,62,.62)';
+      ctx.beginPath();
+      ctx.moveTo(w * .70, floorY); ctx.lineTo(w * .79, floorY - h * .27); ctx.lineTo(w * .88, floorY);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,74,40,.35)'; ctx.lineWidth = 2;
+      for (let i = 1; i < 6; i++) {
+        const t = i / 6, y = floorY - h * .27 * t, half = w * .09 * t;
+        ctx.beginPath(); ctx.moveTo(w * .79 - half, y); ctx.lineTo(w * .79 + half, y); ctx.stroke();
+      }
+
+      // Dunes.
+      const dune = (col, base, amp, phase) => {
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.moveTo(0, floorY);
+        for (let x = 0; x <= w; x += 16) {
+          ctx.lineTo(x, base + Math.sin(x * .004 + phase) * amp + Math.sin(x * .011 + phase * 2) * amp * .35);
+        }
+        ctx.lineTo(w, floorY); ctx.closePath(); ctx.fill();
+      };
+      dune('rgba(232,178,116,.9)', floorY - h * .105, 26, .6);
+      dune('rgba(206,148,88,.94)', floorY - h * .055, 18, 2.1);
+
+      ctx.strokeStyle = 'rgba(255,238,205,.3)'; ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const y = floorY - h * .11 + i * 9;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.bezierCurveTo(w * .3, y - 5, w * .6, y + 5, w, y);
+        ctx.stroke();
+      }
+      paintTerrace(ctx, w, h, arenaTheme);
+    }
+
+    function paintSnow(ctx, w, h) {
+      const floorY = h * .80, horizon = h * .58;
+      const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+      sky.addColorStop(0, '#4d7fb2'); sky.addColorStop(.42, '#9ec4e2');
+      sky.addColorStop(.74, '#e2f1fb'); sky.addColorStop(1, '#ffffff');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, floorY + 1);
+
+      const glow = ctx.createRadialGradient(w * .24, h * .16, 4, w * .24, h * .16, w * .26);
+      glow.addColorStop(0, 'rgba(255,255,255,.9)');
+      glow.addColorStop(.35, 'rgba(226,244,255,.4)');
+      glow.addColorStop(1, 'rgba(226,244,255,0)');
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, w, horizon + h * .1);
+
+      const peak = (sx, sw, hh, baseY, col) => {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(sx, baseY);
+        ctx.lineTo(sx + sw * .5, baseY - hh);
+        ctx.lineTo(sx + sw, baseY);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.9)';
+        ctx.beginPath();
+        ctx.moveTo(sx + sw * .5, baseY - hh);
+        ctx.lineTo(sx + sw * .5 + sw * .13, baseY - hh * .62);
+        ctx.lineTo(sx + sw * .5 - sw * .09, baseY - hh * .66);
+        ctx.closePath(); ctx.fill();
+      };
+      peak(-w * .06, w * .38, h * .34, floorY, '#9dbdd6');
+      peak(w * .22, w * .44, h * .42, floorY, '#7fa4c2');
+      peak(w * .60, w * .40, h * .30, floorY, '#a7c6dc');
+      peak(w * .82, w * .30, h * .22, floorY, '#bad5e6');
+
+      const pine = (x, hh, shade) => {
+        ctx.fillStyle = '#4b3a2c';
+        ctx.fillRect(x - 1.5, floorY - hh * .18, 3, hh * .18);
+        ctx.fillStyle = shade;
+        for (let i = 0; i < 3; i++) {
+          const y = floorY - hh * (.18 + i * .26);
+          const half = hh * (.20 - i * .045);
+          ctx.beginPath();
+          ctx.moveTo(x, y - hh * .30);
+          ctx.lineTo(x + half, y);
+          ctx.lineTo(x - half, y);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(255,255,255,.75)';
+        ctx.beginPath();
+        ctx.moveTo(x, floorY - hh * 1.03);
+        ctx.lineTo(x + hh * .05, floorY - hh * .80);
+        ctx.lineTo(x - hh * .05, floorY - hh * .80);
+        ctx.closePath(); ctx.fill();
+      };
+      for (let i = 0; i < 9; i++) {
+        const x = w * (.03 + i * .115) + (i % 2) * w * .02;
+        pine(x, h * (.16 + (i % 3) * .04), i % 2 ? '#1f4436' : '#295244');
+      }
+
+      for (let i = 0; i < 60; i++) {
+        const fx = ((Math.sin(i * 3.7) * .5 + .5)) * w;
+        const fy = ((Math.sin(i * 9.1) * .5 + .5)) * floorY;
+        ctx.fillStyle = 'rgba(255,255,255,.75)';
+        ctx.beginPath(); ctx.arc(fx, fy, 1 + (i % 3) * .6, 0, Math.PI * 2); ctx.fill();
+      }
+      paintTerrace(ctx, w, h, arenaTheme);
+    }
+
+    function paintVolcano(ctx, w, h) {
+      const floorY = h * .80;
+      const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+      sky.addColorStop(0, '#120302'); sky.addColorStop(.42, '#360a05');
+      sky.addColorStop(.74, '#85200a'); sky.addColorStop(1, '#d4621c');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, floorY + 1);
+
+      const glow = ctx.createRadialGradient(w * .5, floorY, 10, w * .5, floorY, w * .6);
+      glow.addColorStop(0, 'rgba(255,150,60,.55)');
+      glow.addColorStop(.45, 'rgba(255,90,20,.22)');
+      glow.addColorStop(1, 'rgba(255,90,20,0)');
+      ctx.fillStyle = glow; ctx.fillRect(0, floorY * .45, w, floorY * .55);
+
+      // Jagged rock spires, back to front.
+      const spire = (x, hh, ww, col) => {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(x - ww * .5, floorY);
+        ctx.lineTo(x - ww * .18, floorY - hh);
+        ctx.lineTo(x + ww * .10, floorY - hh * .78);
+        ctx.lineTo(x + ww * .5, floorY);
+        ctx.closePath(); ctx.fill();
+      };
+      spire(w * .12, h * .32, w * .16, '#1d0906');
+      spire(w * .86, h * .36, w * .18, '#1d0906');
+      spire(w * .30, h * .20, w * .11, '#250b06');
+      spire(w * .70, h * .24, w * .12, '#250b06');
+
+      // Lava river across the back of the arena.
+      const lava = ctx.createLinearGradient(0, floorY * .92, 0, floorY);
+      lava.addColorStop(0, 'rgba(255,150,40,.9)');
+      lava.addColorStop(.5, 'rgba(255,90,10,.95)');
+      lava.addColorStop(1, 'rgba(120,25,5,.95)');
+      ctx.fillStyle = lava; ctx.fillRect(0, floorY * .915, w, floorY * .09 + 2);
+      ctx.fillStyle = 'rgba(255,236,170,.85)';
+      for (let i = 0; i < 7; i++) {
+        const y = floorY * (.928 + (i % 3) * .012);
+        const x = w * ((i * .29) % .8) + w * .04;
+        ctx.fillRect(x, y, w * (.06 + (i % 3) * .02), 2);
+      }
+
+      // Embers rising.
+      for (let i = 0; i < 40; i++) {
+        const ex = ((Math.sin(i * 5.3) * .5 + .5)) * w;
+        const ey = floorY * (.35 + (Math.sin(i * 11.7) * .5 + .5) * .6);
+        const r = 1 + (i % 4) * .5;
+        ctx.fillStyle = i % 3 ? 'rgba(255,160,60,.8)' : 'rgba(255,230,170,.9)';
+        ctx.beginPath(); ctx.arc(ex, ey, r, 0, Math.PI * 2); ctx.fill();
+      }
+      paintTerrace(ctx, w, h, arenaTheme);
+    }
+
+    function paintTemple(ctx, w, h) {
+      const floorY = h * .80, horizon = h * .52;
+      const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+      sky.addColorStop(0, '#06201f'); sky.addColorStop(.5, '#0f3a38');
+      sky.addColorStop(.82, '#2c6d64'); sky.addColorStop(1, '#9fdccb');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, floorY + 1);
+
+      // Back wall of carved stone blocks.
+      ctx.fillStyle = '#123331';
+      ctx.fillRect(0, horizon - h * .06, w, floorY - horizon + h * .06);
+      ctx.strokeStyle = 'rgba(150,220,205,.10)'; ctx.lineWidth = 2;
+      for (let row = 0; row < 9; row++) {
+        const y = horizon - h * .06 + row * h * .045;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        for (let col = 0; col <= 12; col++) {
+          const x = col * w / 12 + (row % 2) * w / 24;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + h * .045); ctx.stroke();
+        }
+      }
+
+      // Central arch with a waterfall pouring through it.
+      const archW = w * .18, archH = h * .30, ax = w * .5, ay = floorY - h * .02;
+      ctx.fillStyle = '#0a2422';
+      ctx.beginPath();
+      ctx.moveTo(ax - archW, ay);
+      ctx.lineTo(ax - archW, ay - archH * .55);
+      ctx.quadraticCurveTo(ax, ay - archH * 1.28, ax + archW, ay - archH * .55);
+      ctx.lineTo(ax + archW, ay);
+      ctx.closePath(); ctx.fill();
+      const water = ctx.createLinearGradient(0, ay - archH * .9, 0, ay);
+      water.addColorStop(0, 'rgba(190,245,235,.75)');
+      water.addColorStop(.6, 'rgba(120,215,205,.65)');
+      water.addColorStop(1, 'rgba(200,250,245,.9)');
+      ctx.fillStyle = water;
+      ctx.beginPath();
+      ctx.moveTo(ax - archW * .62, ay - archH * .62);
+      ctx.quadraticCurveTo(ax, ay - archH * 1.05, ax + archW * .62, ay - archH * .62);
+      ctx.lineTo(ax + archW * .86, ay);
+      ctx.lineTo(ax - archW * .86, ay);
+      ctx.closePath(); ctx.fill();
+      // Mist at the base.
+      for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = 'rgba(220,255,250,' + (.12 - i * .02) + ')';
+        ctx.beginPath();
+        ctx.ellipse(ax, ay - 6 - i * 5, archW * (1.1 + i * .16), h * (.012 + i * .004), 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Flanking columns with braziers.
+      const column = (x, glow) => {
+        ctx.fillStyle = '#1b4a45';
+        ctx.fillRect(x - w * .028, horizon - h * .02, w * .056, floorY - horizon + h * .02);
+        ctx.fillStyle = '#255d56';
+        ctx.fillRect(x - w * .034, horizon - h * .03, w * .068, h * .018);
+        ctx.fillRect(x - w * .034, floorY - h * .03, w * .068, h * .022);
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = 'rgba(10,30,28,.5)';
+          ctx.fillRect(x - w * .022 + (i % 2) * w * .022, horizon + h * .02 + i * h * .05, w * .012, h * .03);
+        }
+        const g = ctx.createRadialGradient(x, horizon - h * .06, 2, x, horizon - h * .06, w * .10);
+        g.addColorStop(0, 'rgba(255,214,140,.9)');
+        g.addColorStop(.4, 'rgba(255,160,60,.35)');
+        g.addColorStop(1, 'rgba(255,160,60,0)');
+        ctx.fillStyle = g; ctx.fillRect(x - w * .10, horizon - h * .16, w * .20, h * .22);
+        ctx.fillStyle = 'rgba(255,240,200,.95)';
+        ctx.beginPath();
+        ctx.ellipse(x, horizon - h * .055 + Math.sin(glow) * 2, w * .012, h * .026, 0, 0, Math.PI * 2);
+        ctx.fill();
+      };
+      column(w * .14, 1.2);
+      column(w * .86, 2.4);
+
+      paintTerrace(ctx, w, h, arenaTheme);
+    }
+
+    function paintSpace(ctx, w, h) {
+      const floorY = h * .80;
+      const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+      sky.addColorStop(0, '#05070f'); sky.addColorStop(.55, '#0a0e22');
+      sky.addColorStop(.85, '#151a3a'); sky.addColorStop(1, '#241b52');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, floorY + 1);
+
+      // Nebula clouds.
+      for (let i = 0; i < 4; i++) {
+        const nx = w * (.18 + i * .22), ny = h * (.10 + (i % 2) * .10);
+        const neb = ctx.createRadialGradient(nx, ny, 6, nx, ny, w * .30);
+        neb.addColorStop(0, i % 2 ? 'rgba(120,90,255,.30)' : 'rgba(255,90,170,.22)');
+        neb.addColorStop(.5, i % 2 ? 'rgba(60,40,160,.16)' : 'rgba(150,40,120,.12)');
+        neb.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = neb; ctx.fillRect(0, 0, w, floorY);
+      }
+
+      // Stars.
+      for (let i = 0; i < 220; i++) {
+        const sx = ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1 * w;
+        const sy = ((Math.sin(i * 78.233) * 43758.5453) % 1 + 1) % 1 * floorY * .92;
+        const r = (i % 17 === 0) ? 1.8 : (i % 5 === 0 ? 1.2 : .8);
+        ctx.fillStyle = i % 13 === 0 ? 'rgba(180,200,255,.95)' : 'rgba(255,255,255,' + (.35 + (i % 5) * .1) + ')';
+        ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Ringed planet on the horizon.
+      const px = w * .78, py = floorY - h * .16, pr = w * .10;
+      const planet = ctx.createRadialGradient(px - pr * .35, py - pr * .35, pr * .15, px, py, pr);
+      planet.addColorStop(0, '#b7a4ff');
+      planet.addColorStop(.55, '#6b4fd8');
+      planet.addColorStop(1, '#221346');
+      ctx.fillStyle = planet;
+      ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.translate(px, py); ctx.rotate(-.34);
+      ctx.strokeStyle = 'rgba(220,210,255,.55)'; ctx.lineWidth = Math.max(2, pr * .10);
+      ctx.beginPath(); ctx.ellipse(0, 0, pr * 1.75, pr * .42, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+
+      // Deck plating behind the ring.
+      ctx.fillStyle = 'rgba(120,150,255,.06)';
+      ctx.fillRect(0, floorY - h * .05, w, h * .05);
+      ctx.strokeStyle = 'rgba(150,180,255,.18)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, floorY - h * .05); ctx.lineTo(w, floorY - h * .05); ctx.stroke();
+      paintTerrace(ctx, w, h, arenaTheme);
+    }
 
     // =========================================================================
     // 8. POWER BEAM & IMPACT VFX RENDERER
@@ -2189,74 +2854,11 @@ const p1NameInput = document.getElementById('p1NameInput');
       ctx.restore();
     }
 
-    // Defensive shell drawn around a champion while the two powers press together.
-    function drawPowerShield(ctx, x, y, r, power, time, alpha) {
-      if (!power) return;
-      const c = power.color, p = power.primary, core = power.core;
-      const style = power.style;
-      ctx.save();
-      ctx.translate(x, y);
-      const breathe = 1 + Math.sin(time * 4.4) * .03;
-      const rr = r * breathe;
-      ctx.globalAlpha = .16 * (alpha == null ? 1 : alpha);
-      const glow = ctx.createRadialGradient(0, 0, rr * .2, 0, 0, rr * 1.15);
-      glow.addColorStop(0, core);
-      glow.addColorStop(.55, c);
-      glow.addColorStop(1, p + '00');
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(0, 0, rr * 1.15, 0, Math.PI * 2);
-      ctx.fill();
-
-      const hexed = style === 'plasma' || style === 'shadow' || style === 'venom' || style === 'frost';
-      if (hexed) {
-        // Honeycomb shell, brighter where the pressure hits.
-        const hexR = rr / 5.2;
-        ctx.globalAlpha = .5 * (alpha == null ? 1 : alpha);
-        ctx.strokeStyle = core;
-        ctx.lineWidth = 1.6;
-        for (let row = -5; row <= 5; row++) {
-          for (let col = -6; col <= 6; col++) {
-            const hx = col * hexR * 1.5;
-            const hy = row * hexR * 1.32 + (col % 2 ? hexR * .66 : 0);
-            if (hx * hx + hy * hy > rr * rr) continue;
-            ctx.beginPath();
-            for (let k = 0; k < 6; k++) {
-              const a = k * Math.PI / 3 + .52;
-              const px = hx + Math.cos(a) * hexR * .62;
-              const py = hy + Math.sin(a) * hexR * .62;
-              if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-            ctx.stroke();
-          }
-        }
-      } else {
-        // Layered energy bands for the elemental shells.
-        for (let i = 0; i < 4; i++) {
-          const a0 = time * (1.6 + i * .5);
-          ctx.globalAlpha = (.42 - i * .06) * (alpha == null ? 1 : alpha);
-          ctx.strokeStyle = i % 2 ? core : c;
-          ctx.lineWidth = 3 - i * .4;
-          ctx.beginPath();
-          ctx.arc(0, 0, rr * (.86 + i * .05), a0, a0 + Math.PI * 1.35);
-          ctx.stroke();
-        }
-      }
-      // Rim highlight so the bubble has a real edge.
-      ctx.globalAlpha = .5 * (alpha == null ? 1 : alpha);
-      ctx.strokeStyle = core;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, rr, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
     function spawnImpactBurst(x, y, power) {
       const c=power?power.color:'#38bdf8';
+      const core=power&&power.core?power.core:c;
       [1, .72, .46].forEach((factor,index)=>shockRings.push({
-        x,y,radius:8+index*12,maxRadius:150*factor,color:index===1?'#ffffff':c,alpha:.98-index*.12
+        x,y,radius:8+index*12,maxRadius:150*factor,color:index===1?core:c,alpha:.98-index*.12
       }));
       const count = QUALITY.tier === 0 ? 30 : QUALITY.tier === 1 ? 18 : 12;
       for(let i=0;i<count;i++){
@@ -2265,11 +2867,11 @@ const p1NameInput = document.getElementById('p1NameInput');
         vfxParticles.push({
           x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
           gravity:.045,life:.9+Math.random()*.35,decay:.012+Math.random()*.009,
-          radius:2+Math.random()*4,color:i%5===0?'#ffffff':c
+          radius:2+Math.random()*4,color:i%5===0?core:c
         });
       }
-      // Bright central flash ring, fades as the shockwave expands.
-      shockRings.push({x,y,radius:3,maxRadius:82,color:'#ffffff',alpha:1});
+      // Bright central flash ring, tinted with the power that caused it.
+      shockRings.push({x,y,radius:3,maxRadius:82,color:c,alpha:1});
     }
 
     function updateAndDrawVFX(ctx, timeScale) {
@@ -2332,9 +2934,9 @@ const p1NameInput = document.getElementById('p1NameInput');
       const scale = Math.max(1.15, Math.min(2.15, h / 235));
       const out = ANCHOR_SCRATCH;
       if (live && live.p1) { out.p1.x = live.p1.x * w; out.p1.y = live.p1.y * h; }
-      else { out.p1.x = w * 0.175 + 47 * scale; out.p1.y = h * 0.57; }
+      else { out.p1.x = w * 0.175 + 64 * scale; out.p1.y = h * 0.57; }
       if (live && live.p2) { out.p2.x = live.p2.x * w; out.p2.y = live.p2.y * h; }
-      else { out.p2.x = w * 0.825 - 47 * scale; out.p2.y = h * 0.57; }
+      else { out.p2.x = w * 0.825 - 64 * scale; out.p2.y = h * 0.57; }
       out.mid.x = (out.p1.x + out.p2.x) * 0.5;
       out.mid.y = (out.p1.y + out.p2.y) * 0.5;
       return out;
@@ -2428,8 +3030,10 @@ const p1NameInput = document.getElementById('p1NameInput');
       if (game.p2.hurtTimer > 0) game.p2.hurtTimer = Math.max(0, game.p2.hurtTimer - dt);
       if (game.p1.fallTimer > 0) game.p1.fallTimer = Math.max(0, game.p1.fallTimer - dt);
       if (game.p2.fallTimer > 0) game.p2.fallTimer = Math.max(0, game.p2.fallTimer - dt);
-      game.p1.recoilX *= 0.86;
-      game.p2.recoilX *= 0.86;
+      // A hard hit slides the whole fighter, not a two-pixel nudge: the push
+      // settles slowly so the body keeps travelling while it falls.
+      game.p1.recoilX *= 0.976;
+      game.p2.recoilX *= 0.976;
 
       const nowMs = performance.now();
       if (game.clash.phaseAt == null) game.clash.phaseAt = nowMs;
@@ -2547,8 +3151,10 @@ const p1NameInput = document.getElementById('p1NameInput');
           }
           game.p1.power=Math.max(0,game.p1.power-damageToP1);
           game.p2.power=Math.max(0,game.p2.power-damageToP2);
-          if(damageToP1>0){game.p1.hurtTimer=1.2;game.p1.fallTimer=FALL_DURATION;game.p1.recoilX=-34;game.p1.anim='fall';}
-          if(damageToP2>0){game.p2.hurtTimer=1.2;game.p2.fallTimer=FALL_DURATION;game.p2.recoilX=34;game.p2.anim='fall';}
+          // The winner of the clash throws the loser across the terrace.
+          const push = Math.min(230, Math.max(96, (w || 900) * 0.19));
+          if(damageToP1>0){game.p1.hurtTimer=1.2;game.p1.fallTimer=FALL_DURATION;game.p1.recoilX=-push;game.p1.anim='fall';game.p2.recoilX=push*.22;}
+          if(damageToP2>0){game.p2.hurtTimer=1.2;game.p2.fallTimer=FALL_DURATION;game.p2.recoilX=push;game.p2.anim='fall';game.p1.recoilX=-push*.22;}
           if(damageToP1>0 || damageToP2>0){
             sfx.playImpact();
             // The losing fighter hits the floor, then pushes back up.
@@ -2703,8 +3309,10 @@ const p1NameInput = document.getElementById('p1NameInput');
         if (!w || !h) return;
         ctx.clearRect(0, 0, w, h);
 
-        const groundY = h * 0.9;
-        const scale = Math.max(0.75, Math.min(1.45, h / 165));
+        // The illustrated fighters fill the champion card the way the old 3D
+        // models did, instead of standing tiny at the bottom of a tall panel.
+        const groundY = h * 0.94;
+        const scale = Math.max(0.85, Math.min(2.4, h / 190));
         drawRealisticHero(ctx, w * 0.5, groundY, scale, facing, hero, 'idle', game.time, 0, 0);
       });
     }
@@ -2772,37 +3380,51 @@ const p1NameInput = document.getElementById('p1NameInput');
         }
       }
 
-      // Defensive shells: while the two powers press together each champion is
-      // wrapped in its own element, so the clash reads as wall against wall.
-      if (game.phase === 'CENTER_CLASH' || game.phase === 'SURGE_HIT') {
-        const shell = Math.max(58, Math.min(160, h * .2));
-        if (pw1) drawPowerShield(ctx, a1.x, a1.y, shell, pw1, game.time, .95);
-        if (pw2) drawPowerShield(ctx, a2.x, a2.y, shell, pw2, game.time, .95);
-      }
+      // No bubble or ring is drawn around a champion: the fighters stay clean,
+      // readable silhouettes and all the energy lives in the centre clash.
 
       // Central collision vortex: the two forces compress, pulse, then one breaks through.
       if ((game.phase === 'CENTER_CLASH' || game.phase === 'SURGE_HIT' || game.phase === 'DRAW_PULSE') && pw1 && pw2) {
         const cx = clashMid.x, cy = clashMid.y;
         const t = game.clash.timer;
-        const decay = game.phase === 'CENTER_CLASH' ? 1
-          : game.phase === 'SURGE_HIT' ? Math.max(.12, 1 - game.clash.surgeProgress * .95)
-          : Math.max(.12, 1 - t / DRAW_TIME);
-        const pulse = 1 + Math.sin(t * 23) * .13;
-        const radius = (Math.max(34, Math.min(76, w * .048)) * pulse + Math.sin(t * 11) * 5) * decay;
-        if (radius > 3) {
+        const base = Math.max(30, Math.min(66, w * .042));
+        // The collision tightens as the struggle peaks, then collapses into the
+        // winner's colour the instant the clash breaks. There is no white ball in
+        // the middle: the centre is always the colour of the power that won.
+        const winPw = game.clash.winnerSide === 1 ? pw1 : game.clash.winnerSide === 2 ? pw2 : null;
+        const lead = winPw || pw1;
+        const trail = lead === pw1 ? pw2 : pw1;
+        const leadMid = lead.primary || lead.color;
+        const trailMid = trail.primary || trail.color;
+        let radius, alpha;
+        if (game.phase === 'CENTER_CLASH') {
+          const hold = Math.min(1, t / IMPACT_HOLD);
+          const s = Math.min(1, Math.max(0, (t - IMPACT_HOLD) / Math.max(.01, CLASH_TIME - IMPACT_HOLD)));
+          radius = (base * (.74 + .26 * hold) * (1 - s * .42)) + Math.sin(t * 11) * 4;
+          alpha = 1;
+        } else if (game.phase === 'SURGE_HIT') {
+          const s = Math.min(1, game.clash.surgeProgress || 0);
+          radius = base * .58 * (1 - s);
+          alpha = 1 - s * .8;
+        } else {
+          const s = Math.min(1, t / DRAW_TIME);
+          radius = base * .14 * (1 - s);
+          alpha = Math.max(0, .4 * (1 - s));
+        }
+        if (radius > 2 && alpha > .02) {
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
-          const core = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius * 2.7);
-          core.addColorStop(0, 'rgba(255,255,255,1)');
-          core.addColorStop(.16, 'rgba(220,246,255,.98)');
-          core.addColorStop(.39, pw1.color + 'cc');
-          core.addColorStop(.62, pw2.color + '99');
-          core.addColorStop(1, 'rgba(255,255,255,0)');
-          ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, radius * 2.7, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = alpha;
+          const halo = ctx.createRadialGradient(cx, cy, 1, cx, cy, radius * 2.6);
+          halo.addColorStop(0, lead.color);
+          halo.addColorStop(.3, leadMid + 'e0');
+          halo.addColorStop(.62, trailMid + '66');
+          halo.addColorStop(1, trail.color + '00');
+          ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, radius * 2.6, 0, Math.PI * 2); ctx.fill();
           const ringCount = QUALITY.tier >= 2 ? 2 : 4;
           for (let ring = 0; ring < ringCount; ring++) {
-            ctx.strokeStyle = ring % 2 ? pw1.core : pw2.core;
-            ctx.globalAlpha = .75 - ring * .12; ctx.lineWidth = ring === 0 ? 5 : 2.5;
+            ctx.strokeStyle = ring % 2 ? lead.color : leadMid;
+            ctx.globalAlpha = alpha * (.75 - ring * .12); ctx.lineWidth = ring === 0 ? 5 : 2.5;
             ctx.beginPath(); ctx.arc(cx, cy, radius * (.72 + ring * .30), t * (ring % 2 ? 3 : -2), t * (ring % 2 ? 3 : -2) + Math.PI * (1.35 + ring * .12)); ctx.stroke();
           }
           // Crackling spokes radiating from the compressed power sphere.
@@ -2810,12 +3432,21 @@ const p1NameInput = document.getElementById('p1NameInput');
           for (let ray = 0; ray < spokeCount; ray++) {
             const ang = (Math.PI * 2 * ray / spokeCount) + t * 2.1;
             const inner = radius * .75, outer = radius * (1.45 + (ray % 3) * .24);
-            ctx.strokeStyle = ray % 2 ? pw1.core : pw2.core;
-            ctx.lineWidth = ray % 3 === 0 ? 4 : 2; ctx.globalAlpha = .8;
+            ctx.strokeStyle = ray % 2 ? lead.color : leadMid;
+            ctx.lineWidth = ray % 3 === 0 ? 4 : 2; ctx.globalAlpha = alpha * .8;
             ctx.beginPath(); ctx.moveTo(cx + Math.cos(ang) * inner, cy + Math.sin(ang) * inner);
             ctx.lineTo(cx + Math.cos(ang + .08) * outer * .72, cy + Math.sin(ang + .08) * outer * .72);
             ctx.lineTo(cx + Math.cos(ang - .04) * outer, cy + Math.sin(ang - .04) * outer); ctx.stroke();
           }
+          // The knot at the very centre: the winning power's colour, collapsing.
+          const knotR = Math.max(3.5, radius * .78);
+          const knot = ctx.createRadialGradient(cx, cy, 0, cx, cy, knotR);
+          knot.addColorStop(0, lead.color);
+          knot.addColorStop(.5, leadMid + 'e6');
+          knot.addColorStop(1, leadMid + '00');
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = knot;
+          ctx.beginPath(); ctx.arc(cx, cy, knotR, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
         }
       }
@@ -3108,21 +3739,12 @@ const p1NameInput = document.getElementById('p1NameInput');
     const bootChipLabel = bootChip.lastElementChild;
     let bootDone = false;
     function updateBootChip() {
-      if (window.gsh3dReady) {
-        if (!bootDone) {
-          bootDone = true;
-          bootChip.style.opacity = '0';
-          setTimeout(() => bootChip.remove(), 400);
-        }
-        return;
-      }
-      if (window.gsh3dError) {
-        bootChipLabel.textContent = 'FIGHTERS FAILED TO LOAD — 2D MODE';
-        bootChip.style.borderColor = 'rgba(248,113,113,.6)';
-        return;
-      }
-      const pct = Math.round(Math.min(1, window.gsh3dProgress || 0) * 100);
-      bootChipLabel.textContent = pct > 0 ? 'LOADING FIGHTERS ' + pct + '%' : 'LOADING FIGHTERS';
+      // The arena now runs entirely on its own lightweight canvas fighters, so
+      // there is nothing left to download and the chip goes away at once.
+      if (bootDone) return;
+      bootDone = true;
+      bootChip.style.opacity = '0';
+      setTimeout(() => bootChip.remove(), 300);
     }
 
     // Initialize UI

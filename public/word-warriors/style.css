@@ -85,6 +85,9 @@ button{font-family:inherit;cursor:pointer}
 @keyframes float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(24px,26px,0)}}
 #screenHome.active{display:flex;flex-direction:column;justify-content:center;min-height:100vh}
 .home-inner{position:relative;max-width:940px;margin:0 auto;text-align:center;padding:40px 0}
+.home-hero{display:block;width:min(720px,94%);max-height:26vh;object-fit:cover;margin:0 auto 18px;border-radius:22px;border:1px solid rgba(124,77,255,.22);box-shadow:0 18px 44px rgba(86,50,160,.24)}
+#screenHome.active{overflow-y:auto}
+@media(max-height:780px){.home-hero{max-height:18vh;margin-bottom:10px}.home-inner{padding:14px 0}}
 .home-badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:22px}
 .home-badges span{
   background:rgba(255,255,255,.78);border:1.5px solid #eadffb;border-radius:999px;
@@ -367,6 +370,7 @@ button{font-family:inherit;cursor:pointer}
   background:#fbf8ff;border:1.5px solid #efe7fb;border-radius:12px;padding:8px 10px}
 .bank-item span{font-family:"Noto Sans Gurmukhi",sans-serif;font-size:1.1rem;font-weight:700}
 .bank-item small{color:var(--muted);font-size:.65rem;display:block;font-family:"Baloo 2",sans-serif}
+.bank-item .bank-roman{color:var(--cyan);font-family:"Baloo 2",sans-serif;font-weight:700;text-transform:none}
 .bank-item button{background:none;border:0;color:var(--muted);font-size:.9rem;padding:4px 6px;border-radius:8px}
 .bank-item button:hover{color:var(--red);background:#fff0f3}
 .bank-tools{display:flex;gap:2px;flex:0 0 auto}

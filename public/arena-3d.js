@@ -3,26 +3,60 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 
-// Every champion is a rigged GLB. Two have full combat clip sets; the four new
-// fighters ship with locomotion clips and are posed procedurally for actions.
+// Every champion is a downloaded, textured character. Four ship their own
+// Idle / Walk / Run / Attack clips; SPIDER is a Mixamo scan painted by material
+// name; SUPERHERO drives the same Mixamo skeleton; KRATOS is a high-poly scan
+// with no skeleton at all, so he is acted as a rigid body (see applyRigidBody).
 const CHAR_FILES = {
-  giant:     { url: '/models/animated-ogre-warrior.glb?v=2',  height: 5.15 },
-  warrior:   { url: '/models/animated-plate-knight.glb?v=2',  height: 4.95 },
-  zombie:    { url: '/models/zombie.glb?v=2',                 height: 4.85 },
-  wizard:    { url: '/models/wizard.glb?v=2',                 height: 4.95 },
-  soldier:   { url: '/models/soldier-tactical.glb?v=2',       height: 4.90 },
-  superhero: { url: '/models/superhero.glb?v=2',              height: 5.00 }
+  giant:    { url: '/models/animated-ogre-warrior.glb?v=3',            height: 5.15 },
+  wizard:   { url: '/models/wizard.glb?v=3',                           height: 4.98 },
+  warrior:  { url: '/models/animated-plate-knight.glb?v=3',            height: 4.92 },
+  captain:  { url: '/models/spiderman.glb?v=6',                        height: 4.88 },
+  spartan:  { url: '/models/superhero.glb?v=1',                        height: 5.10 },
+  reaper:   { url: '/models/god-of-war-kratos-gow4.glb?v=1',           height: 5.20 }
 };
+
+// Six different bodies at six different sizes: the ogre towers over the rest,
+// the spider is the lightest and shortest, the monster is the widest.
+const LOOKS = {
+  giant:   { model: 'giant',   height: 5.20 },
+  wizard:  { model: 'wizard',  height: 4.98 },
+  warrior: { model: 'warrior', height: 4.92 },
+  // The web-slinger ships four unnamed Mixamo clips; its clips tell us nothing,
+  // so the rig layer acts every pose and the model stays clean. The GLB carries
+  // no image data, so the suit is painted from its own material names.
+  captain: {
+    model: 'captain', height: 4.88, restOnly: true,
+    paint: {
+      mask: '#c1121f', torso: '#c1121f', hands: '#c1121f', boots: '#c1121f',
+      legs: '#1d4ed8', upperweb: '#101014', eyeout: '#08080c',
+      lensenv: '#f2f7ff', logoenv: '#f2f7ff', Material: '#c1121f'
+    }
+  },
+  // SUPERHERO: the full-body scan, 83k tris with its own painted texture set and
+  // a Mixamo skeleton, so the rig layer acts its stance and every move.
+  spartan: { model: 'spartan', height: 5.10, restOnly: true },
+  // KRATOS: a 144k-tri, 22-texture scan. No skeleton and no clips: the export's
+  // own node chain already stands it upright, but its T-pose is baked into the
+  // vertices, so the arms are relaxed into an A-pose and the body is driven as a
+  // rigid fighter rather than a skeleton.
+  reaper:  { model: 'reaper', height: 5.20, restOnly: true, rigid: true, relaxArms: true }
+};
+const lookOf = (id) => LOOKS[id] || LOOKS.warrior;
+const modelOf = (id) => lookOf(id).model;
 
 // Per-champion action flavour: how far they lunge, how high they leap, how they
 // react to a hit and how they celebrate. Keeps every fighter's motion distinct.
 const STYLES = {
-  giant:     { lean: 1.20, lunge: 1.22, jump: 1.10, lap: 1.10, recoil: 1.25, taunt: 'roar' },
-  warrior:   { lean: 0.95, lunge: 1.05, jump: 0.95, lap: 1.00, recoil: 1.00, taunt: 'salute' },
-  zombie:    { lean: 1.45, lunge: 0.72, jump: 0.55, lap: 0.62, recoil: 1.30, taunt: 'lurch' },
-  wizard:    { lean: 0.82, lunge: 0.68, jump: 0.80, lap: 0.72, recoil: 0.90, taunt: 'spin' },
-  soldier:   { lean: 1.00, lunge: 0.92, jump: 1.05, lap: 0.95, recoil: 1.15, taunt: 'march' },
-  superhero: { lean: 0.90, lunge: 1.35, jump: 1.45, lap: 1.25, recoil: 0.85, taunt: 'fly' }
+  giant:   { lean: 1.20, lunge: 1.22, jump: 1.10, lap: 1.10, recoil: 1.25, taunt: 'roar' },
+  wizard:  { lean: 0.82, lunge: 0.68, jump: 0.80, lap: 0.72, recoil: 0.90, taunt: 'spin' },
+  warrior: { lean: 0.95, lunge: 1.05, jump: 0.95, lap: 1.00, recoil: 1.00, taunt: 'salute' },
+  // SPIDER: light, springy, leaps twice as high and lands in a crouch.
+  captain: { lean: 0.84, lunge: 1.26, jump: 1.30, lap: 1.18, recoil: 0.90, taunt: 'fly' },
+  // SUPERHERO: athletic and springy, leaps high and lands in a deep crouch.
+  spartan: { lean: 1.02, lunge: 1.18, jump: 1.20, lap: 1.12, recoil: 0.94, taunt: 'fly' },
+  // KRATOS: heavy, forward-driving, holds the centre and roars.
+  reaper:  { lean: 0.96, lunge: 1.14, jump: 0.94, lap: 1.02, recoil: 0.90, taunt: 'roar' }
 };
 
 // ---- Skeleton control ---------------------------------------------------
@@ -56,7 +90,11 @@ const STANCE = {
   zombie:    { spineB: [.13, 0, 0], spineC: [.10, 0, .05], head: [.09, .04, 0], armL: [-.48, 0, -.14], armR: [-.42, 0, .14] },
   wizard:    { spineB: [-.02, 0, 0], armL: [-.16, 0, -.30], armR: [-.20, 0, .18], head: [-.02, 0, 0] },
   soldier:   { spineB: [.03, -.05, 0], armL: [-.16, 0, -.14], armR: [-.28, 0, .10], foreR: [-.55, 0, 0], head: [0, -.04, 0] },
-  superhero: { spineB: [-.04, 0, 0], armL: [-.10, 0, -.30], armR: [-.10, 0, .30], head: [-.03, 0, 0] }
+  superhero: { spineB: [-.04, 0, 0], armL: [-.10, 0, -.30], armR: [-.10, 0, .30], head: [-.03, 0, 0] },
+  // Shoulders square, fists loose, chin up: a hero waiting for the bell.
+  spartan:   { spineB: [-.05, 0, 0], armL: [-.14, 0, -.34], armR: [-.14, 0, .34], head: [-.04, 0, 0], legL: [-.06, 0, 0], legR: [.05, 0, 0] },
+  // Blade forward, off shoulder dropped, weight on the back foot.
+  reaper:    { spineB: [.03, .10, 0], armL: [-.20, 0, -.28], armR: [-.55, .16, .34], foreR: [-1.05, 0, 0], head: [.01, -.08, 0], legL: [-.09, 0, 0], legR: [.07, 0, 0], shinL: [.12, 0, 0] }
 };
 
 // Shared knockdown shape; per-champion parameters keep the sprawl different.
@@ -267,8 +305,15 @@ const AUX = {
   zombie:    { jump: { arm: .68, stride: .3 }, getup: { brace: .5 }, run: { stride: .6, lean: .32 } },
   wizard:    { jump: { arm: .85, stride: .44 }, getup: { brace: .75 }, run: { stride: .7, lean: .08 } },
   soldier:   { jump: { arm: .9, stride: .6 }, getup: { brace: .65 }, run: { stride: .95, lean: .18 } },
-  superhero: { jump: { arm: 1.2, stride: .7 }, getup: { brace: .55 }, run: { stride: 1.05, lean: .1 } }
+  superhero: { jump: { arm: 1.2, stride: .7 }, getup: { brace: .55 }, run: { stride: 1.05, lean: .1 } },
+  spartan:   { jump: { arm: 1.2, stride: .7 }, getup: { brace: .55 }, run: { stride: 1.05, lean: .1 } },
+  reaper:    { jump: { arm: 1.0, stride: .58 }, getup: { brace: .68 }, run: { stride: .92, lean: .14 } }
 };
+// KRATOS and SUPERHERO ship no move clips of their own (SUPERHERO has only
+// walk/run), so every beat of theirs is acted by the rig layer: they borrow the
+// knight's choreography and feed in their own amplitudes below.
+MOVES.reaper = { ...MOVES.warrior };
+MOVES.spartan = { ...MOVES.warrior };
 Object.keys(MOVES).forEach((id) => {
   const aux = AUX[id] || AUX.giant;
   MOVES[id].jump = makeJump(aux.jump);
@@ -407,6 +452,11 @@ Object.keys(REACTIONS).forEach((id) => {
   MOVES[id].hurt = REACTIONS[id].hurt;
   MOVES[id].fall = REACTIONS[id].fall;
 });
+if (MOVES.reaper) {
+  MOVES.reaper.clash = MOVES.warrior.clash;
+  MOVES.reaper.hurt = MOVES.warrior.hurt;
+  MOVES.reaper.fall = MOVES.warrior.fall;
+}
 
 // Which bone choreography an animation pose maps to.
 const POSE_MOVE = {
@@ -421,6 +471,291 @@ const CLIP_BLEND_POSES = new Set(['thrust', 'strike', 'clash', 'hurt', 'recoil',
 
 const AXIS_VECTORS = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
 const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, foreR: .6, neck: .6, pelvis: .35 };
+
+// ---------------------------------------------------------------------------
+// REAPER — authored here, not downloaded.
+// A layered plate duelist on a hand-built skeleton. Bone names follow the rig
+// slot patterns, so the same acting system drives its blade, its knees, its
+// torso and its knockdown as the scanned champions. Rigid armour plates are
+// parented to bones (no skinning), which reads as articulated steel.
+// ---------------------------------------------------------------------------
+function buildReaper() {
+  // Blackened crimson plate, gold trim and ember light: the fallen king.
+  const iron = new THREE.MeshStandardMaterial({ color: 0x6d121b, metalness: .68, roughness: .34 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x24100f, metalness: .45, roughness: .62 });
+  const trim = new THREE.MeshStandardMaterial({ color: 0xe0bd68, metalness: .82, roughness: .24 });
+  const cloth = new THREE.MeshStandardMaterial({ color: 0x5c0a0c, metalness: .02, roughness: .92, side: THREE.DoubleSide });
+  const glow = new THREE.MeshStandardMaterial({ color: 0x2a0505, emissive: 0xff2a12, emissiveIntensity: 2.6, roughness: .5 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xd8dee8, metalness: 1, roughness: .16 });
+
+  const root = new THREE.Group();
+  root.name = 'reaper';
+  const bone = (name, parent, x, y, z) => {
+    const b = new THREE.Bone();
+    b.name = name;
+    b.position.set(x, y, z);
+    parent.add(b);
+    return b;
+  };
+  const part = (parent, geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, rz);
+    parent.add(m);
+    return m;
+  };
+  const boxGeo = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const cylGeo = (rt, rb, h, seg = 12) => new THREE.CylinderGeometry(rt, rb, h, seg);
+  const sphGeo = (r, seg = 16) => new THREE.SphereGeometry(r, seg, Math.round(seg * .6));
+
+  // ---- Hips, belt and hanging plates ----
+  const pelvis = bone('pelvis', root, 0, .96, 0);
+  part(pelvis, boxGeo(.32, .16, .24), iron, 0, .01, 0);
+  part(pelvis, boxGeo(.335, .06, .25), trim, 0, .10, 0);
+  part(pelvis, boxGeo(.12, .28, .17), iron, -.17, -.14, .01, 0, .10, .14);
+  part(pelvis, boxGeo(.12, .28, .17), iron, .17, -.14, .01, 0, -.10, -.14);
+  part(pelvis, boxGeo(.17, .44, .02), cloth, 0, -.22, .13, .05, 0, 0);
+  part(pelvis, boxGeo(.24, .50, .02), cloth, 0, -.26, -.14, -.06, 0, 0);
+
+  // ---- Spine: waist chain, mid plate, chest ----
+  const spine1 = bone('spine1', pelvis, 0, .10, 0);
+  part(spine1, cylGeo(.125, .115, .15, 12), dark, 0, .05, 0);
+
+  const spine2 = bone('spine2', spine1, 0, .14, 0);
+  part(spine2, boxGeo(.29, .16, .22), iron, 0, .05, 0);
+
+  const chest = bone('chest', spine2, 0, .16, 0);
+  part(chest, boxGeo(.38, .27, .25), iron, 0, .09, 0);
+  part(chest, boxGeo(.30, .05, .26), trim, 0, .21, 0);
+  part(chest, boxGeo(.10, .19, .03), dark, 0, .10, .127);
+  part(chest, sphGeo(.045), glow, 0, .11, .145);
+  part(chest, new THREE.PlaneGeometry(.58, .98), cloth, 0, -.44, -.15, .16, 0, 0);
+
+  // ---- Neck and helm ----
+  const neck = bone('neck', chest, 0, .23, 0);
+  part(neck, cylGeo(.058, .07, .10, 10), dark, 0, .03, 0);
+
+  const head = bone('head', neck, 0, .10, 0);
+  const helm = part(head, sphGeo(.115), iron, 0, .07, 0);
+  helm.scale.set(1.05, 1.14, 1.05);
+  part(head, boxGeo(.17, .13, .06), dark, 0, .05, .10);
+  part(head, boxGeo(.155, .028, .02), glow, 0, .065, .132);
+  part(head, boxGeo(.035, .17, .22), trim, 0, .20, -.01);
+  part(head, cylGeo(0, .030, .18, 8), dark, -.10, .14, 0, 0, 0, -.55);
+  part(head, cylGeo(0, .030, .18, 8), dark, .10, .14, 0, 0, 0, .55);
+  // Crown horns sweeping back from the brow — reads as a demon king in silhouette.
+  for (const side of [-1, 1]) {
+    part(head, cylGeo(0, .040, .24, 8), trim, side * .105, .17, -.015, -.30, 0, -side * .30);
+    part(head, cylGeo(0, .026, .20, 8), trim, side * .175, .30, -.11, -.70, 0, -side * .52);
+  }
+
+  // ---- Arms: pauldron, upper arm, vambrace, fist ----
+  const buildArm = (side) => {
+    const s = side > 0 ? 'R' : 'L';
+    const up = bone('upperarm_' + s, chest, side * .235, .15, 0);
+    const pauldron = part(up, sphGeo(.115), iron, 0, .015, 0);
+    pauldron.scale.set(1.12, .82, 1.05);
+    part(up, boxGeo(.19, .05, .19), trim, 0, -.055, 0);
+    part(up, cylGeo(.055, .048, .28, 10), dark, 0, -.15, 0);
+    const fore = bone('forearm_' + s, up, 0, -.30, 0);
+    part(fore, cylGeo(.05, .042, .26, 10), iron, 0, -.14, 0);
+    part(fore, boxGeo(.10, .20, .11), iron, 0, -.14, .012);
+    const hand = bone('hand_' + s, fore, 0, -.28, 0);
+    part(hand, boxGeo(.08, .11, .09), dark, 0, -.05, 0);
+    return { up, fore, hand };
+  };
+  const armL = buildArm(-1);
+  const armR = buildArm(1);
+
+  // ---- Weapons: a long blade in the right fist, a short blade in the left ----
+  const weapon = new THREE.Group();
+  weapon.position.set(0, -.06, 0);
+  weapon.rotation.x = -.16;
+  armR.hand.add(weapon);
+  part(weapon, cylGeo(.017, .017, .20, 8), dark, 0, 0, -.02, Math.PI / 2, 0, 0);
+  part(weapon, sphGeo(.032), trim, 0, 0, -.13);
+  part(weapon, boxGeo(.24, .035, .05), trim, 0, 0, .09);
+  part(weapon, cylGeo(.004, .028, .92, 4), steel, 0, 0, .56, Math.PI / 2, 0, 0);
+  part(weapon, boxGeo(.012, .008, .55), glow, 0, 0, .42);
+
+  const offhand = new THREE.Group();
+  offhand.position.set(0, -.05, 0);
+  offhand.rotation.x = -.16;
+  armL.hand.add(offhand);
+  part(offhand, boxGeo(.17, .03, .045), trim, 0, 0, .06);
+  part(offhand, cylGeo(.003, .018, .40, 4), steel, 0, 0, .25, Math.PI / 2, 0, 0);
+
+  // ---- Legs: thigh plate, greave, armoured boot ----
+  const buildLeg = (side) => {
+    const s = side > 0 ? 'R' : 'L';
+    const thigh = bone('thigh_' + s, pelvis, side * .115, -.06, 0);
+    part(thigh, cylGeo(.078, .062, .40, 10), dark, 0, -.20, 0);
+    part(thigh, boxGeo(.15, .26, .17), iron, 0, -.17, .015);
+    const shin = bone('shin_' + s, thigh, 0, -.42, 0);
+    part(shin, sphGeo(.072), iron, 0, 0, .012);
+    part(shin, cylGeo(.062, .05, .38, 10), iron, 0, -.19, 0);
+    part(shin, boxGeo(.115, .30, .14), iron, 0, -.20, .02);
+    const foot = bone('foot_' + s, shin, 0, -.40, 0);
+    part(foot, boxGeo(.13, .10, .27), dark, 0, -.05, .06);
+    part(foot, boxGeo(.11, .04, .10), trim, 0, -.09, .15);
+    return { thigh, shin, foot };
+  };
+  buildLeg(-1);
+  buildLeg(1);
+
+  return root;
+}
+
+// LUCIFER — the fallen king. Built on the same plate skeleton, then crowned with
+// sweeping horns and a pair of bat wings so the silhouette reads as a demon lord
+// from across the arena instead of another knight.
+function buildDemon() {
+  const root = buildReaper();
+  const head = root.getObjectByName('head');
+  const chest = root.getObjectByName('chest');
+  const horn = new THREE.MeshStandardMaterial({ color: 0x1a0c10, metalness: .35, roughness: .5 });
+  const wingMat = new THREE.MeshStandardMaterial({
+    color: 0x3d0a12, metalness: .18, roughness: .82, side: THREE.DoubleSide
+  });
+  const ember = new THREE.MeshStandardMaterial({ color: 0x2a0505, emissive: 0xff5a1f, emissiveIntensity: 2.2, roughness: .45 });
+
+  if (head) {
+    const hornGeo = new THREE.CylinderGeometry(0, .055, .40, 8);
+    for (const side of [-1, 1]) {
+      const h1 = new THREE.Mesh(hornGeo, horn);
+      h1.position.set(side * .09, .18, -.01);
+      h1.rotation.set(-.42, 0, -side * .38);
+      head.add(h1);
+      const h2 = new THREE.Mesh(new THREE.CylinderGeometry(0, .030, .26, 8), horn);
+      h2.position.set(side * .17, .34, -.13);
+      h2.rotation.set(-.95, 0, -side * .70);
+      head.add(h2);
+    }
+    const eye = new THREE.Mesh(new THREE.BoxGeometry(.09, .022, .02), ember);
+    eye.position.set(0, .10, .135);
+    head.add(eye);
+  }
+
+  if (chest) {
+    // Bat wings: three finger spars per side under one membrane, angled back.
+    for (const side of [-1, 1]) {
+      const wing = new THREE.Group();
+      wing.position.set(side * .20, .16, -.10);
+      wing.rotation.set(.18, side * .55, side * .10);
+      // Scalloped bat membrane instead of a flat rectangle.
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.quadraticCurveTo(.30, .24, .66, .08);
+      shape.quadraticCurveTo(.54, -.10, .62, -.28);
+      shape.quadraticCurveTo(.44, -.16, .36, -.36);
+      shape.quadraticCurveTo(.24, -.14, .12, -.32);
+      shape.lineTo(0, -.12);
+      shape.closePath();
+      const mem = new THREE.Mesh(new THREE.ShapeGeometry(shape, 12), wingMat);
+      mem.scale.set(side, 1, 1);
+      mem.position.set(0, .16, -.02);
+      mem.rotation.y = side * .16;
+      wing.add(mem);
+      const spar = new THREE.Mesh(new THREE.CylinderGeometry(.012, .022, .95, 6), horn);
+      spar.position.set(side * .48, .40, -.02);
+      spar.rotation.z = side * (Math.PI / 2 - .28);
+      wing.add(spar);
+      const spar2 = new THREE.Mesh(new THREE.CylinderGeometry(.010, .018, .80, 6), horn);
+      spar2.position.set(side * .42, -.05, -.02);
+      spar2.rotation.z = side * (Math.PI / 2 + .18);
+      wing.add(spar2);
+      chest.add(wing);
+    }
+    // A molten crown ember on the breastplate.
+    const core = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 8), ember);
+    core.position.set(0, .11, .16);
+    chest.add(core);
+  }
+  root.name = 'demon';
+  return root;
+}
+
+// MONSTER — a hunched, long-armed brute with tusks and a spiked back. Same slot
+// names as every other champion, so the acting and knockdown systems just work.
+function buildBrute() {
+  const skin = new THREE.MeshStandardMaterial({ color: 0x6e7a4e, roughness: .86, metalness: .04 });
+  const hide = new THREE.MeshStandardMaterial({ color: 0x2e3822, roughness: .92 });
+  const claw = new THREE.MeshStandardMaterial({ color: 0xe6dcc2, roughness: .55, metalness: .08 });
+  const eye = new THREE.MeshStandardMaterial({ color: 0x1a0505, emissive: 0xffb020, emissiveIntensity: 1.8, roughness: .4 });
+
+  const root = new THREE.Group();
+  const bone = (name, parent, x, y, z) => {
+    const b = new THREE.Bone();
+    b.name = name; b.position.set(x, y, z); parent.add(b); return b;
+  };
+  const part = (parent, geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z); m.rotation.set(rx, ry, rz); parent.add(m); return m;
+  };
+  const boxGeo = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const cylGeo = (rt, rb, h, seg = 10) => new THREE.CylinderGeometry(rt, rb, h, seg);
+  const sphGeo = (r, seg = 14) => new THREE.SphereGeometry(r, seg, Math.round(seg * .62));
+
+  const pelvis = bone('pelvis', root, 0, .92, 0);
+  part(pelvis, boxGeo(.42, .22, .30), hide, 0, .02, 0);
+  const spine1 = bone('spine1', pelvis, 0, .14, 0);
+  part(spine1, cylGeo(.19, .17, .18, 12), skin, 0, .05, 0);
+  const spine2 = bone('spine2', spine1, 0, .18, 0);
+  part(spine2, boxGeo(.50, .22, .34), skin, 0, .04, 0);
+  const chest = bone('chest', spine2, 0, .20, 0);
+  // Barrel chest, sloping shoulders and a ridge of back spikes.
+  const barrel = part(chest, sphGeo(.30), skin, 0, .10, .01);
+  barrel.scale.set(1.28, .96, .92);
+  part(chest, boxGeo(.70, .16, .34), skin, 0, .26, 0, .06, 0, 0);
+  for (let i = 0; i < 5; i++) {
+    const sp = part(chest, cylGeo(0, .035, .16, 6), claw, 0, .20 - i * .07, -.17, -.9, 0, 0);
+    sp.position.x = (i % 2 ? .07 : -.07);
+  }
+  const neck = bone('neck', chest, 0, .30, 0);
+  part(neck, cylGeo(.10, .13, .10, 10), skin, 0, .02, .05);
+  const head = bone('head', neck, 0, .10, 0);
+  const skull = part(head, sphGeo(.155), skin, 0, .06, .03);
+  skull.scale.set(1.0, .88, 1.08);
+  part(head, boxGeo(.20, .10, .12), skin, 0, -.02, .12, .18, 0, 0);       // jaw
+  for (const side of [-1, 1]) {
+    part(head, cylGeo(0, .028, .13, 6), claw, side * .07, .01, .15, -1.9, 0, side * .18); // tusks
+    part(head, sphGeo(.026, 8), eye, side * .055, .085, .155);
+  }
+
+  const arm = (side) => {
+    const s = side > 0 ? 'R' : 'L';
+    const up = bone('upperarm_' + s, chest, side * .30, .18, 0);
+    const delt = part(up, sphGeo(.15), skin, 0, .02, 0);
+    delt.scale.set(1.05, .9, 1.0);
+    part(up, cylGeo(.115, .095, .46, 10), skin, 0, -.24, 0);
+    const fore = bone('forearm_' + s, up, 0, -.50, 0);
+    part(fore, cylGeo(.10, .12, .48, 10), skin, 0, -.24, 0);
+    const hand = bone('hand_' + s, fore, 0, -.50, 0);
+    part(hand, sphGeo(.10, 10), skin, 0, -.06, 0);
+    for (let i = 0; i < 3; i++) {
+      part(hand, cylGeo(0, .022, .14, 5), claw, (i - 1) * .05, -.15, .02, .25, 0, (i - 1) * .2);
+    }
+    return { up, fore, hand };
+  };
+  arm(-1); arm(1);
+
+  const leg = (side) => {
+    const s = side > 0 ? 'R' : 'L';
+    const thigh = bone('thigh_' + s, pelvis, side * .14, -.08, 0);
+    part(thigh, cylGeo(.13, .11, .40, 10), skin, 0, -.20, 0);
+    const shin = bone('shin_' + s, thigh, 0, -.42, 0);
+    part(shin, cylGeo(.10, .085, .40, 10), skin, 0, -.20, 0);
+    const foot = bone('foot_' + s, shin, 0, -.42, 0);
+    part(foot, boxGeo(.16, .11, .30), hide, 0, -.05, .07);
+    for (let i = 0; i < 3; i++) {
+      part(foot, cylGeo(0, .022, .10, 5), claw, (i - 1) * .05, -.03, .22, 1.35, 0, 0);
+    }
+  };
+  leg(-1); leg(1);
+
+  root.name = 'brute';
+  return root;
+}
 
 (() => {
   const host = document.getElementById('warrior3DLayer');
@@ -438,21 +773,68 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   }
   // Cap the backing store: full DPR on a big panel is the main reason the arena
   // crawls. The adaptive scaler in the render loop lowers it further at runtime.
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1));
+  // Full panel resolution: the champions are HD scans now, so they render at the
+  // device pixel ratio (up to 2x) and the adaptive scaler below only steps down
+  // if the GPU genuinely cannot hold the frame.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.16;
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
+  // Studio reflections, generated from a canvas: metal armour that has nothing
+  // to reflect renders as a black blob, which is what made the plate champions
+  // read as silhouettes. No extra download, one PMREM pass at boot.
+  (function studioEnvironment() {
+    const cv = document.createElement('canvas');
+    cv.width = 256; cv.height = 128;
+    const g = cv.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 0, 128);
+    grad.addColorStop(0, '#e8f1ff');
+    grad.addColorStop(.46, '#a9bccf');
+    grad.addColorStop(.52, '#5c6b7d');
+    grad.addColorStop(1, '#20262f');
+    g.fillStyle = grad; g.fillRect(0, 0, 256, 128);
+    // Two soft boxes give the polished plates a highlight to catch.
+    const box = g.createRadialGradient(70, 34, 2, 70, 34, 44);
+    box.addColorStop(0, 'rgba(255,255,255,1)');
+    box.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = box; g.fillRect(10, 0, 120, 90);
+    const box2 = g.createRadialGradient(186, 46, 2, 186, 46, 34);
+    box2.addColorStop(0, 'rgba(210,235,255,.95)');
+    box2.addColorStop(1, 'rgba(210,235,255,0)');
+    g.fillStyle = box2; g.fillRect(140, 8, 110, 84);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(tex).texture;
+    if ('environmentIntensity' in scene) scene.environmentIntensity = .62;
+    pmrem.dispose();
+    tex.dispose();
+  })();
   const camera = new THREE.PerspectiveCamera(44, 1, .1, 100);
   camera.position.set(0, 3.2, 12.6);
   camera.lookAt(0, 3.72, 0);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x59677d, 2.05));
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x59677d, 2.05); scene.add(hemi);
   const key = new THREE.DirectionalLight(0xfff4e2, 2.45); key.position.set(-3, 7, 6); scene.add(key);
   const rim = new THREE.DirectionalLight(0xb9dcff, 1.15); rim.position.set(4, 4, -4); scene.add(rim);
   // Warm bounce from the terrace so faces are never lit from one side only.
   const bounce = new THREE.DirectionalLight(0xffd9a8, .55); bounce.position.set(2, -1.5, 5); scene.add(bounce);
+
+  // The painted backdrop owns the palette; the champions are relit with it so a
+  // night or lava arena does not leave daylight figures floating on top.
+  function applySceneTheme(t) {
+    if (!t) return;
+    if (t.hemiSky) hemi.color.set(t.hemiSky);
+    if (t.hemiGround) hemi.groundColor.set(t.hemiGround);
+    if (t.key) key.color.set(t.key);
+    if (t.rim) rim.color.set(t.rim);
+    if (t.exposure) renderer.toneMappingExposure = t.exposure;
+  }
+  applySceneTheme(window.gshArenaTheme && window.gshArenaTheme.three);
+  window.addEventListener('gsh:theme', (e) => applySceneTheme(e.detail));
 
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
@@ -521,9 +903,83 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     });
   }
 
+  // Skinned meshes report their bind-pose bounds, and Mixamo exports often carry
+  // a 0.01 armature scale, so that box can be a couple of centimetres tall while
+  // the character is 1.8 m. Measure the bones as well and trust the larger one:
+  // a champion then keeps the height the roster asks for instead of being blown
+  // up to giant size and thrown off screen.
+  // A scanned statue carries no skeleton, so its pose is baked into the
+  // vertices. This bends the arms down at the shoulder in model space (the GoW
+  // scan is Z-up with the arms straight out along ±X), which turns a T-pose scan
+  // into a natural A-pose fighter. The bend eases in over the shoulder so the
+  // joint does not tear.
+  function relaxStatueArms(model) {
+    const SHOULDER_X = 4.30, SHOULDER_Z = 17.4, DROP = .92, REACH = 1.15;
+    const done = new Set();
+    model.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      const pos = o.geometry.attributes && o.geometry.attributes.position;
+      if (!pos || done.has(pos)) return;
+      done.add(pos);
+      const arr = pos.array;
+      let touched = false;
+      for (let i = 0; i < arr.length; i += 3) {
+        const x = arr[i], z = arr[i + 2];
+        const ax = Math.abs(x);
+        if (ax <= SHOULDER_X) continue;
+        const t = Math.min(1, (ax - SHOULDER_X) / REACH);
+        const w = t * t * (3 - 2 * t);
+        const side = x < 0 ? -1 : 1;
+        const ang = DROP * w * side;
+        const dx = x - side * SHOULDER_X, dz = z - SHOULDER_Z;
+        const c = Math.cos(ang), s = Math.sin(ang);
+        arr[i] = side * SHOULDER_X + dx * c + dz * s;
+        arr[i + 2] = SHOULDER_Z - dx * s + dz * c;
+        touched = true;
+      }
+      if (!touched) return;
+      pos.needsUpdate = true;
+      o.geometry.computeBoundingBox();
+      o.geometry.computeBoundingSphere();
+    });
+  }
+
+  const _measureV = new THREE.Vector3();
+  function measureModel(model) {
+    model.updateMatrixWorld(true);
+    const boneBox = new THREE.Box3();
+    let hasSkin = false;
+    model.traverse((o) => {
+      if (!o.isSkinnedMesh || !o.skeleton) return;
+      hasSkin = true;
+      for (const b of o.skeleton.bones) boneBox.expandByPoint(b.getWorldPosition(_measureV));
+    });
+    const box = new THREE.Box3().setFromObject(model);
+    const boxH = box.max.y - box.min.y;
+    const centre = { cx: (box.min.x + box.max.x) * .5, cz: (box.min.z + box.max.z) * .5 };
+    if (hasSkin && !boneBox.isEmpty()) {
+      const boneH = boneBox.max.y - boneBox.min.y;
+      if (boneH > boxH) return { height: boneH * 1.06, minY: boneBox.min.y - boneH * .04, ...centre };
+    }
+    return { height: Math.max(boxH, .001), minY: box.min.y, ...centre };
+  }
+
   function loadCharacter(id) {
-    const spec = CHAR_FILES[id] || CHAR_FILES.giant;
+    const spec = CHAR_FILES[id] || CHAR_FILES.warrior;
     if (assets.has(id)) return assets.get(id);
+    if (spec.build) {
+      // Built in code: measure it once, then treat it exactly like a GLB asset.
+      const scene = spec.build();
+      scene.updateMatrixWorld(true);
+      const size = new THREE.Box3().setFromObject(scene).getSize(new THREE.Vector3());
+      const job = Promise.resolve({
+        scene, clips: [],
+        rawHeight: Math.max(size.y, .001),
+        targetHeight: spec.height
+      });
+      assets.set(id, job);
+      return job;
+    }
     const ctrl = new AbortController();
     controllers.set(id, ctrl);
     const job = fetchGlb(spec.url, ctrl.signal)
@@ -541,7 +997,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
             o.material.side = THREE.FrontSide;
             // 4x anisotropy is indistinguishable from 16x at this size but much
             // cheaper to sample on integrated graphics.
-            const aniso = Math.min(4, maxAniso);
+            const aniso = Math.min(8, maxAniso);
             ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap'].forEach((k) => {
               const t = o.material[k];
               if (t && t.isTexture) { t.anisotropy = aniso; t.needsUpdate = true; }
@@ -550,13 +1006,33 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
         });
         // Skinned meshes need resolved world matrices before measuring, otherwise
         // the bind-pose bounds are tiny and the fighter gets blown up to giant size.
-        model.updateMatrixWorld(true);
-        const bounds = new THREE.Box3().setFromObject(model);
-        const size = bounds.getSize(new THREE.Vector3());
+        const paintMap = lookOf(id).paint;
+        if (paintMap) {
+          model.traverse((o) => {
+            if (!o.isMesh || !o.material) return;
+            const mats = Array.isArray(o.material) ? o.material : [o.material];
+            const painted = mats.map((mat) => {
+              const key = Object.keys(paintMap).find((k) => mat.name && mat.name.includes(k));
+              if (!key) return mat;
+              const next = mat.clone();
+              if (next.color) next.color.set(paintMap[key]);
+              next.metalness = .12;
+              next.roughness = .58;
+              return next;
+            });
+            o.material = Array.isArray(o.material) ? painted : painted[0];
+          });
+        }
+        // Stand the Z-up scan upright and relax its baked T-pose before
+        // anything is measured, so the height the roster asks for still holds.
+        const look = lookOf(id);
+        if (look.relaxArms) relaxStatueArms(model);
+        if (look.fix) model.rotation.set(look.fix[0], look.fix[1], look.fix[2]);
+        const measured = measureModel(model);
         return {
           scene: model,
           clips: gltf.animations || [],
-          rawHeight: Math.max(size.y, .001),
+          rawHeight: measured.height,
           targetHeight: spec.height
         };
       })
@@ -573,12 +1049,36 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     return job;
   }
 
-  function instantiate(asset) {
+  // Armour tint: the same rig is worn in a different colour by two champions,
+  // so every fighter stays recognisable at a glance from across the arena.
+  function tintMaterial(mat, tint) {
+    const next = mat.clone();
+    if (next.color) next.color.lerp(tint, .34);
+    return next;
+  }
+  function tintModel(model, hex) {
+    const tint = new THREE.Color(hex);
+    model.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      o.material = Array.isArray(o.material)
+        ? o.material.map((m) => tintMaterial(m, tint))
+        : tintMaterial(o.material, tint);
+    });
+  }
+
+  function instantiate(asset, charId) {
+    const look = lookOf(charId);
     const model = cloneSkeleton(asset.scene);
-    model.scale.setScalar(asset.targetHeight / asset.rawHeight);
-    model.updateMatrixWorld(true);
-    const bounds = new THREE.Box3().setFromObject(model);
-    model.position.y -= bounds.min.y;
+    if (look.tint) tintModel(model, look.tint);
+    model.scale.setScalar((look.height || asset.targetHeight) / asset.rawHeight);
+    // Some exports carry their mesh far from the root origin; re-centre it so the
+    // champion stands on its own mark instead of hovering off screen.
+    const m = measureModel(model);
+    // measureModel already reports world units (it runs after the scale), so
+    // these offsets are applied as-is: a Mixamo export can put the mesh several
+    // metres from its own root, and that offset has to be removed for the
+    // champion to stand on the mark.
+    model.position.set(-m.cx, -m.minY, -m.cz);
     model.updateMatrixWorld(true);
     return model;
   }
@@ -726,10 +1226,11 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
 
   const tmpAxis = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpQ2 = new THREE.Quaternion();
   function applyRig(f, pose, elapsed, dt) {
-    if (!f.hasRig) return;
-    const lib = MOVES[f.charId] || MOVES.giant;
+    // No skeleton (a scanned statue): act the whole body instead of the bones.
+    if (!f.hasRig) { applyRigidBody(f, pose, elapsed, dt); return; }
+    const lib = MOVES[f.modelId] || MOVES.warrior;
     const t = f.targetBuf;
-    t.set(STANCE_BUF[f.charId] || STANCE_BUF.giant);
+    t.set(STANCE_BUF[f.modelId] || STANCE_BUF.warrior);
 
     // Constant breathing keeps every stance alive between moves.
     const breath = Math.sin(elapsed * 2.05 + f.seed);
@@ -791,12 +1292,42 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     }
   }
 
+  // ---- Rigid-body acting -------------------------------------------------
+  // A statue cannot bend an arm, so its performance comes from the whole body:
+  // a live weight shift and breath while idle, a lean into the lunge, a brace at
+  // the clash, a snap back on impact and a settle after landing. The root still
+  // carries the knockdown, so the fall and the get-up stay as real as the rest.
+  const RIGID_LEAN = {
+    charge: -.17, thrust: .19, strike: .22, clash: .13, jump: .10,
+    hurt: -.22, recoil: -.19, celebrate: -.09
+  };
+  function applyRigidBody(f, pose, elapsed, dt) {
+    const base = f.modelBase;
+    if (!base) return;
+    const lean = RIGID_LEAN[pose] || 0;
+    const breath = Math.sin(elapsed * 1.85 + f.seed);
+    const sway = Math.sin(elapsed * .95 + f.seed * 1.6);
+    const shift = Math.sin(elapsed * 1.32 + f.seed * .7);
+    const k = 1 - Math.exp(-dt * (lean ? 15 : 5));
+    f.rigidLean += ((lean + breath * .012) - f.rigidLean) * k;
+    f.model.rotation.x = base.rx + f.rigidLean;
+    f.model.rotation.y = base.ry + sway * .022 + (pose === 'celebrate' ? shift * .18 : 0);
+    f.model.rotation.z = base.rz + shift * .014;
+    f.model.position.x = base.x + shift * .012;
+    f.model.position.y = base.y + Math.max(0, breath) * .014;
+  }
+
   // ---- Character props (rifle for the soldier, cape for the superhero) ----
   function findBone(root, patterns) {
     let hit = null;
     root.traverse((o) => {
-      if (hit || !o.isBone) return;
-      if (patterns.some((p) => p.test(o.name))) hit = o;
+      // Mixamo/Blender exports sometimes ship joints as plain Object3D nodes, so
+      // the name is what matters, not the Bone flag.
+      if (hit || !o.name) return;
+      // Mixamo exports prefix every bone with "mixamorig:", so the same slot
+      // patterns have to see the bare name too.
+      const bare = o.name.replace(/^mixamorig[:_]*/i, '');
+      if (patterns.some((p) => p.test(bare) || p.test(o.name))) hit = o;
     });
     return hit;
   }
@@ -863,14 +1394,18 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   })();
 
   function makeFighter(index, charId, asset) {
-    const model = instantiate(asset);
+    const model = instantiate(asset, charId);
     const root = new THREE.Group();
+    // Yaw first, then pitch and roll around the fighter's own axes. With the
+    // default XYZ order the ±FACE_TURN yaw turned the knockdown pitch into a
+    // diagonal topple, so a champion dropped onto his hip instead of his back.
+    root.rotation.order = 'YXZ';
     root.add(model);
     scene.add(root);
     const clips = asset.clips;
     const toward = index === 0 ? 1 : -1;
     const f = {
-      root, model, index, charId, clips,
+      root, model, index, charId, modelId: modelOf(charId), clips,
       mixer: new THREE.AnimationMixer(model),
       action: null, currentClip: null, poseKey: '', pose: '',
       idle: chooseClip(clips, [/^idle$/i]),
@@ -883,12 +1418,18 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       hit: chooseClip(clips, [/^hit$|hurt/i]),
       death: chooseClip(clips, [/^death$|fall|ground/i]),
       win: chooseClip(clips, [/^win$|victory/i]),
-      toward, bodyH: asset.targetHeight, rawHeight: asset.rawHeight,
+      toward, bodyH: lookOf(charId).height || asset.targetHeight, rawHeight: asset.rawHeight,
       baseX: 0, baseRot: toward * FACE_TURN, seed: index * 1.9,
-      restOnly: !chooseClip(clips, [/^idle$/i]),
+      restOnly: lookOf(charId).restOnly != null ? lookOf(charId).restOnly : !chooseClip(clips, [/^idle$/i]),
       victoryAt: 0, wasVictory: false,
       sX: 0, sY: 0, sRz: 0, sRy: toward * FACE_TURN
     };
+    // Rigid-body fighters lean around the transform they were placed with.
+    f.modelBase = {
+      x: model.position.x, y: model.position.y, z: model.position.z,
+      rx: model.rotation.x, ry: model.rotation.y, rz: model.rotation.z
+    };
+    f.rigidLean = 0;
     const shadow = new THREE.Mesh(
       new THREE.PlaneGeometry(f.bodyH * .95, f.bodyH * .95),
       new THREE.MeshBasicMaterial({ map: SHADOW_TEX, transparent: true, depthWrite: false, opacity: .9 })
@@ -965,15 +1506,15 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
     // Claim the slot immediately so a slower earlier download cannot win the race
     // and repaint an old champion over the one the player just picked.
     view.charId = charId;
-    const asset = await loadCharacter(charId);
+    const asset = await loadCharacter(modelOf(charId));
     if (view.charId !== charId) return;
     if (view.body) view.sc.remove(view.body);
-    const model = instantiate(asset);
+    const model = instantiate(asset, charId);
     model.rotation.y = view.side === 0 ? .5 : -.5;
     view.sc.add(model);
     view.body = model;
     view.charId = charId;
-    view.bodyH = asset.targetHeight;
+    view.bodyH = lookOf(charId).height || asset.targetHeight;
     view.mixer = new THREE.AnimationMixer(model);
     if (asset.clips.length) {
       const idle = asset.clips.find((c) => /^idle$/i.test(c.name));
@@ -993,15 +1534,16 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       if (typeof window.gshGetCharacters === 'function') return window.gshGetCharacters();
       if (typeof game !== 'undefined') return [game.p1.characterId, game.p2.characterId];
     } catch (_) { /* fall through */ }
-    return ['giant', 'warrior'];
+    return ['giant', 'wizard'];
   }
   let fighterToken = 0;
   async function refreshFighters(ids) {
-    abortUnused(ids);
+    const models = ids.map(modelOf);
+    abortUnused(models);
     if (fighters[0] && fighters[1] && fighters[0].charId === ids[0] && fighters[1].charId === ids[1]) return;
     const token = ++fighterToken;
     let loaded;
-    try { loaded = await Promise.all(ids.map(loadCharacter)); } catch (e) {
+    try { loaded = await Promise.all(models.map(loadCharacter)); } catch (e) {
       if (!e || e.name !== 'AbortError') console.error(e);
       return;
     }
@@ -1015,7 +1557,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   }
   async function refreshAll() {
     const ids = currentIds();
-    abortUnused(ids);
+    abortUnused(ids.map(modelOf));
     window.gsh3dError = null;
     await Promise.all(previewViews.map((v) => setPreviewCharacter(v, ids[v.side]).catch(() => {})));
     await refreshFighters(currentIds());
@@ -1027,6 +1569,13 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
   };
 
   // Small diagnostic hook used while tuning the champion-select cards.
+  window.gshFighterDebug = () => fighters.map((f) => ({
+    charId: f.charId, modelId: f.modelId, scale: +f.model.scale.x.toFixed(4),
+    rawHeight: +(f.rawHeight || 0).toFixed(3), bodyH: f.bodyH,
+    posX: +f.model.position.x.toFixed(2), posY: +f.model.position.y.toFixed(3), posZ: +f.model.position.z.toFixed(2),
+    hasRig: !!f.hasRig, pose: f.pose,
+    visible: f.model.visible, clip: f.currentClip && f.currentClip.name
+  }));
   window.gshPreviewDebug = () => previewViews.map((v) => ({
     charId: v.charId, hasBody: !!v.body, w: v.w, h: v.h, bodyH: v.bodyH,
     frames: v.pr.info.render.frame,
@@ -1146,7 +1695,7 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
       fighters.forEach((f, i) => {
         const q = i === 0 ? state.p1 : state.p2;
         const toward = f.toward;
-        const sig = STYLES[f.charId] || STYLES.giant;
+        const sig = STYLES[f.charId] || STYLES[modelOf(f.charId)] || STYLES.warrior;
         const winner = state.winnerSide === (i + 1);
         let x = f.baseX, y = 0, rx = 0, rz = 0, ry = f.baseRot, pose = 'idle';
 
@@ -1193,10 +1742,12 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
           const kd = ease(clamp(vt / .85, 0, 1));
           pose = 'down';
           y = .03 + .02 * kd;
-          // Thrown away from the winner, tipping out onto the terrace.
+          // Thrown away from the winner, laid out flat on his own back — the pitch
+          // is body-local, so both champions fall the same direction relative to
+          // the way they were facing.
           x -= toward * .62 * kd;
-          rz = toward * 1.12 * kd;
-          if (kd >= 1) rz += toward * Math.sin(elapsed * 1.3) * .01;
+          rx = -1.12 * kd;
+          if (kd >= 1) rx += Math.sin(elapsed * 1.3) * .012;
         } else if ((q.fall || 0) > .02) {
           // Full knockdown arc: stagger → fall → lie still → stand back up.
           const since = Math.max(0, (q.fallMax || 2.6) - (q.fall || 0));
@@ -1221,19 +1772,19 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
             const LIE = 1.42;
             pose = 'fall';
 
-            // 1. Knees buckle: a small drop and a forward lurch before any rotation.
+            // 1. Knees buckle: the body drops and rocks back onto the heels.
             const bk = ease(buckle);
             y = -.03 * bk;
             x -= toward * .12 * bk;
-            rz = toward * .10 * bk;
 
-            // 2. Topple: gravity squared, so the last third of the arc is fast.
+            // 2. Topple straight over his own heels. The pitch stays in the
+            // fighter's frame (root uses YXZ), so no sideways roll and no yaw
+            // twist: he goes down on his back, away from the rival. Gravity is
+            // squared, so the last third of the arc is fast.
             const g = topple * topple;
             rx = -LIE * g;
-            rz += toward * .16 * g;
             x -= toward * (.58 * g);
             y += .015 * g;
-            ry = f.baseRot - toward * .10 * g;
 
             // 3. Impact and one bounce on the shoulders; the limbs keep travelling.
             if (impact > 0) {
@@ -1241,13 +1792,12 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
               rx = -LIE - .09 * hit;
               y += .05 * hit;
               x -= toward * .05 * hit;
-              rz += toward * .04 * hit;
             }
             // 4. Lying flat, breathing, the body settling the last few millimetres.
             if (rest > 0) {
               rx = -(LIE + .07) + Math.sin(elapsed * 1.55 + f.seed) * .014 * rest;
               y = .010;
-              rz = toward * .20 + Math.sin(elapsed * 1.05 + f.seed) * .012 * rest;
+              rz = Math.sin(elapsed * 1.05 + f.seed) * .008 * rest;
               x -= toward * .06 * rest;
             }
           } else {
@@ -1262,8 +1812,8 @@ const RIG_GAIN = { spineA: .45, spineB: .45, spineC: .5, head: .8, foreL: .6, fo
             rx = -roll;
             y = push * .055 - (1 - ease(u)) * .01;
             x -= toward * .58 * (1 - knot(u, [0, .5, 1], [1, .52, 0]));
-            rz = toward * .20 * (1 - knot(u, [0, .45, 1], [1, .48, 0]));
-            ry = f.baseRot - toward * .10 * (1 - ease(u));
+            rz = toward * .06 * (1 - knot(u, [0, .45, 1], [1, .48, 0]));
+            ry = f.baseRot - toward * .06 * (1 - ease(u));
           }
         } else if ((q.hurt || 0) > .02) {
           pose = 'hurt';
