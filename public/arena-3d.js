@@ -11,9 +11,9 @@ const CHAR_FILES = {
   giant:    { url: '/models/animated-ogre-warrior.glb?v=3',            height: 5.15 },
   wizard:   { url: '/models/wizard.glb?v=3',                           height: 4.98 },
   warrior:  { url: '/models/animated-plate-knight.glb?v=3',            height: 4.92 },
-  captain:  { url: '/models/spiderman.glb?v=6',                        height: 4.88 },
+  captain:  { url: '/models/spiderman-hd.glb?v=7',                     height: 4.88 },
   spartan:  { url: '/models/superhero.glb?v=1',                        height: 5.10 },
-  reaper:   { url: '/models/god-of-war-kratos-gow4.glb?v=1',           height: 5.20 }
+  reaper:   { url: '/models/kratos-hd.glb?v=2',                        height: 5.20 }
 };
 
 // Six different bodies at six different sizes: the ogre towers over the rest,
@@ -37,10 +37,10 @@ const LOOKS = {
   // a Mixamo skeleton, so the rig layer acts its stance and every move.
   spartan: { model: 'spartan', height: 5.10, restOnly: true },
   // KRATOS: a 144k-tri, 22-texture scan. No skeleton and no clips: the export's
-  // own node chain already stands it upright, but its T-pose is baked into the
-  // vertices, so the arms are relaxed into an A-pose and the body is driven as a
-  // rigid fighter rather than a skeleton.
-  reaper:  { model: 'reaper', height: 5.20, restOnly: true, rigid: true, relaxArms: true }
+  // own node chain already stands it upright, and its baked T-pose was relaxed
+  // into an A-pose in the model file itself, so the body is driven as a rigid
+  // fighter with nothing posed at load time.
+  reaper:  { model: 'reaper', height: 5.20, restOnly: true, rigid: true }
 };
 const lookOf = (id) => LOOKS[id] || LOOKS.warrior;
 const modelOf = (id) => lookOf(id).model;
@@ -908,42 +908,6 @@ function buildBrute() {
   // the character is 1.8 m. Measure the bones as well and trust the larger one:
   // a champion then keeps the height the roster asks for instead of being blown
   // up to giant size and thrown off screen.
-  // A scanned statue carries no skeleton, so its pose is baked into the
-  // vertices. This bends the arms down at the shoulder in model space (the GoW
-  // scan is Z-up with the arms straight out along ±X), which turns a T-pose scan
-  // into a natural A-pose fighter. The bend eases in over the shoulder so the
-  // joint does not tear.
-  function relaxStatueArms(model) {
-    const SHOULDER_X = 4.30, SHOULDER_Z = 17.4, DROP = .92, REACH = 1.15;
-    const done = new Set();
-    model.traverse((o) => {
-      if (!o.isMesh || !o.geometry) return;
-      const pos = o.geometry.attributes && o.geometry.attributes.position;
-      if (!pos || done.has(pos)) return;
-      done.add(pos);
-      const arr = pos.array;
-      let touched = false;
-      for (let i = 0; i < arr.length; i += 3) {
-        const x = arr[i], z = arr[i + 2];
-        const ax = Math.abs(x);
-        if (ax <= SHOULDER_X) continue;
-        const t = Math.min(1, (ax - SHOULDER_X) / REACH);
-        const w = t * t * (3 - 2 * t);
-        const side = x < 0 ? -1 : 1;
-        const ang = DROP * w * side;
-        const dx = x - side * SHOULDER_X, dz = z - SHOULDER_Z;
-        const c = Math.cos(ang), s = Math.sin(ang);
-        arr[i] = side * SHOULDER_X + dx * c + dz * s;
-        arr[i + 2] = SHOULDER_Z - dx * s + dz * c;
-        touched = true;
-      }
-      if (!touched) return;
-      pos.needsUpdate = true;
-      o.geometry.computeBoundingBox();
-      o.geometry.computeBoundingSphere();
-    });
-  }
-
   const _measureV = new THREE.Vector3();
   function measureModel(model) {
     model.updateMatrixWorld(true);
@@ -1023,11 +987,6 @@ function buildBrute() {
             o.material = Array.isArray(o.material) ? painted : painted[0];
           });
         }
-        // Stand the Z-up scan upright and relax its baked T-pose before
-        // anything is measured, so the height the roster asks for still holds.
-        const look = lookOf(id);
-        if (look.relaxArms) relaxStatueArms(model);
-        if (look.fix) model.rotation.set(look.fix[0], look.fix[1], look.fix[2]);
         const measured = measureModel(model);
         return {
           scene: model,
@@ -1496,8 +1455,9 @@ function buildBrute() {
       sc.add(new THREE.HemisphereLight(0xffffff, 0x59677d, 2.0));
       const k = new THREE.DirectionalLight(0xffffff, 2.6); k.position.set(-2.5, 5, 4); sc.add(k);
       const cam = new THREE.PerspectiveCamera(34, 1, .1, 40);
-      previewViews.push({ pr, sc, cam, holder, side, body: null, mixer: null, w: 0, h: 0, bodyH: 4.95, charId: null });
-      canvas.style.display = 'none';
+      previewViews.push({ pr, sc, cam, holder, side, canvas, body: null, mixer: null, w: 0, h: 0, bodyH: 4.95, charId: null });
+      // The painted champion stays on the card until the 3D body is in: an empty
+      // card while a multi-megabyte model downloads reads as a broken screen.
       window.gshPreview3d = true;
     });
   }
@@ -1514,6 +1474,8 @@ function buildBrute() {
     view.sc.add(model);
     view.body = model;
     view.charId = charId;
+    // The real model is drawing now, so retire the painted stand-in.
+    if (view.canvas) view.canvas.style.display = 'none';
     view.bodyH = lookOf(charId).height || asset.targetHeight;
     view.mixer = new THREE.AnimationMixer(model);
     if (asset.clips.length) {
@@ -1624,6 +1586,14 @@ function buildBrute() {
 
   let perfAcc = 0, perfFrames = 0, fastWindows = 0;
   let previewAcc = 0, sinceArenaRender = 0;
+  // The panel's own frame interval, learned from the fastest frames it produces.
+  // A fixed millisecond target made the scaler fight vsync: on a 60 Hz screen
+  // every frame is 16.7 ms, so a 13.4 ms budget could never be met, the scale
+  // ratcheted down to the floor and stayed there — soft models and no extra fps.
+  let frameFloor = 1 / 60;
+  // Highest scale step worth trying: after a step back, stop climbing past it for
+  // a while, so resolution cannot oscillate every couple of seconds.
+  let stepCeiling = SCALE_STEPS.length - 1, ceilingUntil = 0;
   function frame() {
     requestAnimationFrame(frame);
     if (document.hidden) { clock.getDelta(); return; }
@@ -1939,23 +1909,33 @@ function buildBrute() {
       window.gsh3dAnchors = anchors;
     }
 
-    // Keep the layer honest about its own cost: a slow window steps the render
-    // scale down immediately, a long run of fast windows earns one step back.
+    // Keep the layer honest about its own cost, measured against the panel rather
+    // than a guess: a window that overruns the refresh steps the scale down, a
+    // long run of clean windows earns one step back up to the last good value.
+    if (rawDt > 0 && rawDt < .25) {
+      if (rawDt < frameFloor) frameFloor = rawDt;
+      else frameFloor += (rawDt - frameFloor) * .0002;
+    }
     perfAcc += dt; perfFrames += 1;
     if (perfFrames >= 24) {
       const avg = perfAcc / perfFrames;
+      const budget = Math.max(frameFloor, 1 / 240);
       perfAcc = 0; perfFrames = 0;
-      // 13.4 ms is ~75 fps: below that on a 120 Hz panel the pixel ratio comes
-      // down so the frame rate can climb back to the refresh rate.
-      if (avg > 0.0134 && scaleStep > 0) {
-        // A badly blown frame budget drops two steps at once, so a weak GPU
-        // reaches a smooth resolution in well under a second.
-        scaleStep = Math.max(0, scaleStep - (avg > 0.024 ? 2 : 1));
+      if (avg > budget * 1.25 && scaleStep > 0) {
+        // A badly blown budget drops two steps at once, so a weak GPU reaches a
+        // smooth resolution in well under a second instead of creeping down.
+        scaleStep = Math.max(0, scaleStep - (avg > budget * 2 ? 2 : 1));
+        stepCeiling = scaleStep;
+        ceilingUntil = elapsed + 25;
         fastWindows = 0; applyRenderScale();
-      } else if (avg < 0.0088) {
+      } else if (avg < budget * 1.06) {
         fastWindows += 1;
-        if (fastWindows >= 4 && scaleStep < SCALE_STEPS.length - 1) {
-          scaleStep += 1; fastWindows = 0; applyRenderScale();
+        if (fastWindows >= 6) {
+          fastWindows = 0;
+          if (elapsed > ceilingUntil) stepCeiling = SCALE_STEPS.length - 1;
+          if (scaleStep < Math.min(stepCeiling, SCALE_STEPS.length - 1)) {
+            scaleStep += 1; applyRenderScale();
+          }
         }
       } else {
         fastWindows = 0;
