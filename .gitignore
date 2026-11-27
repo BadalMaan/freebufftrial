@@ -4,5 +4,4 @@ dist/
 .env.*
 .freebuff/
 *.log
-package-lock.json
 .tmp/
